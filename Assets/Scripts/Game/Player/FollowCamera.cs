@@ -4,21 +4,27 @@ namespace Scavenger.Player
 {
     /// <summary>
     /// 대각 쿼터뷰~사이드뷰 사이의 로우앵글 추적 카메라 (ADR-0003).
-    /// +x측 배치 = 전진이 화면 오른쪽을 향한다.
-    /// 위치는 SmoothDamp로 약간 늦게 따라간다 (스텝 이동의 타격감 보조).
-    /// 포즈를 매 프레임 재계산하므로 플레이 중 인스펙터 튜닝이 즉시 반영된다.
-    /// offset/lookOffset은 캐릭터 에셋 생성 게이트의 동결 대상 수치.
+    /// 리그 구성: 룩앳 지점을 먼저 정하고, 카메라 포지션은 룩앳 기준 오프셋으로 정의한다.
+    ///   1. lookAtOffset      - 앵커(복도 중앙, 플레이어 z) 기준 월드축. 바라보는 지점
+    ///   2. positionOffsetWorld - 룩앳 지점 기준 월드축. 카메라 위치
+    ///   3. positionOffsetLocal - 시선 로컬축. 회전 확정 후 평행이동 (화면 구도 시프트,
+    ///      시선 방향은 바뀌지 않음 - 플레이어를 화면 비중심에 두는 용도)
+    /// 위치는 SmoothDamp로 약간 늦게 따라간다. 포즈는 매 프레임 재계산 - 튜닝 즉시 반영.
+    /// 수치는 캐릭터 에셋 생성 게이트의 동결 대상.
     /// </summary>
     [ExecuteAlways]
     public sealed class FollowCamera : MonoBehaviour
     {
         public Transform target;
 
-        [Header("카메라 위치 오프셋 (측면 대각 로우앵글)")]
-        public Vector3 offset = new Vector3(9.5f, 6f, -7f);
+        [Header("룩앳 지점: 앵커 기준 월드축")]
+        public Vector3 lookAtOffset = new Vector3(0f, 1.2f, 7f);
 
-        [Header("룩앳 오프셋 (앵커 기준). z = 전방 주시, y = 시선 높이")]
-        public Vector3 lookOffset = new Vector3(0f, 1.2f, 7f);
+        [Header("카메라 포지션: 룩앳 지점 기준 월드축")]
+        public Vector3 positionOffsetWorld = new Vector3(9.5f, 4.8f, -14f);
+
+        [Header("카메라 포지션 보정: 시선 로컬축 (구도 시프트, 시선 방향 불변)")]
+        public Vector3 positionOffsetLocal = Vector3.zero;
 
         [Header("따라가기 지연 (초). 0 = 즉시 추적")]
         public float followSmoothTime = 0.15f;
@@ -66,15 +72,18 @@ namespace Scavenger.Player
         {
             // x는 복도 중앙 고정, z만 추적 - 좌우 회피 시 화면이 흔들리지 않게
             Vector3 anchor = new Vector3(0f, 0f, smoothedZ);
-            transform.position = anchor + offset;
+            Vector3 lookAt = anchor + lookAtOffset;
 
-            Vector3 lookPoint = anchor + lookOffset;
-            Vector3 lookDirection = lookPoint - transform.position;
+            Vector3 basePosition = lookAt + positionOffsetWorld;
+            Vector3 lookDirection = lookAt - basePosition;
 
             if (lookDirection.sqrMagnitude < 0.0001f)
                 return;
 
-            transform.rotation = Quaternion.LookRotation(lookDirection);
+            Quaternion rotation = Quaternion.LookRotation(lookDirection);
+
+            transform.rotation = rotation;
+            transform.position = basePosition + rotation * positionOffsetLocal;
         }
     }
 }

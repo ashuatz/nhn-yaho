@@ -10,10 +10,11 @@
 - PlayerMotor.cs: CharacterController 이동. 클릭 스텝 전진 (ADR-0002):
   RequestStep = 고정 거리 트윈, 스텝 중 1회 버퍼. stepDistance/stepDuration = 이동느낌 튜닝 지점.
   복도 반폭은 이동 전 사전 클램프
-- FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003). +x측 배치로 전진이
-  화면 오른쪽을 향한다. 포즈를 매 프레임 재계산 - 플레이 중 인스펙터 튜닝 즉시 반영.
-  followSmoothTime = 지연 추적(SmoothDamp, 0이면 즉시), lookOffset = 룩앳 오프셋(Vector3).
-  offset/lookOffset은 사용자가 직접 튜닝 후 코드 기본값에 반영 예정 (에셋 게이트 동결 대상)
+- FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003). 리그 구성 순서:
+  lookAtOffset(앵커 기준 월드축, 바라보는 지점) -> positionOffsetWorld(룩앳 기준
+  월드축, 카메라 위치) -> positionOffsetLocal(시선 로컬축, 회전 확정 후 구도 시프트 -
+  시선 방향 불변). followSmoothTime = 지연 추적(SmoothDamp, 0이면 즉시).
+  포즈 매 프레임 재계산 - 플레이 중 튜닝 즉시 반영. 확정값은 코드 기본값에 반영 예정
 - PlayerStepAnimator.cs: 하이퍼캐주얼풍 스텝 연출 (ADR-0004). 스텝 진행도 기반
   홉 + 공중 스트레치 + 착지 스쿼시. Visual 자식만 조작, 로직/콜라이더 불변.
   hopHeight/airStretch/landSquash = 인스펙터 튜닝 지점
