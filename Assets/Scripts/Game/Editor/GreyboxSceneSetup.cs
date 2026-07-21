@@ -77,6 +77,9 @@ namespace Scavenger.EditorTools
 
             BuildPlayerVisual(root.transform);
 
+            // 스텝 연출 (스쿼시/스트레치 + 홉). Awake에서 Visual 자식 자동 탐색
+            root.AddComponent<PlayerStepAnimator>();
+
             return player;
         }
 
