@@ -1,4 +1,5 @@
 using System;
+using Scavenger.Loot;
 using UnityEngine;
 
 namespace Scavenger.Run
@@ -23,6 +24,9 @@ namespace Scavenger.Run
 
         /// <summary>런 전용 난수. 시드 기반이므로 같은 시드 = 같은 배치.</summary>
         public System.Random Rng { get; private set; }
+
+        /// <summary>런 한정 인벤토리. 사망 시 전량 소멸 (S7 정산).</summary>
+        public RunInventory Inventory { get; } = new RunInventory();
 
         public event Action RunStarted;
         public event Action<int> DepthChanged;
@@ -64,6 +68,7 @@ namespace Scavenger.Run
             Seed = ResolveSeed();
             Rng = new System.Random(Seed);
             Depth = 1;
+            Inventory.Clear();
 
             // 타이머 한계도 시드 난수에서 뽑아 같은 시드 = 같은 런이 되게 한다
             float limit = Mathf.Lerp(

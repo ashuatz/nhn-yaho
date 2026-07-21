@@ -1,7 +1,10 @@
+using System.Collections.Generic;
 using Scavenger.Diagnostics;
+using Scavenger.Loot;
 using Scavenger.Player;
 using Scavenger.Run;
 using Scavenger.Segment;
+using Scavenger.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -70,13 +73,18 @@ namespace Scavenger
             if (segmentDefinition == null)
                 segmentDefinition = SegmentDefinition.CreateDefault();
 
+            List<LootDefinition> lootCatalog = LootCatalog.CreateDefaults();
+
             GameObject spawnerObject = new GameObject("SegmentSpawner");
             spawnerObject.transform.SetParent(transform);
             segmentSpawner = spawnerObject.AddComponent<SegmentSpawner>();
-            segmentSpawner.Configure(segmentDefinition);
+            segmentSpawner.Configure(segmentDefinition, lootCatalog);
 
             player = PlayerFactory.Create(PlayerStart);
             player.Motor.corridorHalfWidth = segmentDefinition.corridorHalfWidth;
+
+            HudOverlay hud = gameObject.AddComponent<HudOverlay>();
+            hud.Player = player;
 
             followCamera = BuildCamera();
             followCamera.target = player.transform;
