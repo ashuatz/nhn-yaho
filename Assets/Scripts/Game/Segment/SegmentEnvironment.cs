@@ -21,6 +21,63 @@ namespace Scavenger.Segment
     }
 
     /// <summary>
+    /// 카메라 시야 라인 클리어런스. 카메라-플레이어 시선 밴드와 겹치는 블록은
+    /// 생성 자체를 거부한다 (카메라측 가림 방지 - 사용자 지시).
+    /// (x, y) 평면 2D 검사 - 리그가 z로 슬라이드하므로 전 z에 동일 적용.
+    /// </summary>
+    public struct SightClearance
+    {
+        public bool Enabled;
+
+        /// <summary>시선 먼 끝점 (복도 반대편 바닥). x, y.</summary>
+        public Vector2 FarPoint;
+
+        /// <summary>시선 가까운 끝점 (카메라 위치). x, y.</summary>
+        public Vector2 NearPoint;
+
+        public float Margin;
+
+        public bool Rejects(Vector3 position, Vector3 scale)
+        {
+            if (!Enabled)
+                return false;
+
+            float blockMinX = position.x - scale.x * 0.5f;
+            float blockMaxX = position.x + scale.x * 0.5f;
+
+            float lineMinX = Mathf.Min(FarPoint.x, NearPoint.x);
+            float lineMaxX = Mathf.Max(FarPoint.x, NearPoint.x);
+
+            float overlapMin = Mathf.Max(blockMinX, lineMinX);
+            float overlapMax = Mathf.Min(blockMaxX, lineMaxX);
+
+            if (overlapMin > overlapMax)
+                return false;
+
+            float yA = LineY(overlapMin);
+            float yB = LineY(overlapMax);
+            float lineMinY = Mathf.Min(yA, yB) - Margin;
+            float lineMaxY = Mathf.Max(yA, yB) + Margin;
+
+            float blockMinY = position.y - scale.y * 0.5f;
+            float blockMaxY = position.y + scale.y * 0.5f;
+
+            return blockMaxY >= lineMinY && blockMinY <= lineMaxY;
+        }
+
+        float LineY(float x)
+        {
+            float deltaX = NearPoint.x - FarPoint.x;
+
+            if (Mathf.Abs(deltaX) < 0.0001f)
+                return FarPoint.y;
+
+            float t = (x - FarPoint.x) / deltaX;
+            return Mathf.Lerp(FarPoint.y, NearPoint.y, t);
+        }
+    }
+
+    /// <summary>
     /// 구간 그레이박스 환경 PCG 데이터 생성기 (ADR-0003/0004/0005 - 공간감 검증용).
     /// 평탄한 보행로 양옆으로 복셀풍 럽블 매스 + 상부층(복층) + 데브리.
     /// 보행 영역은 항상 y=0 평면 유지. 난수는 주입된 rng(런 시드) 사용.
@@ -56,13 +113,19 @@ namespace Scavenger.Segment
 
         public static List<EnvironmentBlock> GenerateBlocks(SegmentDefinition definition, System.Random rng)
         {
+            return GenerateBlocks(definition, rng, default);
+        }
+
+        public static List<EnvironmentBlock> GenerateBlocks(
+            SegmentDefinition definition, System.Random rng, SightClearance clearance)
+        {
             List<EnvironmentBlock> blocks = new List<EnvironmentBlock>(384);
 
-            AddRubbleSides(blocks, definition, rng);
-            AddUpperStory(blocks, definition, rng);
-            AddDebris(blocks, definition, rng);
-            AddMidground(blocks, definition, rng);
-            AddFarground(blocks, definition, rng);
+            AddRubbleSides(blocks, definition, rng, clearance);
+            AddUpperStory(blocks, definition, rng, clearance);
+            AddDebris(blocks, definition, rng, clearance);
+            AddMidground(blocks, definition, rng, clearance);
+            AddFarground(blocks, definition, rng, clearance);
 
             return blocks;
         }
@@ -85,7 +148,8 @@ namespace Scavenger.Segment
 
         // -- 측면 럽블 매스 ---------------------------------------------------
 
-        static void AddRubbleSides(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
+        static void AddRubbleSides(
+            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -101,28 +165,28 @@ namespace Scavenger.Segment
                     float height = Mathf.Lerp(previousHeight, targetHeight, 0.55f);
                     previousHeight = height;
 
-                    AddRubbleBlock(blocks, rng, side, halfWidth, z, height, rowOffset: 0f);
+                    AddRubbleBlock(blocks, rng, clearance, side, halfWidth, z, height, rowOffset: 0f);
 
                     // 바깥 두 번째 열 - 더 높게 쌓아 협곡 실루엣 강조
                     if (rng.NextDouble() < 0.45)
                     {
                         float backHeight = height + NextRange(rng, 0.8f, 2.4f);
-                        AddRubbleBlock(blocks, rng, side, halfWidth, z, backHeight, rowOffset: 2.1f);
+                        AddRubbleBlock(blocks, rng, clearance, side, halfWidth, z, backHeight, rowOffset: 2.1f);
                     }
 
                     // 드물게 랜드마크 기둥 - 원경에서 진행 방향 가늠용
                     if (rng.NextDouble() < 0.06)
                     {
                         float pillarHeight = NextRange(rng, 4.5f, 7f);
-                        AddRubbleBlock(blocks, rng, side, halfWidth, z, pillarHeight, rowOffset: 1f);
+                        AddRubbleBlock(blocks, rng, clearance, side, halfWidth, z, pillarHeight, rowOffset: 1f);
                     }
                 }
             }
         }
 
         static void AddRubbleBlock(
-            List<EnvironmentBlock> blocks, System.Random rng, int side, float halfWidth,
-            float z, float height, float rowOffset)
+            List<EnvironmentBlock> blocks, System.Random rng, SightClearance clearance, int side,
+            float halfWidth, float z, float height, float rowOffset)
         {
             float width = NextRange(rng, 1.5f, 2.5f);
             float x = side * (halfWidth + width * 0.5f + 0.15f + rowOffset);
@@ -130,6 +194,7 @@ namespace Scavenger.Segment
 
             AddBlock(
                 blocks,
+                clearance,
                 new Vector3(x, height * 0.5f - 0.1f, z + RubbleSliceDepth * 0.5f),
                 Quaternion.identity,
                 new Vector3(width, height, depth),
@@ -140,7 +205,8 @@ namespace Scavenger.Segment
 
         // -- 상부층 (복층 느낌) ------------------------------------------------
 
-        static void AddUpperStory(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
+        static void AddUpperStory(
+            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -153,13 +219,14 @@ namespace Scavenger.Segment
                 while (z < length - 9f)
                 {
                     if (rng.NextDouble() < 0.6)
-                        AddPlatform(blocks, rng, side, halfWidth, z);
+                        AddPlatform(blocks, rng, clearance, side, halfWidth, z);
 
                     z += NextRange(rng, 9f, 16f);
                 }
             }
 
-            // 브릿지: 복도를 가로지르는 상부 통로 - 플레이어 머리 위를 지나간다
+            // 브릿지: 상부 통로. 카메라 시야 라인을 넘지 않게 카메라 반대편(-x)에서
+            // 복도 중앙 부근까지만 걸친다 (시야 클리어런스와의 양립)
             float bridgeZ = NextRange(rng, 15f, 30f);
 
             while (bridgeZ < length - 10f)
@@ -168,13 +235,18 @@ namespace Scavenger.Segment
                 {
                     float height = NextRange(rng, 3.4f, 4f);
                     float depth = NextRange(rng, 2.2f, 3.2f);
+                    float bridgeWidth = halfWidth + 4f;
+                    float bridgeCenterX = -(halfWidth * 0.5f + 0.5f);
 
                     AddBlock(
                         blocks,
-                        new Vector3(0f, height, bridgeZ + depth * 0.5f),
+                        clearance,
+                        new Vector3(bridgeCenterX, height, bridgeZ + depth * 0.5f),
                         Quaternion.identity,
-                        new Vector3(halfWidth * 2f + 5f, 0.4f, depth),
-                        UpperPalette(rng));
+                        new Vector3(bridgeWidth, 0.4f, depth),
+                        UpperPalette(rng),
+                        wave: 0f,
+                        phase: 0f);
                 }
 
                 bridgeZ += NextRange(rng, 22f, 40f);
@@ -182,7 +254,8 @@ namespace Scavenger.Segment
         }
 
         static void AddPlatform(
-            List<EnvironmentBlock> blocks, System.Random rng, int side, float halfWidth, float z)
+            List<EnvironmentBlock> blocks, System.Random rng, SightClearance clearance,
+            int side, float halfWidth, float z)
         {
             float width = NextRange(rng, 3f, 4.5f);
             float depth = NextRange(rng, 5f, 9f);
@@ -196,6 +269,7 @@ namespace Scavenger.Segment
             // 슬래브
             AddBlock(
                 blocks,
+                clearance,
                 new Vector3(centerX, height, centerZ),
                 Quaternion.identity,
                 new Vector3(width, 0.35f, depth),
@@ -204,6 +278,7 @@ namespace Scavenger.Segment
             // 안쪽 모서리 지지 기둥
             AddBlock(
                 blocks,
+                clearance,
                 new Vector3(side * (innerX + 0.2f), height * 0.5f, centerZ),
                 Quaternion.identity,
                 new Vector3(0.35f, height, 0.35f),
@@ -216,6 +291,7 @@ namespace Scavenger.Segment
 
                 AddBlock(
                     blocks,
+                    clearance,
                     new Vector3(
                         centerX + NextRange(rng, -width * 0.3f, width * 0.3f),
                         height + 0.175f + propSize * 0.5f,
@@ -228,7 +304,8 @@ namespace Scavenger.Segment
 
         // -- 중경/원경 레이어 --------------------------------------------------
 
-        static void AddMidground(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
+        static void AddMidground(
+            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -247,6 +324,7 @@ namespace Scavenger.Segment
 
                     AddBlock(
                         blocks,
+                        clearance,
                         new Vector3(x, height * 0.5f - 0.1f, z + depth * 0.5f),
                         Quaternion.identity,
                         new Vector3(width, height, depth),
@@ -257,7 +335,8 @@ namespace Scavenger.Segment
             }
         }
 
-        static void AddFarground(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
+        static void AddFarground(
+            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -276,6 +355,7 @@ namespace Scavenger.Segment
 
                     AddBlock(
                         blocks,
+                        clearance,
                         new Vector3(x, height * 0.5f - 0.1f, z + depth * 0.5f),
                         Quaternion.identity,
                         new Vector3(width, height, depth),
@@ -288,7 +368,8 @@ namespace Scavenger.Segment
 
         // -- 보행로 내 데브리 --------------------------------------------------
 
-        static void AddDebris(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
+        static void AddDebris(
+            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -305,6 +386,7 @@ namespace Scavenger.Segment
 
                 AddBlock(
                     blocks,
+                    clearance,
                     new Vector3(x, size * 0.5f, z),
                     Quaternion.Euler(0f, yaw, 0f),
                     new Vector3(size, size, size),
@@ -316,9 +398,15 @@ namespace Scavenger.Segment
 
         public static void BuildGameObjects(Transform parent, SegmentDefinition definition, System.Random rng)
         {
+            BuildGameObjects(parent, definition, rng, default);
+        }
+
+        public static void BuildGameObjects(
+            Transform parent, SegmentDefinition definition, System.Random rng, SightClearance clearance)
+        {
             BuildWalkFloor(parent, definition);
 
-            List<EnvironmentBlock> blocks = GenerateBlocks(definition, rng);
+            List<EnvironmentBlock> blocks = GenerateBlocks(definition, rng, clearance);
 
             foreach (EnvironmentBlock block in blocks)
             {
@@ -344,15 +432,21 @@ namespace Scavenger.Segment
         // -- 공통 -----------------------------------------------------------
 
         static void AddBlock(
-            List<EnvironmentBlock> blocks, Vector3 position, Quaternion rotation, Vector3 scale, int paletteIndex)
+            List<EnvironmentBlock> blocks, SightClearance clearance,
+            Vector3 position, Quaternion rotation, Vector3 scale, int paletteIndex)
         {
-            AddBlock(blocks, position, rotation, scale, paletteIndex, wave: 0f, phase: 0f);
+            AddBlock(blocks, clearance, position, rotation, scale, paletteIndex, wave: 0f, phase: 0f);
         }
 
         static void AddBlock(
-            List<EnvironmentBlock> blocks, Vector3 position, Quaternion rotation, Vector3 scale,
+            List<EnvironmentBlock> blocks, SightClearance clearance,
+            Vector3 position, Quaternion rotation, Vector3 scale,
             int paletteIndex, float wave, float phase)
         {
+            // 카메라 시야 라인과 겹치면 생성 자체를 거부한다
+            if (clearance.Rejects(position, scale))
+                return;
+
             blocks.Add(new EnvironmentBlock
             {
                 LocalMatrix = Matrix4x4.TRS(position, rotation, scale),

@@ -1,3 +1,4 @@
+using Scavenger.Player;
 using Scavenger.Segment;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -73,13 +74,17 @@ namespace Scavenger.EditorTools
 
             System.Random rng = new System.Random(seed);
 
+            // 씬 카메라 기준 시야 클리어런스 - 런타임 생성과 동일 규칙 적용
+            FollowCamera sceneCamera = FindFirstObjectByType<FollowCamera>();
+            SightClearance clearance = SegmentSpawner.BuildSightClearance(sceneCamera, activeDefinition);
+
             for (int i = 0; i < segmentCount; i++)
             {
                 GameObject chunk = new GameObject($"EnvChunk_{i}");
                 chunk.transform.SetParent(root.transform, false);
                 chunk.transform.localPosition = new Vector3(0f, 0f, i * activeDefinition.lengthMeters);
 
-                SegmentEnvironment.BuildGameObjects(chunk.transform, activeDefinition, rng);
+                SegmentEnvironment.BuildGameObjects(chunk.transform, activeDefinition, rng, clearance);
             }
 
             authoring.coveredFromZ = 0f;

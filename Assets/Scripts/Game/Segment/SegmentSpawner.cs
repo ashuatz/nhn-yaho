@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Scavenger.Loot;
 using Scavenger.Obstacle;
+using Scavenger.Player;
 using Scavenger.Run;
 using UnityEngine;
 
@@ -29,6 +30,7 @@ namespace Scavenger.Segment
         EnvironmentAuthoring preplacedEnvironment;
         bool preplacedSearched;
         EnvironmentRenderer environmentRenderer;
+        FollowCamera viewCamera;
 
         /// <summary>지금까지 생성된 구간 체인의 끝 z. 룩어헤드 생성 기준점.</summary>
         public float TailEndZ { get; private set; }
@@ -47,6 +49,36 @@ namespace Scavenger.Segment
             Definition = definition;
             lootCatalog = catalog;
             Curve = curve;
+        }
+
+        /// <summary>시야 클리어런스 기준 카메라. GameFlow가 배선.</summary>
+        public void SetViewCamera(FollowCamera camera)
+        {
+            viewCamera = camera;
+        }
+
+        /// <summary>
+        /// 카메라 리그 수치로 시야 라인 클리어런스를 만든다.
+        /// 먼 끝점은 복도 반대편 바닥 (플레이어가 -x 끝에 있어도 가리지 않게 보수적).
+        /// </summary>
+        public static SightClearance BuildSightClearance(FollowCamera camera, SegmentDefinition definition)
+        {
+            if (camera == null || definition == null)
+                return default;
+
+            Vector2 cameraPoint = new Vector2(
+                camera.lookAtOffset.x + camera.positionOffsetWorld.x,
+                camera.lookAtOffset.y + camera.positionOffsetWorld.y);
+
+            Vector2 farPoint = new Vector2(-definition.corridorHalfWidth, 0f);
+
+            return new SightClearance
+            {
+                Enabled = true,
+                NearPoint = cameraPoint,
+                FarPoint = farPoint,
+                Margin = 1f,
+            };
         }
 
         /// <summary>startZ부터 시작하는 구간 하나를 만들고 루트를 돌려준다.</summary>
@@ -446,7 +478,8 @@ namespace Scavenger.Segment
                     environmentRenderer = gameObject.AddComponent<EnvironmentRenderer>();
             }
 
-            List<EnvironmentBlock> blocks = SegmentEnvironment.GenerateBlocks(Definition, rng);
+            SightClearance clearance = BuildSightClearance(viewCamera, Definition);
+            List<EnvironmentBlock> blocks = SegmentEnvironment.GenerateBlocks(Definition, rng, clearance);
             return environmentRenderer.AddChunk(blocks, parent.position);
         }
 

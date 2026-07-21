@@ -22,11 +22,16 @@
   라운드는 심리스 (ADR-0003): 종료 후 클릭 = 현재 위치에서 다음 라운드.
   텔레포트 없음, 월드는 플레이어 앞으로 재생성.
 
-## 씬 구성
+## 씬 구성 (프리팹 기반)
 
-- 모든 시스템(RunSystems, SegmentSpawner, Player, Main Camera, Light, GameFlow)은
-  씬에 미리 배치한다. 구성은 에디터 메뉴 Scavenger > Setup Greybox Scene 원클릭.
-  포그/카메라 룩은 에디트 모드에서 확인 가능 (RenderSettings는 씬에 저장됨).
+- 시스템은 전부 Assets/Prefabs/ 프리팹으로 관리: Main Camera / Player / RunSystems /
+  SegmentSpawner / GameFlow. 사용자가 프리팹을 직접 수정해 튜닝한다.
+- Scavenger > Setup Greybox Scene = 프리팹 인스턴스 배치 + 참조 배선 + 라이트/포그.
+  프리팹이 없으면 기본 템플릿으로 1회 생성, 있으면 절대 덮어쓰지 않음
+  (Scavenger > Ensure Prefabs로 프리팹만 생성 가능).
+- 카메라 프리팹 경로 고정: Assets/Prefabs/Main Camera.prefab (사용자 지정).
+- 카메라 시야 클리어런스: 카메라-복도 시선 밴드와 겹치는 배경 블록은 생성 자체가
+  거부된다 (SightClearance, 런타임/사전배치 동일 규칙).
 
 ## 전역 규칙
 

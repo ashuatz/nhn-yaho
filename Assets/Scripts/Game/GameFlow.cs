@@ -49,6 +49,7 @@ namespace Scavenger
 
             runManager.Configure(runSettings);
             segmentSpawner.Configure(segmentDefinition, lootCatalog, depthCurve);
+            segmentSpawner.SetViewCamera(followCamera);
             player.Motor.corridorHalfWidth = segmentDefinition.corridorHalfWidth;
 
             runManager.RunStarted += OnRunStarted;

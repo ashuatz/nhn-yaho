@@ -12,13 +12,20 @@ using UnityEngine.SceneManagement;
 namespace Scavenger.EditorTools
 {
     /// <summary>
-    /// 그레이박스 씬 원클릭 구성. 모든 시스템/플레이어/카메라/라이팅을
-    /// 씬 오브젝트로 미리 배치한다 (런타임 부트스트랩 회피 - 프로젝트 규약).
-    /// 룩(카메라 각도, 포그, 플레이어 리그)을 에디트 모드에서 바로 확인 가능.
+    /// 그레이박스 씬 원클릭 구성. 시스템은 전부 프리팹 (Assets/Prefabs/)으로 관리하고
+    /// 씬에는 프리팹 인스턴스를 배치한다 - 사용자가 프리팹을 직접 수정/튜닝 가능.
+    /// 프리팹이 없으면 기본 템플릿으로 1회 생성, 이미 있으면 절대 덮어쓰지 않는다.
     /// </summary>
     public static class GreyboxSceneSetup
     {
         const string ScenePath = "Assets/Scenes/Greybox.unity";
+        const string PrefabFolder = "Assets/Prefabs";
+
+        const string CameraPrefabPath = "Assets/Prefabs/Main Camera.prefab";
+        const string PlayerPrefabPath = "Assets/Prefabs/Player.prefab";
+        const string RunSystemsPrefabPath = "Assets/Prefabs/RunSystems.prefab";
+        const string SpawnerPrefabPath = "Assets/Prefabs/SegmentSpawner.prefab";
+        const string GameFlowPrefabPath = "Assets/Prefabs/GameFlow.prefab";
 
         static readonly Color DepthColor = new Color(0.045f, 0.055f, 0.085f);
 
@@ -28,15 +35,18 @@ namespace Scavenger.EditorTools
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
                 return;
 
+            EnsureAllPrefabs();
+
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            RunManager runManager = BuildRunSystems();
-            SegmentSpawner spawner = BuildSpawner();
-            PlayerController player = BuildPlayer();
-            FollowCamera followCamera = BuildCamera(player.transform);
-            BuildLight();
-            BuildFlow(runManager, spawner, player, followCamera);
+            GameObject runSystems = InstantiatePrefab(RunSystemsPrefabPath);
+            GameObject spawner = InstantiatePrefab(SpawnerPrefabPath);
+            GameObject player = InstantiatePrefab(PlayerPrefabPath);
+            GameObject cameraObject = InstantiatePrefab(CameraPrefabPath);
+            GameObject flow = InstantiatePrefab(GameFlowPrefabPath);
 
+            BuildLight();
+            WireSceneReferences(runSystems, spawner, player, cameraObject, flow);
             ApplyAtmosphere();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -44,32 +54,64 @@ namespace Scavenger.EditorTools
             UnityEngine.Debug.Log($"[Setup] Greybox scene saved: {ScenePath}. Play를 눌러 실행.");
         }
 
-        static RunManager BuildRunSystems()
+        // -- 프리팹 보장 (없을 때만 생성, 기존 프리팹은 불변) -------------------
+
+        [MenuItem("Scavenger/Ensure Prefabs")]
+        public static void EnsureAllPrefabs()
         {
-            GameObject systems = new GameObject("RunSystems");
+            if (!AssetDatabase.IsValidFolder(PrefabFolder))
+                AssetDatabase.CreateFolder("Assets", "Prefabs");
 
-            // RequireComponent가 RunStateMachine/RunTimer를 자동 부착
-            RunManager runManager = systems.AddComponent<RunManager>();
-            systems.AddComponent<RunSettlement>();
-            systems.AddComponent<RunDebugDashboard>();
+            EnsurePrefab(CameraPrefabPath, BuildCameraTemplate);
+            EnsurePrefab(PlayerPrefabPath, BuildPlayerTemplate);
+            EnsurePrefab(RunSystemsPrefabPath, BuildRunSystemsTemplate);
+            EnsurePrefab(SpawnerPrefabPath, BuildSpawnerTemplate);
+            EnsurePrefab(GameFlowPrefabPath, BuildGameFlowTemplate);
 
-            return runManager;
+            AssetDatabase.SaveAssets();
         }
 
-        static SegmentSpawner BuildSpawner()
+        static void EnsurePrefab(string path, System.Func<GameObject> buildTemplate)
         {
-            GameObject spawnerObject = new GameObject("SegmentSpawner");
+            GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
-            // 배경 인스턴스 렌더러 (ADR-0005) - 스포너와 같은 오브젝트에 상주
-            spawnerObject.AddComponent<EnvironmentRenderer>();
+            if (existing != null)
+                return;
 
-            return spawnerObject.AddComponent<SegmentSpawner>();
+            GameObject template = buildTemplate();
+            PrefabUtility.SaveAsPrefabAsset(template, path);
+            Object.DestroyImmediate(template);
+
+            UnityEngine.Debug.Log($"[Setup] Prefab created: {path}");
         }
 
-        static PlayerController BuildPlayer()
+        static GameObject InstantiatePrefab(string path)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            return (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+        }
+
+        // -- 프리팹 템플릿 (최초 1회만 사용) -----------------------------------
+
+        static GameObject BuildCameraTemplate()
+        {
+            GameObject cameraObject = new GameObject("Main Camera");
+            cameraObject.tag = "MainCamera";
+
+            Camera sceneCamera = cameraObject.AddComponent<Camera>();
+            sceneCamera.clearFlags = CameraClearFlags.SolidColor;
+            sceneCamera.backgroundColor = DepthColor;
+            sceneCamera.farClipPlane = 90f;
+
+            cameraObject.AddComponent<AudioListener>();
+            cameraObject.AddComponent<FollowCamera>();
+
+            return cameraObject;
+        }
+
+        static GameObject BuildPlayerTemplate()
         {
             GameObject root = new GameObject("Player");
-            root.transform.position = new Vector3(0f, 0.05f, 1.5f);
 
             CharacterController controller = root.AddComponent<CharacterController>();
             controller.height = 1.6f;
@@ -77,21 +119,11 @@ namespace Scavenger.EditorTools
             controller.center = new Vector3(0f, 0.8f, 0f);
 
             root.AddComponent<PlayerMotor>();
-            PlayerController player = root.AddComponent<PlayerController>();
+            root.AddComponent<PlayerController>();
 
-            BuildPlayerVisual(root.transform);
-
-            // 스텝 연출 (스쿼시/스트레치 + 홉). Awake에서 Visual 자식 자동 탐색
-            root.AddComponent<PlayerStepAnimator>();
-
-            return player;
-        }
-
-        // 비주얼: 큐브 2개 (머리 + 몸) - 로직 루트와 분리해 트랙 B에서 교체 가능
-        static void BuildPlayerVisual(Transform parent)
-        {
+            // 비주얼: 큐브 2개 (머리 + 몸) - 로직 루트와 분리해 트랙 B에서 교체 가능
             GameObject visual = new GameObject("Visual");
-            visual.transform.SetParent(parent, false);
+            visual.transform.SetParent(root.transform, false);
 
             GameObject body = CreateVisualCube(visual.transform, "Body");
             body.transform.localScale = new Vector3(0.7f, 0.9f, 0.45f);
@@ -102,24 +134,69 @@ namespace Scavenger.EditorTools
             head.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
             head.transform.localPosition = new Vector3(0f, 1.35f, 0f);
             Tint(head, new Color(0.9f, 0.75f, 0.6f));
+
+            // 스텝 연출 (스쿼시/스트레치 + 홉). Awake에서 Visual 자식 자동 탐색
+            root.AddComponent<PlayerStepAnimator>();
+
+            return root;
         }
 
-        static FollowCamera BuildCamera(Transform target)
+        static GameObject BuildRunSystemsTemplate()
         {
-            GameObject cameraObject = new GameObject("Main Camera");
-            cameraObject.tag = "MainCamera";
+            GameObject systems = new GameObject("RunSystems");
 
-            Camera sceneCamera = cameraObject.AddComponent<Camera>();
-            sceneCamera.clearFlags = CameraClearFlags.SolidColor;
-            sceneCamera.backgroundColor = DepthColor;
-            sceneCamera.farClipPlane = 90f;
-            cameraObject.AddComponent<AudioListener>();
+            // RequireComponent가 RunStateMachine/RunTimer를 자동 부착
+            systems.AddComponent<RunManager>();
+            systems.AddComponent<RunSettlement>();
+            systems.AddComponent<RunDebugDashboard>();
 
-            FollowCamera follow = cameraObject.AddComponent<FollowCamera>();
-            follow.target = target;
-            follow.SnapAndLook();
+            return systems;
+        }
 
-            return follow;
+        static GameObject BuildSpawnerTemplate()
+        {
+            GameObject spawnerObject = new GameObject("SegmentSpawner");
+
+            // 배경 인스턴스 렌더러 (ADR-0005) - 스포너와 같은 오브젝트에 상주
+            spawnerObject.AddComponent<EnvironmentRenderer>();
+            spawnerObject.AddComponent<SegmentSpawner>();
+
+            return spawnerObject;
+        }
+
+        static GameObject BuildGameFlowTemplate()
+        {
+            GameObject flowObject = new GameObject("GameFlow");
+            flowObject.AddComponent<GameFlow>();
+            flowObject.AddComponent<HudOverlay>();
+            return flowObject;
+        }
+
+        // -- 씬 배선 ----------------------------------------------------------
+
+        static void WireSceneReferences(
+            GameObject runSystems, GameObject spawner, GameObject player,
+            GameObject cameraObject, GameObject flow)
+        {
+            // 플레이어 시작 위치 (씬 인스턴스 오버라이드)
+            player.transform.position = new Vector3(0f, 0.05f, 1.5f);
+
+            // 사용자 프리팹에 FollowCamera가 없을 수도 있으므로 보강
+            FollowCamera followCamera = cameraObject.GetComponent<FollowCamera>();
+
+            if (followCamera == null)
+                followCamera = cameraObject.AddComponent<FollowCamera>();
+
+            followCamera.target = player.transform;
+            followCamera.SnapAndLook();
+
+            GameFlow gameFlow = flow.GetComponent<GameFlow>();
+            SerializedObject serialized = new SerializedObject(gameFlow);
+            serialized.FindProperty("runManager").objectReferenceValue = runSystems.GetComponent<RunManager>();
+            serialized.FindProperty("segmentSpawner").objectReferenceValue = spawner.GetComponent<SegmentSpawner>();
+            serialized.FindProperty("player").objectReferenceValue = player.GetComponent<PlayerController>();
+            serialized.FindProperty("followCamera").objectReferenceValue = followCamera;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         static void BuildLight()
@@ -129,22 +206,6 @@ namespace Scavenger.EditorTools
             directional.type = LightType.Directional;
             directional.intensity = 1.1f;
             lightObject.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
-        }
-
-        static void BuildFlow(
-            RunManager runManager, SegmentSpawner spawner, PlayerController player, FollowCamera followCamera)
-        {
-            GameObject flowObject = new GameObject("GameFlow");
-            GameFlow flow = flowObject.AddComponent<GameFlow>();
-            flowObject.AddComponent<HudOverlay>();
-
-            // 직렬화 필드 배선 - 런타임 자동 탐색은 폴백일 뿐
-            SerializedObject serialized = new SerializedObject(flow);
-            serialized.FindProperty("runManager").objectReferenceValue = runManager;
-            serialized.FindProperty("segmentSpawner").objectReferenceValue = spawner;
-            serialized.FindProperty("player").objectReferenceValue = player;
-            serialized.FindProperty("followCamera").objectReferenceValue = followCamera;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // 원경 깊이감: 멀수록 어둠에 잠기는 리니어 포그 (ADR-0003).
