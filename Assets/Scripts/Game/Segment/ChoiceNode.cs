@@ -51,7 +51,8 @@ namespace Scavenger.Segment
             HandleChoiceInput();
         }
 
-        void OnDestroy()
+        // Destroy 지연 중 잔존 방지 - 비활성화 즉시 정리 (Codex 검토 반영)
+        void OnDisable()
         {
             if (Active == this)
                 Active = null;

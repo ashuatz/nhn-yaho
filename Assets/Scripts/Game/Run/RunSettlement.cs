@@ -41,15 +41,31 @@ namespace Scavenger.Run
 
         void SettleExtraction()
         {
-            PlayerStash stash = PlayerStash.LoadFrom(PlayerStash.DefaultPath);
+            // 저장 실패가 런 상태 전이를 오염시키지 않게 격리 (Codex 검토 반영).
+            // 실패 시 이번 런 획득물은 유실되지만 기존 스태시 파일은 보존된다
+            try
+            {
+                PlayerStash stash = PlayerStash.LoadFrom(PlayerStash.DefaultPath);
+                BankInventory(runManager.Inventory, stash);
+                stash.SaveTo(PlayerStash.DefaultPath);
 
-            foreach (RunInventory.Entry entry in runManager.Inventory.Entries)
+                UnityEngine.Debug.Log(
+                    $"[Settle] Extracted. banked value {runManager.Inventory.TotalValue}, stash kinds {stash.Entries.Count}");
+            }
+            catch (System.Exception e)
+            {
+                UnityEngine.Debug.LogError($"[Settle] Stash save failed - run loot lost: {e.Message}");
+            }
+        }
+
+        /// <summary>인벤토리를 스태시에 반영하는 순수 로직. EditMode 테스트 대상.</summary>
+        public static void BankInventory(RunInventory inventory, PlayerStash stash)
+        {
+            if (inventory == null || stash == null)
+                return;
+
+            foreach (RunInventory.Entry entry in inventory.Entries)
                 stash.AddItem(entry.Definition.id, entry.Count);
-
-            stash.SaveTo(PlayerStash.DefaultPath);
-
-            UnityEngine.Debug.Log(
-                $"[Settle] Extracted. banked value {runManager.Inventory.TotalValue}, stash kinds {stash.Entries.Count}");
         }
     }
 }

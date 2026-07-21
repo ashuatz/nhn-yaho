@@ -90,24 +90,30 @@ namespace Scavenger.Run
             DepthChanged?.Invoke(Depth);
         }
 
-        /// <summary>탈출 성공. 정산은 S7에서 연결.</summary>
+        /// <summary>탈출 성공. 정산은 RunSettlement가 StateChanged로 수행.</summary>
         public void CompleteExtraction()
         {
-            if (!StateMachine.TryTransition(RunState.Extracted))
+            // 타이머 정지를 전이(이벤트 발화)보다 먼저 - 이벤트 구독자가
+            // 예외를 던져도 런 마감 처리가 반쯤 남지 않게 한다 (Codex 검토 반영)
+            if (StateMachine.Current != RunState.Running)
                 return;
 
             Timer.Stop();
             UnityEngine.Debug.Log($"[Run] Extracted. depth={Depth} elapsed={Timer.Elapsed:F1}s");
+
+            StateMachine.TryTransition(RunState.Extracted);
         }
 
-        /// <summary>사망. 전량 손실은 S7 정산에서 연결.</summary>
+        /// <summary>사망. 전량 손실 - 스태시에 아무것도 반영되지 않는다.</summary>
         public void KillRun(string cause)
         {
-            if (!StateMachine.TryTransition(RunState.Dead))
+            if (StateMachine.Current != RunState.Running)
                 return;
 
             Timer.Stop();
             UnityEngine.Debug.Log($"[Run] Dead. cause={cause} depth={Depth} elapsed={Timer.Elapsed:F1}s");
+
+            StateMachine.TryTransition(RunState.Dead);
         }
 
         int ResolveSeed()

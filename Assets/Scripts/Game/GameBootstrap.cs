@@ -22,6 +22,8 @@ namespace Scavenger
         [SerializeField] SegmentDefinition segmentDefinition;
         [SerializeField] DepthCurve depthCurve;
 
+        static GameBootstrap active;
+
         RunManager runManager;
         SegmentSpawner segmentSpawner;
         PlayerController player;
@@ -31,6 +33,17 @@ namespace Scavenger
 
         void Awake()
         {
+            // 씬에 부트스트랩이 둘이면 두 번째는 조립을 시작하지 않는다
+            // (반쯤 조립된 시스템 NRE 방지 - Codex 검토 반영)
+            if (active != null && active != this)
+            {
+                UnityEngine.Debug.LogError("[Bootstrap] Duplicate GameBootstrap - destroying this one.");
+                Destroy(gameObject);
+                return;
+            }
+
+            active = this;
+
             BuildRunSystems();
             BuildWorldSystems();
 
@@ -49,6 +62,9 @@ namespace Scavenger
 
         void OnDestroy()
         {
+            if (active == this)
+                active = null;
+
             if (runManager != null)
                 runManager.RunStarted -= OnRunStarted;
         }

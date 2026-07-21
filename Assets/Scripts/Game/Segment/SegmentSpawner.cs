@@ -73,10 +73,7 @@ namespace Scavenger.Segment
         public void DespawnAll()
         {
             foreach (SegmentRecord segment in aliveSegments)
-            {
-                if (segment.Root != null)
-                    Destroy(segment.Root);
-            }
+                DespawnSegment(segment);
 
             aliveSegments.Clear();
         }
@@ -91,11 +88,20 @@ namespace Scavenger.Segment
                 if (segment.EndZ >= z)
                     continue;
 
-                if (segment.Root != null)
-                    Destroy(segment.Root);
-
+                DespawnSegment(segment);
                 aliveSegments.RemoveAt(i);
             }
+        }
+
+        static void DespawnSegment(SegmentRecord segment)
+        {
+            if (segment.Root == null)
+                return;
+
+            // Destroy는 프레임 끝까지 지연되므로 먼저 비활성화해
+            // 이전 런의 LootSpot/ChoiceNode가 같은 프레임에 동작하지 못하게 한다 (Codex 검토 반영)
+            segment.Root.SetActive(false);
+            Destroy(segment.Root);
         }
 
         // -- 선택지 노드 -----------------------------------------------------
@@ -324,6 +330,20 @@ namespace Scavenger.Segment
             float fuseSeconds = Curve.EvaluateFuseSeconds(depth);
             float blastRadius = Curve.EvaluateBlastRadius(depth);
 
+            // 전 레인 봉쇄 금지를 데이터 조합과 무관하게 강제:
+            // 폭발 지름이 복도 폭을 넘지 못하게 런타임 클램프 (Codex 검토 반영)
+            float maxSafeRadius = halfWidth - 0.6f;
+
+            if (blastRadius > maxSafeRadius)
+            {
+                UnityEngine.Debug.LogWarning(
+                    $"[Segment] Blast radius {blastRadius:F2} clamped to {maxSafeRadius:F2} (corridor safety)");
+                blastRadius = maxSafeRadius;
+            }
+
+            // z 간격도 반경에 비례해 동적으로 - 인접 폭탄의 이중 봉쇄 방지
+            float minZGap = Mathf.Max(BombMinZGap, blastRadius * 2f + 1.5f);
+
             List<float> placedZ = new List<float>();
             int attempts = 0;
             int maxAttempts = bombCount * 10;
@@ -335,7 +355,7 @@ namespace Scavenger.Segment
                 // 초입은 비워서 스폰/진입 직후 즉사 방지
                 float z = Mathf.Lerp(14f, length - 6f, (float)run.Rng.NextDouble());
 
-                if (!IsZGapValid(placedZ, z))
+                if (!IsZGapValid(placedZ, z, minZGap))
                     continue;
 
                 float x = Mathf.Lerp(-halfWidth + 0.8f, halfWidth - 0.8f, (float)run.Rng.NextDouble());
@@ -345,11 +365,11 @@ namespace Scavenger.Segment
             }
         }
 
-        static bool IsZGapValid(List<float> placedZ, float z)
+        static bool IsZGapValid(List<float> placedZ, float z, float minZGap)
         {
             foreach (float existing in placedZ)
             {
-                if (Mathf.Abs(existing - z) < BombMinZGap)
+                if (Mathf.Abs(existing - z) < minZGap)
                     return false;
             }
 

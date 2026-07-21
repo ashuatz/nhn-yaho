@@ -99,14 +99,19 @@ namespace Scavenger.Loot
             if (!File.Exists(path))
                 return new PlayerStash();
 
+            string json;
+
+            // 읽기 실패(잠금, 권한 등)는 손상이 아니다 - 파일을 건드리지 않고
+            // 예외를 올려 호출자(정산)가 실패로 처리하게 한다 (Codex 검토 반영)
+            json = File.ReadAllText(path);
+
             try
             {
-                string json = File.ReadAllText(path);
                 return FromJson(json);
             }
             catch (Exception e)
             {
-                // 손상 파일은 격리하고 빈 창고로 복구 - 런 진행을 막지 않는다
+                // 내용 손상만 격리하고 빈 창고로 복구 - 런 진행을 막지 않는다
                 UnityEngine.Debug.LogWarning($"[Stash] Corrupt stash file, quarantined: {e.Message}");
                 QuarantineCorruptFile(path);
                 return new PlayerStash();

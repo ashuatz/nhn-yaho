@@ -8,7 +8,10 @@ namespace Scavenger.Player
     /// <summary>
     /// 플레이어 상태 소유자. 입력을 읽고 상태에 따라 PlayerMotor를 구동한다.
     /// 조작 (ADR-0002): 클릭/스페이스 = 한 스텝 전진, A/D = 좌우, E 홀드 = 루팅.
+    /// 실행 순서 -100: 입력 스냅샷을 소비자(LootSpot 등)보다 먼저 갱신해
+    /// 프레임 지연 취소 문제를 막는다 (Codex 검토 반영).
     /// </summary>
+    [DefaultExecutionOrder(-100)]
     [RequireComponent(typeof(PlayerMotor))]
     public sealed class PlayerController : MonoBehaviour
     {
@@ -36,9 +39,13 @@ namespace Scavenger.Player
 
         void Update()
         {
+            // 사망 후에는 입력 스냅샷도 갱신하지 않는다 - 루팅 등 소비자가 잔존 입력을 못 쓰게
+            if (State == PlayerState.Dead)
+                return;
+
             ReadInput();
 
-            if (State == PlayerState.Dead || State == PlayerState.AtChoice)
+            if (State == PlayerState.AtChoice)
                 return;
 
             if (State == PlayerState.Looting)
@@ -103,6 +110,11 @@ namespace Scavenger.Player
                 return;
 
             motor.CancelSteps();
+
+            // 잔존 입력 제거 - 사망 프레임에 루팅 완료/취소 판정이 이전 입력을 쓰지 못하게
+            LateralInput = 0f;
+            InteractHeld = false;
+
             Transition(PlayerState.Dead);
 
             if (RunManager.Instance != null)

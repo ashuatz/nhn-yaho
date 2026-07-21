@@ -77,10 +77,11 @@ namespace Scavenger.Loot
             TryBegin();
         }
 
-        void OnDestroy()
+        // Destroy는 프레임 끝까지 지연되므로 비활성화 시점에 즉시 정리한다
+        // (런 재시작 시 이전 런의 Active 잔존 방지 - Codex 검토 반영)
+        void OnDisable()
         {
-            if (Active == this)
-                Active = null;
+            Release();
         }
 
         void TryBegin()
@@ -101,6 +102,13 @@ namespace Scavenger.Loot
 
         void TickLooting()
         {
+            // 사망/선택지 진입/런 종료 등 외부 요인 - 진행 즉시 중단 (Codex 검토 반영)
+            if (!IsLootingStillValid())
+            {
+                Release();
+                return;
+            }
+
             // 좌우 입력 = 취소 (ADR-0001), 홀드 해제 = 취소
             bool cancelRequested = Mathf.Abs(playerInRange.LateralInput) > CancelLateralThreshold;
 
@@ -118,17 +126,33 @@ namespace Scavenger.Loot
             Complete();
         }
 
-        void Complete()
+        bool IsLootingStillValid()
         {
-            looted = true;
+            if (playerInRange == null || playerInRange.State != PlayerState.Looting)
+                return false;
 
             RunManager run = RunManager.Instance;
 
-            if (run != null)
+            if (run == null || run.StateMachine.Current != RunState.Running)
+                return false;
+
+            return true;
+        }
+
+        void Complete()
+        {
+            // 완료 직전 재검증 - 사망 프레임에 획득이 확정되는 것을 차단
+            if (!IsLootingStillValid())
             {
-                run.Inventory.Add(Definition);
-                UnityEngine.Debug.Log($"[Loot] {Definition.displayName} +{Definition.value} (total {run.Inventory.TotalValue})");
+                Release();
+                return;
             }
+
+            looted = true;
+
+            RunManager run = RunManager.Instance;
+            run.Inventory.Add(Definition);
+            UnityEngine.Debug.Log($"[Loot] {Definition.displayName} +{Definition.value} (total {run.Inventory.TotalValue})");
 
             Release();
 
@@ -142,7 +166,9 @@ namespace Scavenger.Loot
                 Active = null;
 
             holdElapsed = 0f;
-            playerInRange.EndLoot();
+
+            if (playerInRange != null)
+                playerInRange.EndLoot();
         }
     }
 }

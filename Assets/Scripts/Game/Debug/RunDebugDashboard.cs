@@ -59,12 +59,26 @@ namespace Scavenger.Diagnostics
             GUILayout.EndArea();
         }
 
+        int observedDepth = -1;
+        float depthEnteredAt;
+
         void DrawExtraSections(RunManager run)
         {
             GUILayout.Space(4f);
 
             GUILayout.Label($"Inventory value: {run.Inventory.TotalValue}");
             GUILayout.Label($"Inventory kinds: {run.Inventory.Entries.Count}");
+
+            GUILayout.Space(4f);
+
+            // 구간 소요 시간 계측 - 2-3분 라운드 템포 목표 검증용 (구현계획 v0.0.2 섹션 2.3)
+            if (observedDepth != run.Depth)
+            {
+                observedDepth = run.Depth;
+                depthEnteredAt = Time.time;
+            }
+
+            GUILayout.Label($"Segment elapsed: {Time.time - depthEnteredAt:F1}s (target 120-180s/round)");
 
             GUILayout.Space(4f);
 
