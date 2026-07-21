@@ -1,6 +1,6 @@
 # 폐지줍기 익스트랙션 - 구현 계획 v0.0.1 (plan)
 
-- 상태: 초안 (사용자 확인 대기)
+- 상태: 폐기 (Codex 교차 검증 후 v0.0.2로 대체. scavenger-impl_v0.0.2_plan.md 참조)
 - 기반 문서: scavenger-extraction_v0.0.1_plan.md (기획 정리)
 - 브랜치: design/scavenger-roguelike-concept
 - 작성일: 2026-07-21
