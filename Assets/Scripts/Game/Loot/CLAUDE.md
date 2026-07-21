@@ -15,7 +15,7 @@
 
 ## 루팅 규칙 (ADR-0001)
 
-- 루팅 시작 = PlayerController.TryBeginLoot (Advancing/Stopped에서만 성공)
+- 루팅 시작 = PlayerController.TryBeginLoot (Advancing에서만 성공)
 - 루팅 중 이동 완전 정지. 취소 판정(좌우 입력)은 LootSpot이 소유
 - 취소 시 진행도 보존 없음 - 고가치 = 긴 정지 리스크 유지
 - 동시 루팅 불가 (Active 단일 슬롯)

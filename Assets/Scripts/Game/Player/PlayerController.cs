@@ -7,7 +7,7 @@ namespace Scavenger.Player
 {
     /// <summary>
     /// 플레이어 상태 소유자. 입력을 읽고 상태에 따라 PlayerMotor를 구동한다.
-    /// 조작 (그레이박스): A/D 또는 좌우 화살표 = 좌우, S 홀드 = 정지, E 홀드 = 루팅(S3).
+    /// 조작 (ADR-0002): 클릭/스페이스 = 한 스텝 전진, A/D = 좌우, E 홀드 = 루팅.
     /// </summary>
     [RequireComponent(typeof(PlayerMotor))]
     public sealed class PlayerController : MonoBehaviour
@@ -43,28 +43,26 @@ namespace Scavenger.Player
 
             if (State == PlayerState.Looting)
             {
-                // 이동은 LootSpot이 루팅을 끝내기 전까지 완전 정지 (ADR-0001)
+                // 루팅 중 전진 비허용 (ADR-0001) - 클릭 무시, 이동 완전 정지
                 return;
             }
 
-            bool brakeHeld = ReadBrakeHeld();
+            if (ReadStepPressed())
+                motor.RequestStep();
 
-            if (State == PlayerState.Advancing && brakeHeld)
-                Transition(PlayerState.Stopped);
-            else if (State == PlayerState.Stopped && !brakeHeld)
-                Transition(PlayerState.Advancing);
-
-            bool advance = State == PlayerState.Advancing;
-            motor.Step(LateralInput, advance);
+            motor.Tick(LateralInput);
         }
 
         // -- 외부 시스템 진입점 --------------------------------------------
 
-        /// <summary>LootSpot이 홀드 시작 시 호출. 전진/정지 상태에서만 진입 가능.</summary>
+        /// <summary>LootSpot이 홀드 시작 시 호출. 통상 상태에서만 진입 가능.</summary>
         public bool TryBeginLoot()
         {
-            if (State != PlayerState.Advancing && State != PlayerState.Stopped)
+            if (State != PlayerState.Advancing)
                 return false;
+
+            // 스텝 관성이 루팅 중에 이어지지 않게 정리
+            motor.CancelSteps();
 
             Transition(PlayerState.Looting);
             return true;
@@ -79,16 +77,17 @@ namespace Scavenger.Player
             Transition(PlayerState.Advancing);
         }
 
-        /// <summary>ChoiceNode 진입 시 호출 (S5).</summary>
+        /// <summary>ChoiceNode 진입 시 호출.</summary>
         public void EnterChoice()
         {
             if (State == PlayerState.Dead)
                 return;
 
+            motor.CancelSteps();
             Transition(PlayerState.AtChoice);
         }
 
-        /// <summary>선택 후 전진 재개 (S5).</summary>
+        /// <summary>선택 후 전진 재개.</summary>
         public void ExitChoice()
         {
             if (State != PlayerState.AtChoice)
@@ -97,12 +96,13 @@ namespace Scavenger.Player
             Transition(PlayerState.Advancing);
         }
 
-        /// <summary>폭탄 등 즉사 요인이 호출 (S4).</summary>
+        /// <summary>폭탄 등 즉사 요인이 호출.</summary>
         public void Kill(string cause)
         {
             if (State == PlayerState.Dead)
                 return;
 
+            motor.CancelSteps();
             Transition(PlayerState.Dead);
 
             if (RunManager.Instance != null)
@@ -112,6 +112,7 @@ namespace Scavenger.Player
         /// <summary>런 재시작 시 부트스트랩이 호출.</summary>
         public void ResetForNewRun()
         {
+            motor.CancelSteps();
             Transition(PlayerState.Advancing);
         }
 
@@ -136,14 +137,19 @@ namespace Scavenger.Player
             InteractHeld = keyboard.eKey.isPressed;
         }
 
-        static bool ReadBrakeHeld()
+        static bool ReadStepPressed()
         {
             Keyboard keyboard = Keyboard.current;
 
-            if (keyboard == null)
-                return false;
+            if (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
+                return true;
 
-            return keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed;
+            Mouse mouse = Mouse.current;
+
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+                return true;
+
+            return false;
         }
 
         void Transition(PlayerState next)
