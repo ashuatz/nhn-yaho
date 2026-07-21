@@ -3,15 +3,21 @@ using UnityEngine;
 namespace Scavenger.Player
 {
     /// <summary>
-    /// 쿼터뷰 추적 카메라. 회피와 주변 파밍 요소 시인성을 위한 탑다운 기울임.
-    /// 캐릭터 에셋 생성 게이트(구현계획 v0.0.2 섹션 3.3)의 카메라 각도 기준값이 된다.
+    /// 대각 쿼터뷰~사이드뷰 사이의 로우앵글 추적 카메라 (ADR-0003).
+    /// 근경(플레이어 주변)과 원경(전방 진행 방향)이 함께 보이도록
+    /// 측면 대각 오프셋 + 전방 주시점을 사용한다.
+    /// offset/lookAhead는 캐릭터 에셋 생성 게이트의 동결 대상 수치.
     /// </summary>
     public sealed class FollowCamera : MonoBehaviour
     {
         public Transform target;
 
-        [Header("쿼터뷰 오프셋. 에셋 생성 전 동결 대상")]
-        public Vector3 offset = new Vector3(0f, 10f, -7f);
+        [Header("측면 대각 로우앵글. 에셋 생성 전 동결 대상")]
+        public Vector3 offset = new Vector3(-7.5f, 4.5f, -5.5f);
+
+        [Header("주시점: 플레이어보다 앞을 봐서 원경 확보")]
+        public float lookAheadMeters = 6f;
+        public float lookHeight = 1.2f;
 
         void LateUpdate()
         {
@@ -30,7 +36,9 @@ namespace Scavenger.Player
 
             Vector3 anchor = new Vector3(0f, 0f, target.position.z);
             transform.position = anchor + offset;
-            transform.rotation = Quaternion.LookRotation(anchor + Vector3.forward * 2f - transform.position);
+
+            Vector3 lookPoint = anchor + Vector3.up * lookHeight + Vector3.forward * lookAheadMeters;
+            transform.rotation = Quaternion.LookRotation(lookPoint - transform.position);
         }
     }
 }

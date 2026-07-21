@@ -11,7 +11,8 @@
   RequestStep = 고정 거리 트윈, 스텝 중 1회 버퍼. stepDistance/stepDuration = 이동느낌 튜닝 지점.
   복도 반폭은 이동 전 사전 클램프
 - PlayerFactory.cs: 리그 생성. 로직 루트 + Visual 자식 (큐브 2개: 몸/머리, 콜라이더 제거)
-- FollowCamera.cs: 쿼터뷰 추적. x 고정, z만 추적. offset은 에셋 생성 게이트 동결 대상
+- FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003). x 고정, z만 추적.
+  전방 주시점(lookAheadMeters)으로 원경 확보. offset/주시점은 에셋 생성 게이트 동결 대상
 
 ## 조작 (그레이박스, ADR-0002)
 
