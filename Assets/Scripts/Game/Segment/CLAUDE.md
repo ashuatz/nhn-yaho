@@ -14,6 +14,9 @@
   모든 값 클램프 - 통과 불가 배치 방지 (blastMaxRadius x 2 < 복도 폭 유지 필수)
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.
   IsExtractionLocked 델리게이트로 탈출 잠금 판정 주입 (S6)
+- SegmentEnvironment.cs: 공간감 PCG 셸 (ADR-0003). 평탄 보행로(y=0 유지) +
+  측면 럽블 협곡(높이 보간 능선, 2열, 랜드마크 기둥) + 보행로 데브리(비주얼 전용).
+  난수는 주입된 rng(런 시드)만 사용. SegmentDefinition.wallHeight는 현재 미사용(구 셸 잔재)
 
 ## 예정 (구현계획 v0.0.2)
 

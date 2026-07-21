@@ -390,26 +390,11 @@ namespace Scavenger.Segment
 
         void BuildShell(Transform parent)
         {
-            float length = Definition.lengthMeters;
-            float halfWidth = Definition.corridorHalfWidth;
-            float wallHeight = Definition.wallHeight;
+            RunManager run = RunManager.Instance;
+            System.Random rng = run != null && run.Rng != null ? run.Rng : new System.Random(0);
 
-            // 바닥: 윗면이 y=0에 오도록
-            GameObject floor = CreateBlock(parent, "Floor");
-            floor.transform.localScale = new Vector3(halfWidth * 2f + 1f, 0.2f, length);
-            floor.transform.localPosition = new Vector3(0f, -0.1f, length * 0.5f);
-            Tint(floor, new Color(0.35f, 0.35f, 0.38f));
-
-            // 좌우 가벽
-            GameObject leftWall = CreateBlock(parent, "WallLeft");
-            leftWall.transform.localScale = new Vector3(0.5f, wallHeight, length);
-            leftWall.transform.localPosition = new Vector3(-(halfWidth + 0.25f), wallHeight * 0.5f, length * 0.5f);
-            Tint(leftWall, new Color(0.25f, 0.25f, 0.3f));
-
-            GameObject rightWall = CreateBlock(parent, "WallRight");
-            rightWall.transform.localScale = new Vector3(0.5f, wallHeight, length);
-            rightWall.transform.localPosition = new Vector3(halfWidth + 0.25f, wallHeight * 0.5f, length * 0.5f);
-            Tint(rightWall, new Color(0.25f, 0.25f, 0.3f));
+            // 공간감 PCG 셸 (ADR-0003): 평탄 보행로 + 측면 럽블 협곡 + 데브리
+            SegmentEnvironment.Build(parent, Definition, rng);
         }
 
         static GameObject CreateBlock(Transform parent, string blockName)
