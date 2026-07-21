@@ -108,7 +108,9 @@ namespace Scavenger
                 worldInitialized = true;
 
             segmentSpawner.DespawnAll();
-            segmentSpawner.BuildSegment(runManager.Depth, startZ);
+
+            // 현재 + 다음 구간을 함께 생성 - 다음 스테이지 확정 노출 (ADR-0004)
+            segmentSpawner.BuildInitialChain(runManager.Depth, startZ);
 
             player.ResetForNewRun();
             followCamera.SnapAndLook();

@@ -11,8 +11,11 @@
   RequestStep = 고정 거리 트윈, 스텝 중 1회 버퍼. stepDistance/stepDuration = 이동느낌 튜닝 지점.
   복도 반폭은 이동 전 사전 클램프
 - FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003). +x측 배치로 전진이
-  화면 오른쪽을 향한다. x 고정, z만 추적. 전방 주시점(lookAheadMeters)으로 원경 확보.
-  offset/주시점은 에셋 생성 게이트 동결 대상
+  화면 오른쪽을 향한다. 포즈를 매 프레임 재계산 - 플레이 중 인스펙터 튜닝 즉시 반영.
+  offset/주시점은 사용자가 직접 튜닝 후 코드 기본값에 반영 예정 (에셋 게이트 동결 대상)
+- PlayerStepAnimator.cs: 하이퍼캐주얼풍 스텝 연출 (ADR-0004). 스텝 진행도 기반
+  홉 + 공중 스트레치 + 착지 스쿼시. Visual 자식만 조작, 로직/콜라이더 불변.
+  hopHeight/airStretch/landSquash = 인스펙터 튜닝 지점
 
 플레이어 리그(CC + 큐브 2개 비주얼)는 씬에 미리 배치 - GreyboxSceneSetup이 작성.
 (구 PlayerFactory 런타임 생성은 규약 위반으로 제거)

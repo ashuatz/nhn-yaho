@@ -24,6 +24,18 @@ namespace Scavenger.Player
             get { return stepRemaining > 0f; }
         }
 
+        /// <summary>현재 스텝의 진행도 0..1. 스텝 애니메이터가 읽는다.</summary>
+        public float StepProgress01
+        {
+            get
+            {
+                if (!IsStepping || stepDistance <= 0f)
+                    return 0f;
+
+                return 1f - stepRemaining / stepDistance;
+            }
+        }
+
         CharacterController controller;
         float stepRemaining;
         bool stepBuffered;
