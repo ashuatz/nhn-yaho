@@ -12,11 +12,11 @@ namespace Scavenger.Player
     {
         public Transform target;
 
-        [Header("측면 대각 로우앵글. 에셋 생성 전 동결 대상")]
-        public Vector3 offset = new Vector3(-7.5f, 4.5f, -5.5f);
+        [Header("측면 대각 로우앵글. +x측 배치 = 전진이 화면 오른쪽을 향한다. 에셋 생성 전 동결 대상")]
+        public Vector3 offset = new Vector3(9.5f, 6f, -7f);
 
         [Header("주시점: 플레이어보다 앞을 봐서 원경 확보")]
-        public float lookAheadMeters = 6f;
+        public float lookAheadMeters = 7f;
         public float lookHeight = 1.2f;
 
         void LateUpdate()

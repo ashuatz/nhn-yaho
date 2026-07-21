@@ -6,8 +6,11 @@ namespace Scavenger.Run
 {
     /// <summary>
     /// 런 수명 주기의 얇은 코디네이터. 상태 전이는 RunStateMachine,
-    /// 시간 정책은 RunTimer에 위임하고 여기서는 조립과 시드/깊이만 관리한다.
+    /// 시간 정책은 RunTimer에 위임하고 여기서는 시드/깊이만 관리한다.
+    /// 씬에 미리 배치되는 컴포넌트 - 런타임 AddComponent 조립 금지 (프로젝트 규약).
     /// </summary>
+    [RequireComponent(typeof(RunStateMachine))]
+    [RequireComponent(typeof(RunTimer))]
     public sealed class RunManager : MonoBehaviour
     {
         public static RunManager Instance { get; private set; }
@@ -25,7 +28,7 @@ namespace Scavenger.Run
         /// <summary>런 전용 난수. 시드 기반이므로 같은 시드 = 같은 배치.</summary>
         public System.Random Rng { get; private set; }
 
-        /// <summary>런 한정 인벤토리. 사망 시 전량 소멸 (S7 정산).</summary>
+        /// <summary>런 한정 인벤토리. 사망 시 전량 소멸.</summary>
         public RunInventory Inventory { get; } = new RunInventory();
 
         public event Action RunStarted;
@@ -42,8 +45,8 @@ namespace Scavenger.Run
 
             Instance = this;
 
-            StateMachine = gameObject.AddComponent<RunStateMachine>();
-            Timer = gameObject.AddComponent<RunTimer>();
+            StateMachine = GetComponent<RunStateMachine>();
+            Timer = GetComponent<RunTimer>();
         }
 
         void OnDestroy()

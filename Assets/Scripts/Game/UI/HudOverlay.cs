@@ -12,8 +12,6 @@ namespace Scavenger.UI
     /// </summary>
     public sealed class HudOverlay : MonoBehaviour
     {
-        public PlayerController Player { get; set; }
-
         void OnGUI()
         {
             RunManager run = RunManager.Instance;

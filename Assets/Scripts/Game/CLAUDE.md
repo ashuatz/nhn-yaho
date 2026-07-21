@@ -17,10 +17,16 @@
 
 ## 루트 파일
 
-- GameBootstrap.cs: 빈 씬에서 전체 시스템을 코드로 조립 + 포그/배경 설정.
-  씬에는 이 컴포넌트 하나만 배치하면 된다.
+- GameFlow.cs: 런 흐름 배선만 담당 (오브젝트 생성 금지 - 런타임 부트스트랩 회피 규약).
+  씬 참조는 직렬화 필드 + 자동 탐색 폴백.
   라운드는 심리스 (ADR-0003): 종료 후 클릭 = 현재 위치에서 다음 라운드.
   텔레포트 없음, 월드는 플레이어 앞으로 재생성.
+
+## 씬 구성
+
+- 모든 시스템(RunSystems, SegmentSpawner, Player, Main Camera, Light, GameFlow)은
+  씬에 미리 배치한다. 구성은 에디터 메뉴 Scavenger > Setup Greybox Scene 원클릭.
+  포그/카메라 룩은 에디트 모드에서 확인 가능 (RenderSettings는 씬에 저장됨).
 
 ## 전역 규칙
 

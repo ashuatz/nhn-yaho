@@ -6,21 +6,27 @@ namespace Scavenger.Run
     /// <summary>
     /// 런 종료 정산. 탈출 시 인벤토리를 스태시에 확정, 사망 시 아무것도 남기지 않는다.
     /// 중복 정산은 상태 머신이 차단한다 (Running -> Extracted 전이는 런당 1회).
+    /// RunManager와 같은 오브젝트에 씬 배치. 구독은 모든 Awake 이후(Start)에 수행.
     /// </summary>
+    [RequireComponent(typeof(RunManager))]
     public sealed class RunSettlement : MonoBehaviour
     {
         RunManager runManager;
+        bool subscribed;
 
-        public void Attach(RunManager manager)
+        void Start()
         {
-            runManager = manager;
+            runManager = GetComponent<RunManager>();
             runManager.StateMachine.StateChanged += OnStateChanged;
+            subscribed = true;
         }
 
         void OnDestroy()
         {
-            if (runManager != null)
-                runManager.StateMachine.StateChanged -= OnStateChanged;
+            if (!subscribed || runManager == null || runManager.StateMachine == null)
+                return;
+
+            runManager.StateMachine.StateChanged -= OnStateChanged;
         }
 
         void OnStateChanged(RunState previous, RunState next)

@@ -18,6 +18,13 @@
   측면 럽블 협곡(높이 보간 능선, 2열, 랜드마크 기둥) + 보행로 데브리(비주얼 전용).
   난수는 주입된 rng(런 시드)만 사용. SegmentDefinition.wallHeight는 현재 미사용(구 셸 잔재)
 
+## 스케일링 레퍼런스
+
+- 배경 복셀 밀도를 레퍼런스 이미지 수준(수천 큐브)으로 올릴 때:
+  https://github.com/Unity-Technologies/brg-shooter (BatchRendererGroup + Burst/Jobs
+  인스턴싱, 저사양 모바일 대상 Unity 공식 데모). SegmentEnvironment를 데이터 생성기로
+  유지하고 렌더만 BRG로 교체하는 경로 - GameObject 큐브는 그레이박스까지만
+
 ## 예정 (구현계획 v0.0.2)
 
 - S6: SignalEmitter (거리 신호), ChoiceNode 탈출 잠금 연결
