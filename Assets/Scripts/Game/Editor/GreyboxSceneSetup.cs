@@ -59,6 +59,10 @@ namespace Scavenger.EditorTools
         static SegmentSpawner BuildSpawner()
         {
             GameObject spawnerObject = new GameObject("SegmentSpawner");
+
+            // 배경 인스턴스 렌더러 (ADR-0005) - 스포너와 같은 오브젝트에 상주
+            spawnerObject.AddComponent<EnvironmentRenderer>();
+
             return spawnerObject.AddComponent<SegmentSpawner>();
         }
 

@@ -79,7 +79,7 @@ namespace Scavenger.EditorTools
                 chunk.transform.SetParent(root.transform, false);
                 chunk.transform.localPosition = new Vector3(0f, 0f, i * activeDefinition.lengthMeters);
 
-                SegmentEnvironment.Build(chunk.transform, activeDefinition, rng);
+                SegmentEnvironment.BuildGameObjects(chunk.transform, activeDefinition, rng);
             }
 
             authoring.coveredFromZ = 0f;

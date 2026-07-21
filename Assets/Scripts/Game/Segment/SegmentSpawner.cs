@@ -21,12 +21,14 @@ namespace Scavenger.Segment
         {
             public GameObject Root;
             public float EndZ;
+            public int EnvChunkId;
         }
 
         readonly List<SegmentRecord> aliveSegments = new List<SegmentRecord>();
         List<LootDefinition> lootCatalog;
         EnvironmentAuthoring preplacedEnvironment;
         bool preplacedSearched;
+        EnvironmentRenderer environmentRenderer;
 
         /// <summary>지금까지 생성된 구간 체인의 끝 z. 룩어헤드 생성 기준점.</summary>
         public float TailEndZ { get; private set; }
@@ -60,7 +62,7 @@ namespace Scavenger.Segment
             root.transform.SetParent(transform);
             root.transform.position = new Vector3(0f, 0f, startZ);
 
-            BuildShell(root.transform);
+            int envChunkId = BuildShell(root.transform);
             PopulateLoot(root.transform, depth);
             PopulateBombs(root.transform, depth);
             BuildChoiceNode(root.transform, depth);
@@ -72,6 +74,7 @@ namespace Scavenger.Segment
             {
                 Root = root,
                 EndZ = endZ,
+                EnvChunkId = envChunkId,
             });
 
             TailEndZ = Mathf.Max(TailEndZ, endZ);
@@ -112,8 +115,11 @@ namespace Scavenger.Segment
             }
         }
 
-        static void DespawnSegment(SegmentRecord segment)
+        void DespawnSegment(SegmentRecord segment)
         {
+            if (segment.EnvChunkId != 0 && environmentRenderer != null)
+                environmentRenderer.RemoveChunk(segment.EnvChunkId);
+
             if (segment.Root == null)
                 return;
 
@@ -409,7 +415,8 @@ namespace Scavenger.Segment
 
         // -- 그레이박스 셸 -------------------------------------------------
 
-        void BuildShell(Transform parent)
+        /// <summary>배경 생성. 등록된 인스턴스 청크 id를 돌려준다 (0 = 없음).</summary>
+        int BuildShell(Transform parent)
         {
             // 사전 배치 배경(EnvironmentAuthoring)이 이 구간 범위를 커버하면
             // 런타임 배경 생성을 건너뛴다 - 손으로 다듬은 배경 보존 (ADR-0004)
@@ -423,13 +430,24 @@ namespace Scavenger.Segment
             float endZ = startZ + Definition.lengthMeters;
 
             if (preplacedEnvironment != null && preplacedEnvironment.Covers(startZ, endZ))
-                return;
+                return 0;
 
             RunManager run = RunManager.Instance;
             System.Random rng = run != null && run.Rng != null ? run.Rng : new System.Random(0);
 
-            // 공간감 PCG 셸 (ADR-0003): 평탄 보행로 + 측면 럽블 협곡 + 데브리
-            SegmentEnvironment.Build(parent, Definition, rng);
+            // 바닥만 GameObject (콜라이더), 배경 블록은 인스턴스 렌더링 (ADR-0005)
+            SegmentEnvironment.BuildWalkFloor(parent, Definition);
+
+            if (environmentRenderer == null)
+            {
+                environmentRenderer = GetComponent<EnvironmentRenderer>();
+
+                if (environmentRenderer == null)
+                    environmentRenderer = gameObject.AddComponent<EnvironmentRenderer>();
+            }
+
+            List<EnvironmentBlock> blocks = SegmentEnvironment.GenerateBlocks(Definition, rng);
+            return environmentRenderer.AddChunk(blocks, parent.position);
         }
 
         static GameObject CreateBlock(Transform parent, string blockName)

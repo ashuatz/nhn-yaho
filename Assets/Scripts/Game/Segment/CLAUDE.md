@@ -14,12 +14,16 @@
   모든 값 클램프 - 통과 불가 배치 방지 (blastMaxRadius x 2 < 복도 폭 유지 필수)
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.
   IsExtractionLocked 델리게이트로 탈출 잠금 판정 주입 (S6)
-- SegmentEnvironment.cs: 공간감 PCG 셸 (ADR-0003/0004). 평탄 보행로(y=0 유지) +
-  측면 럽블 협곡 + 상부층(오버행 플랫폼/지지 기둥/브릿지 - 복층 느낌) + 데브리.
-  에디트 모드 안전 (Destroy/DestroyImmediate 분기, sharedMaterial 틴트).
+- SegmentEnvironment.cs: 공간감 PCG 데이터 생성기 (ADR-0003/0004/0005).
+  GenerateBlocks = 인스턴스 블록(행렬+팔레트 6색) 생성. 럽블 협곡 + 상부층(복층) + 데브리.
+  BuildWalkFloor = 바닥만 GameObject (콜라이더 필요). BuildGameObjects = 수동 편집용 GO 백엔드.
   난수는 주입된 rng만 사용. SegmentDefinition.wallHeight는 현재 미사용(구 셸 잔재)
+- EnvironmentRenderer.cs: Graphics.RenderMeshInstanced 드로우 (ADR-0005, 웹 호환 -
+  BRG는 WebGL2 미지원이라 기각). 구간 청크 등록/해제(AddChunk/RemoveChunk),
+  팔레트별 머티리얼, 콜당 1023 인스턴스 분할, 청크 바운드 컬링
 - EnvironmentAuthoring.cs: 사전 배치 배경 마커. 커버 z 범위 내 런타임 배경 생성 스킵.
-  생성은 에디터 윈도우 Scavenger > Environment Authoring (시드/구간 수 지정, 수동 다듬기 가능)
+  생성은 에디터 윈도우 Scavenger > Environment Authoring - 이 경로만 GameObject 백엔드
+  (손 편집 가능해야 하므로 인스턴싱 비대상)
 
 ## 룩어헤드 체인 (ADR-0004)
 

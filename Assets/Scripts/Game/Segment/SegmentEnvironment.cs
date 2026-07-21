@@ -1,47 +1,76 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Scavenger.Segment
 {
     /// <summary>
-    /// 구간 그레이박스 환경 PCG (ADR-0003 - 공간감 검증용).
-    /// 평탄한 보행로 양옆으로 복셀풍 럽블 매스를 쌓아 골목/폐허 협곡감을 만든다.
-    /// 보행 영역은 항상 y=0 평면 유지 (CharacterController 단순성).
-    /// 모든 난수는 주입된 rng(런 시드) 사용 - 같은 시드 = 같은 지형.
+    /// 배경 인스턴스 블록: 구간 로컬 행렬 + 팔레트 인덱스.
+    /// 렌더링은 EnvironmentRenderer(RenderMeshInstanced), 수동 편집 경로는
+    /// GameObject 백엔드가 소비한다 (ADR-0005).
+    /// </summary>
+    public struct EnvironmentBlock
+    {
+        public Matrix4x4 LocalMatrix;
+        public int PaletteIndex;
+    }
+
+    /// <summary>
+    /// 구간 그레이박스 환경 PCG 데이터 생성기 (ADR-0003/0004/0005 - 공간감 검증용).
+    /// 평탄한 보행로 양옆으로 복셀풍 럽블 매스 + 상부층(복층) + 데브리.
+    /// 보행 영역은 항상 y=0 평면 유지. 난수는 주입된 rng(런 시드) 사용.
+    /// 출력은 인스턴스 블록 데이터 - GameObject를 만들지 않는다 (웹 호환 인스턴싱).
+    /// 보행로 바닥만 GameObject (콜라이더 필요).
     /// </summary>
     public static class SegmentEnvironment
     {
+        /// <summary>블록 색 팔레트. 인덱스가 EnvironmentBlock.PaletteIndex와 대응.</summary>
+        public static readonly Color[] Palette =
+        {
+            new Color(0.16f, 0.18f, 0.22f), // 0: 럽블 어두움
+            new Color(0.19f, 0.21f, 0.25f), // 1: 럽블 중간
+            new Color(0.22f, 0.24f, 0.28f), // 2: 럽블 밝음
+            new Color(0.2f, 0.22f, 0.27f),  // 3: 상부층 A
+            new Color(0.24f, 0.26f, 0.31f), // 4: 상부층 B
+            new Color(0.29f, 0.29f, 0.32f), // 5: 데브리
+        };
+
         const float RubbleSliceDepth = 2.2f;
 
-        public static void Build(Transform parent, SegmentDefinition definition, System.Random rng)
+        // -- 데이터 생성 ------------------------------------------------------
+
+        public static List<EnvironmentBlock> GenerateBlocks(SegmentDefinition definition, System.Random rng)
         {
-            BuildWalkFloor(parent, definition);
-            BuildRubbleSides(parent, definition, rng);
-            BuildUpperStory(parent, definition, rng);
-            BuildDebris(parent, definition, rng);
+            List<EnvironmentBlock> blocks = new List<EnvironmentBlock>(256);
+
+            AddRubbleSides(blocks, definition, rng);
+            AddUpperStory(blocks, definition, rng);
+            AddDebris(blocks, definition, rng);
+
+            return blocks;
         }
 
-        // -- 보행로 ---------------------------------------------------------
-
-        static void BuildWalkFloor(Transform parent, SegmentDefinition definition)
+        /// <summary>보행로 바닥. 콜라이더가 필요해 유일하게 GameObject로 만든다.</summary>
+        public static GameObject BuildWalkFloor(Transform parent, SegmentDefinition definition)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
 
-            GameObject floor = CreateBlock(parent, "Floor", withCollider: true);
+            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            floor.name = "Floor";
+            floor.transform.SetParent(parent, false);
             floor.transform.localScale = new Vector3(halfWidth * 2f + 1f, 0.2f, length);
             floor.transform.localPosition = new Vector3(0f, -0.1f, length * 0.5f);
-            Tint(floor, new Color(0.3f, 0.31f, 0.33f));
+
+            TintGameObject(floor, new Color(0.3f, 0.31f, 0.33f));
+            return floor;
         }
 
         // -- 측면 럽블 매스 ---------------------------------------------------
 
-        static void BuildRubbleSides(Transform parent, SegmentDefinition definition, System.Random rng)
+        static void AddRubbleSides(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
-
-            GameObject rubbleRoot = new GameObject("Rubble");
-            rubbleRoot.transform.SetParent(parent, false);
 
             for (int side = -1; side <= 1; side += 2)
             {
@@ -54,48 +83,47 @@ namespace Scavenger.Segment
                     float height = Mathf.Lerp(previousHeight, targetHeight, 0.55f);
                     previousHeight = height;
 
-                    SpawnRubbleBlock(rubbleRoot.transform, rng, side, halfWidth, z, height, rowOffset: 0f);
+                    AddRubbleBlock(blocks, rng, side, halfWidth, z, height, rowOffset: 0f);
 
                     // 바깥 두 번째 열 - 더 높게 쌓아 협곡 실루엣 강조
                     if (rng.NextDouble() < 0.45)
                     {
                         float backHeight = height + NextRange(rng, 0.8f, 2.4f);
-                        SpawnRubbleBlock(rubbleRoot.transform, rng, side, halfWidth, z, backHeight, rowOffset: 2.1f);
+                        AddRubbleBlock(blocks, rng, side, halfWidth, z, backHeight, rowOffset: 2.1f);
                     }
 
                     // 드물게 랜드마크 기둥 - 원경에서 진행 방향 가늠용
                     if (rng.NextDouble() < 0.06)
                     {
                         float pillarHeight = NextRange(rng, 4.5f, 7f);
-                        SpawnRubbleBlock(rubbleRoot.transform, rng, side, halfWidth, z, pillarHeight, rowOffset: 1f);
+                        AddRubbleBlock(blocks, rng, side, halfWidth, z, pillarHeight, rowOffset: 1f);
                     }
                 }
             }
         }
 
-        static void SpawnRubbleBlock(
-            Transform parent, System.Random rng, int side, float halfWidth, float z, float height, float rowOffset)
+        static void AddRubbleBlock(
+            List<EnvironmentBlock> blocks, System.Random rng, int side, float halfWidth,
+            float z, float height, float rowOffset)
         {
             float width = NextRange(rng, 1.5f, 2.5f);
             float x = side * (halfWidth + width * 0.5f + 0.15f + rowOffset);
+            float depth = RubbleSliceDepth * NextRange(rng, 0.85f, 1.05f);
 
-            GameObject block = CreateBlock(parent, "RubbleBlock", withCollider: true);
-            block.transform.localScale = new Vector3(width, height, RubbleSliceDepth * NextRange(rng, 0.85f, 1.05f));
-            block.transform.localPosition = new Vector3(x, height * 0.5f - 0.1f, z + RubbleSliceDepth * 0.5f);
-
-            float jitter = (float)rng.NextDouble() * 0.06f;
-            Tint(block, new Color(0.16f + jitter, 0.18f + jitter, 0.22f + jitter));
+            AddBlock(
+                blocks,
+                new Vector3(x, height * 0.5f - 0.1f, z + RubbleSliceDepth * 0.5f),
+                Quaternion.identity,
+                new Vector3(width, height, depth),
+                rng.Next(0, 3));
         }
 
         // -- 상부층 (복층 느낌) ------------------------------------------------
 
-        static void BuildUpperStory(Transform parent, SegmentDefinition definition, System.Random rng)
+        static void AddUpperStory(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
-
-            GameObject upperRoot = new GameObject("UpperStory");
-            upperRoot.transform.SetParent(parent, false);
 
             // 측면 상부 플랫폼: 복도 안쪽으로 오버행 - 2층 발코니/통로 느낌
             for (int side = -1; side <= 1; side += 2)
@@ -105,7 +133,7 @@ namespace Scavenger.Segment
                 while (z < length - 9f)
                 {
                     if (rng.NextDouble() < 0.6)
-                        SpawnPlatform(upperRoot.transform, rng, side, halfWidth, z);
+                        AddPlatform(blocks, rng, side, halfWidth, z);
 
                     z += NextRange(rng, 9f, 16f);
                 }
@@ -117,13 +145,24 @@ namespace Scavenger.Segment
             while (bridgeZ < length - 10f)
             {
                 if (rng.NextDouble() < 0.55)
-                    SpawnBridge(upperRoot.transform, rng, halfWidth, bridgeZ);
+                {
+                    float height = NextRange(rng, 3.4f, 4f);
+                    float depth = NextRange(rng, 2.2f, 3.2f);
+
+                    AddBlock(
+                        blocks,
+                        new Vector3(0f, height, bridgeZ + depth * 0.5f),
+                        Quaternion.identity,
+                        new Vector3(halfWidth * 2f + 5f, 0.4f, depth),
+                        UpperPalette(rng));
+                }
 
                 bridgeZ += NextRange(rng, 22f, 40f);
             }
         }
 
-        static void SpawnPlatform(Transform parent, System.Random rng, int side, float halfWidth, float z)
+        static void AddPlatform(
+            List<EnvironmentBlock> blocks, System.Random rng, int side, float halfWidth, float z)
         {
             float width = NextRange(rng, 3f, 4.5f);
             float depth = NextRange(rng, 5f, 9f);
@@ -134,57 +173,45 @@ namespace Scavenger.Segment
             float centerX = side * (innerX + width * 0.5f);
             float centerZ = z + depth * 0.5f;
 
-            GameObject slab = CreateBlock(parent, "PlatformSlab", withCollider: true);
-            slab.transform.localScale = new Vector3(width, 0.35f, depth);
-            slab.transform.localPosition = new Vector3(centerX, height, centerZ);
-            Tint(slab, UpperTone(rng));
+            // 슬래브
+            AddBlock(
+                blocks,
+                new Vector3(centerX, height, centerZ),
+                Quaternion.identity,
+                new Vector3(width, 0.35f, depth),
+                UpperPalette(rng));
 
             // 안쪽 모서리 지지 기둥
-            GameObject pillar = CreateBlock(parent, "PlatformPillar", withCollider: true);
-            pillar.transform.localScale = new Vector3(0.35f, height, 0.35f);
-            pillar.transform.localPosition = new Vector3(side * (innerX + 0.2f), height * 0.5f, centerZ);
-            Tint(pillar, UpperTone(rng));
+            AddBlock(
+                blocks,
+                new Vector3(side * (innerX + 0.2f), height * 0.5f, centerZ),
+                Quaternion.identity,
+                new Vector3(0.35f, height, 0.35f),
+                UpperPalette(rng));
 
             // 플랫폼 위 잡동사니 실루엣
             if (rng.NextDouble() < 0.6)
             {
                 float propSize = NextRange(rng, 0.5f, 1.1f);
-                GameObject prop = CreateBlock(parent, "PlatformProp", withCollider: false);
-                prop.transform.localScale = new Vector3(propSize, propSize, propSize);
-                prop.transform.localPosition = new Vector3(
-                    centerX + NextRange(rng, -width * 0.3f, width * 0.3f),
-                    height + 0.175f + propSize * 0.5f,
-                    centerZ + NextRange(rng, -depth * 0.3f, depth * 0.3f));
-                Tint(prop, UpperTone(rng));
+
+                AddBlock(
+                    blocks,
+                    new Vector3(
+                        centerX + NextRange(rng, -width * 0.3f, width * 0.3f),
+                        height + 0.175f + propSize * 0.5f,
+                        centerZ + NextRange(rng, -depth * 0.3f, depth * 0.3f)),
+                    Quaternion.identity,
+                    new Vector3(propSize, propSize, propSize),
+                    UpperPalette(rng));
             }
         }
 
-        static void SpawnBridge(Transform parent, System.Random rng, float halfWidth, float z)
-        {
-            float height = NextRange(rng, 3.4f, 4f);
-            float depth = NextRange(rng, 2.2f, 3.2f);
+        // -- 보행로 내 데브리 --------------------------------------------------
 
-            GameObject bridge = CreateBlock(parent, "Bridge", withCollider: true);
-            bridge.transform.localScale = new Vector3(halfWidth * 2f + 5f, 0.4f, depth);
-            bridge.transform.localPosition = new Vector3(0f, height, z + depth * 0.5f);
-            Tint(bridge, UpperTone(rng));
-        }
-
-        static Color UpperTone(System.Random rng)
-        {
-            float jitter = (float)rng.NextDouble() * 0.05f;
-            return new Color(0.2f + jitter, 0.22f + jitter, 0.27f + jitter);
-        }
-
-        // -- 보행로 내 데브리 (비주얼 전용) -----------------------------------
-
-        static void BuildDebris(Transform parent, SegmentDefinition definition, System.Random rng)
+        static void AddDebris(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
-
-            GameObject debrisRoot = new GameObject("Debris");
-            debrisRoot.transform.SetParent(parent, false);
 
             int count = Mathf.RoundToInt(length / 6f);
 
@@ -194,39 +221,66 @@ namespace Scavenger.Segment
                 float x = side * NextRange(rng, halfWidth * 0.55f, halfWidth * 0.95f);
                 float z = NextRange(rng, 3f, length - 3f);
                 float size = NextRange(rng, 0.25f, 0.55f);
+                float yaw = (float)rng.NextDouble() * 90f;
 
-                GameObject debris = CreateBlock(debrisRoot.transform, "Debris", withCollider: false);
-                debris.transform.localScale = new Vector3(size, size, size);
-                debris.transform.localPosition = new Vector3(x, size * 0.5f, z);
-                debris.transform.localRotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 90f, 0f);
+                AddBlock(
+                    blocks,
+                    new Vector3(x, size * 0.5f, z),
+                    Quaternion.Euler(0f, yaw, 0f),
+                    new Vector3(size, size, size),
+                    5);
+            }
+        }
 
-                float jitter = (float)rng.NextDouble() * 0.05f;
-                Tint(debris, new Color(0.28f + jitter, 0.28f + jitter, 0.3f + jitter));
+        // -- GameObject 백엔드 (배경 사전 배치/수동 편집 전용, ADR-0005) --------
+
+        public static void BuildGameObjects(Transform parent, SegmentDefinition definition, System.Random rng)
+        {
+            BuildWalkFloor(parent, definition);
+
+            List<EnvironmentBlock> blocks = GenerateBlocks(definition, rng);
+
+            foreach (EnvironmentBlock block in blocks)
+            {
+                GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                cube.name = "EnvBlock";
+                cube.transform.SetParent(parent, false);
+
+                Matrix4x4 matrix = block.LocalMatrix;
+                cube.transform.localPosition = matrix.GetColumn(3);
+                cube.transform.localRotation = matrix.rotation;
+                cube.transform.localScale = matrix.lossyScale;
+
+                // 배경은 비주얼 전용 - 콜라이더 불필요 (좌우 이동은 사전 클램프)
+                Collider cubeCollider = cube.GetComponent<Collider>();
+
+                if (cubeCollider != null)
+                    RemoveObject(cubeCollider);
+
+                TintGameObject(cube, Palette[block.PaletteIndex]);
             }
         }
 
         // -- 공통 -----------------------------------------------------------
 
+        static void AddBlock(
+            List<EnvironmentBlock> blocks, Vector3 position, Quaternion rotation, Vector3 scale, int paletteIndex)
+        {
+            blocks.Add(new EnvironmentBlock
+            {
+                LocalMatrix = Matrix4x4.TRS(position, rotation, scale),
+                PaletteIndex = paletteIndex,
+            });
+        }
+
+        static int UpperPalette(System.Random rng)
+        {
+            return rng.Next(0, 2) == 0 ? 3 : 4;
+        }
+
         static float NextRange(System.Random rng, float min, float max)
         {
             return Mathf.Lerp(min, max, (float)rng.NextDouble());
-        }
-
-        static GameObject CreateBlock(Transform parent, string blockName, bool withCollider)
-        {
-            GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            block.name = blockName;
-            block.transform.SetParent(parent, false);
-
-            if (!withCollider)
-            {
-                Collider blockCollider = block.GetComponent<Collider>();
-
-                if (blockCollider != null)
-                    RemoveObject(blockCollider);
-            }
-
-            return block;
         }
 
         // 에디트 모드(사전 배치 윈도우)에서도 호출되므로 Destroy/DestroyImmediate 분기
@@ -241,7 +295,7 @@ namespace Scavenger.Segment
             Object.DestroyImmediate(target);
         }
 
-        static void Tint(GameObject block, Color color)
+        static void TintGameObject(GameObject block, Color color)
         {
             Renderer blockRenderer = block.GetComponent<Renderer>();
 
