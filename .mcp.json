@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "blender": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["blender-mcp"],
+      "env": {}
+    },
+    "UnityMCP": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-for-unity"],
+      "env": {}
+    }
+  }
+}

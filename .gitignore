@@ -104,3 +104,9 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# OMX local session state/logs
+.omx/
+
+# Embedded git repo (codex skill) - reinstall per machine
+.claude/skills/codex/
