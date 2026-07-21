@@ -1,6 +1,7 @@
 using Scavenger.Loot;
 using Scavenger.Player;
 using Scavenger.Run;
+using Scavenger.Segment;
 using UnityEngine;
 
 namespace Scavenger.UI
@@ -22,6 +23,7 @@ namespace Scavenger.UI
 
             DrawInventoryValue(run);
             DrawLootGauge();
+            DrawChoicePrompt();
             DrawRunResult(run);
         }
 
@@ -47,6 +49,25 @@ namespace Scavenger.UI
 
             Rect label = new Rect(back.x, back.y - 22f, width, 20f);
             GUI.Label(label, $"루팅 중: {active.Definition.displayName} (+{active.Definition.value})");
+        }
+
+        static void DrawChoicePrompt()
+        {
+            ChoiceNode active = ChoiceNode.Active;
+
+            if (active == null)
+                return;
+
+            float width = 340f;
+            Rect area = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.3f, width, 64f);
+
+            if (active.IsExtractionLocked())
+            {
+                GUI.Box(area, "탈출 신호 없음 - 이미 늦었다\nW: 더 깊이 전진");
+                return;
+            }
+
+            GUI.Box(area, "선택하라\nW: 더 깊이 전진 (고가치/고위험)  E: 탈출 (확정)");
         }
 
         void DrawRunResult(RunManager run)

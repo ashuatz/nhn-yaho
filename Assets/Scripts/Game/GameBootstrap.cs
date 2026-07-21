@@ -20,6 +20,7 @@ namespace Scavenger
         [Header("비우면 기본값으로 생성 (그레이박스 편의)")]
         [SerializeField] RunSettings runSettings;
         [SerializeField] SegmentDefinition segmentDefinition;
+        [SerializeField] DepthCurve depthCurve;
 
         RunManager runManager;
         SegmentSpawner segmentSpawner;
@@ -73,12 +74,15 @@ namespace Scavenger
             if (segmentDefinition == null)
                 segmentDefinition = SegmentDefinition.CreateDefault();
 
+            if (depthCurve == null)
+                depthCurve = DepthCurve.CreateDefault();
+
             List<LootDefinition> lootCatalog = LootCatalog.CreateDefaults();
 
             GameObject spawnerObject = new GameObject("SegmentSpawner");
             spawnerObject.transform.SetParent(transform);
             segmentSpawner = spawnerObject.AddComponent<SegmentSpawner>();
-            segmentSpawner.Configure(segmentDefinition, lootCatalog);
+            segmentSpawner.Configure(segmentDefinition, lootCatalog, depthCurve);
 
             player = PlayerFactory.Create(PlayerStart);
             player.Motor.corridorHalfWidth = segmentDefinition.corridorHalfWidth;
