@@ -12,7 +12,8 @@
   복도 반폭은 이동 전 사전 클램프
 - FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003). +x측 배치로 전진이
   화면 오른쪽을 향한다. 포즈를 매 프레임 재계산 - 플레이 중 인스펙터 튜닝 즉시 반영.
-  offset/주시점은 사용자가 직접 튜닝 후 코드 기본값에 반영 예정 (에셋 게이트 동결 대상)
+  followSmoothTime = 지연 추적(SmoothDamp, 0이면 즉시), lookOffset = 룩앳 오프셋(Vector3).
+  offset/lookOffset은 사용자가 직접 튜닝 후 코드 기본값에 반영 예정 (에셋 게이트 동결 대상)
 - PlayerStepAnimator.cs: 하이퍼캐주얼풍 스텝 연출 (ADR-0004). 스텝 진행도 기반
   홉 + 공중 스트레치 + 착지 스쿼시. Visual 자식만 조작, 로직/콜라이더 불변.
   hopHeight/airStretch/landSquash = 인스펙터 튜닝 지점
