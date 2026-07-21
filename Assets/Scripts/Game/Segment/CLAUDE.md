@@ -15,12 +15,18 @@
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.
   IsExtractionLocked 델리게이트로 탈출 잠금 판정 주입 (S6)
 - SegmentEnvironment.cs: 공간감 PCG 데이터 생성기 (ADR-0003/0004/0005).
-  GenerateBlocks = 인스턴스 블록(행렬+팔레트 6색) 생성. 럽블 협곡 + 상부층(복층) + 데브리.
+  GenerateBlocks = 인스턴스 블록(행렬+팔레트 8색+웨이브/위상) 생성.
+  레이어: 럽블 협곡(근경, wave 0.35) + 상부층(복층, 정적) + 데브리(정적) +
+  중경 매스(팔레트 6, wave 0.6) + 원경 스카이라인(팔레트 7, wave 1.0).
+  FarPaletteStart(6)부터 원거리 레이어 - 렌더러가 그림자 생략.
   BuildWalkFloor = 바닥만 GameObject (콜라이더 필요). BuildGameObjects = 수동 편집용 GO 백엔드.
   난수는 주입된 rng만 사용. SegmentDefinition.wallHeight는 현재 미사용(구 셸 잔재)
 - EnvironmentRenderer.cs: Graphics.RenderMeshInstanced 드로우 (ADR-0005, 웹 호환 -
   BRG는 WebGL2 미지원이라 기각). 구간 청크 등록/해제(AddChunk/RemoveChunk),
-  팔레트별 머티리얼, 콜당 1023 인스턴스 분할, 청크 바운드 컬링
+  팔레트별 머티리얼, 콜당 1023 인스턴스 분할, 청크 바운드 컬링.
+  셀 출렁임 (brg-shooter 차용): Wave>0 블록만 동적 그룹으로 분리해 매 프레임
+  사인파 y 오프셋으로 행렬 갱신. animate/waveSpeed/waveAmplitude = 인스펙터 튜닝 지점.
+  동적 블록 수천 개 이상으로 늘리면 Job/버텍스 셰이더 전환 검토
 - EnvironmentAuthoring.cs: 사전 배치 배경 마커. 커버 z 범위 내 런타임 배경 생성 스킵.
   생성은 에디터 윈도우 Scavenger > Environment Authoring - 이 경로만 GameObject 백엔드
   (손 편집 가능해야 하므로 인스턴싱 비대상)

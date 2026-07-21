@@ -12,6 +12,12 @@ namespace Scavenger.Segment
     {
         public Matrix4x4 LocalMatrix;
         public int PaletteIndex;
+
+        /// <summary>출렁임 강도 0..1. 0이면 정적 블록 (렌더러가 행렬 갱신을 생략).</summary>
+        public float Wave;
+
+        /// <summary>출렁임 위상 (라디안). 블록마다 달라 물결처럼 보인다.</summary>
+        public float Phase;
     }
 
     /// <summary>
@@ -26,25 +32,37 @@ namespace Scavenger.Segment
         /// <summary>블록 색 팔레트. 인덱스가 EnvironmentBlock.PaletteIndex와 대응.</summary>
         public static readonly Color[] Palette =
         {
-            new Color(0.16f, 0.18f, 0.22f), // 0: 럽블 어두움
-            new Color(0.19f, 0.21f, 0.25f), // 1: 럽블 중간
-            new Color(0.22f, 0.24f, 0.28f), // 2: 럽블 밝음
-            new Color(0.2f, 0.22f, 0.27f),  // 3: 상부층 A
-            new Color(0.24f, 0.26f, 0.31f), // 4: 상부층 B
-            new Color(0.29f, 0.29f, 0.32f), // 5: 데브리
+            new Color(0.16f, 0.18f, 0.22f),   // 0: 럽블 어두움
+            new Color(0.19f, 0.21f, 0.25f),   // 1: 럽블 중간
+            new Color(0.22f, 0.24f, 0.28f),   // 2: 럽블 밝음
+            new Color(0.2f, 0.22f, 0.27f),    // 3: 상부층 A
+            new Color(0.24f, 0.26f, 0.31f),   // 4: 상부층 B
+            new Color(0.29f, 0.29f, 0.32f),   // 5: 데브리
+            new Color(0.11f, 0.13f, 0.17f),   // 6: 중경 매스
+            new Color(0.07f, 0.09f, 0.13f),   // 7: 원경 스카이라인
         };
 
+        /// <summary>이 인덱스부터는 원거리 레이어 - 렌더러가 그림자를 끈다.</summary>
+        public const int FarPaletteStart = 6;
+
         const float RubbleSliceDepth = 2.2f;
+
+        // 레이어별 출렁임 강도 (brg-shooter 셀 웨이브 차용)
+        const float RubbleWave = 0.35f;
+        const float MidWave = 0.6f;
+        const float FarWave = 1f;
 
         // -- 데이터 생성 ------------------------------------------------------
 
         public static List<EnvironmentBlock> GenerateBlocks(SegmentDefinition definition, System.Random rng)
         {
-            List<EnvironmentBlock> blocks = new List<EnvironmentBlock>(256);
+            List<EnvironmentBlock> blocks = new List<EnvironmentBlock>(384);
 
             AddRubbleSides(blocks, definition, rng);
             AddUpperStory(blocks, definition, rng);
             AddDebris(blocks, definition, rng);
+            AddMidground(blocks, definition, rng);
+            AddFarground(blocks, definition, rng);
 
             return blocks;
         }
@@ -115,7 +133,9 @@ namespace Scavenger.Segment
                 new Vector3(x, height * 0.5f - 0.1f, z + RubbleSliceDepth * 0.5f),
                 Quaternion.identity,
                 new Vector3(width, height, depth),
-                rng.Next(0, 3));
+                rng.Next(0, 3),
+                RubbleWave,
+                NextPhase(rng));
         }
 
         // -- 상부층 (복층 느낌) ------------------------------------------------
@@ -206,6 +226,66 @@ namespace Scavenger.Segment
             }
         }
 
+        // -- 중경/원경 레이어 --------------------------------------------------
+
+        static void AddMidground(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
+        {
+            float length = definition.lengthMeters;
+            float halfWidth = definition.corridorHalfWidth;
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                for (float z = 0f; z < length; z += 4.5f)
+                {
+                    if (rng.NextDouble() >= 0.7)
+                        continue;
+
+                    float width = NextRange(rng, 3f, 6f);
+                    float height = NextRange(rng, 3f, 8f);
+                    float depth = NextRange(rng, 3.5f, 5.5f);
+                    float x = side * (halfWidth + 5f + NextRange(rng, 0f, 6f));
+
+                    AddBlock(
+                        blocks,
+                        new Vector3(x, height * 0.5f - 0.1f, z + depth * 0.5f),
+                        Quaternion.identity,
+                        new Vector3(width, height, depth),
+                        6,
+                        MidWave,
+                        NextPhase(rng));
+                }
+            }
+        }
+
+        static void AddFarground(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
+        {
+            float length = definition.lengthMeters;
+            float halfWidth = definition.corridorHalfWidth;
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                for (float z = 0f; z < length; z += 7f)
+                {
+                    if (rng.NextDouble() >= 0.8)
+                        continue;
+
+                    float width = NextRange(rng, 5f, 10f);
+                    float height = NextRange(rng, 6f, 16f);
+                    float depth = NextRange(rng, 5f, 8f);
+                    float x = side * (halfWidth + 13f + NextRange(rng, 0f, 14f));
+
+                    AddBlock(
+                        blocks,
+                        new Vector3(x, height * 0.5f - 0.1f, z + depth * 0.5f),
+                        Quaternion.identity,
+                        new Vector3(width, height, depth),
+                        7,
+                        FarWave,
+                        NextPhase(rng));
+                }
+            }
+        }
+
         // -- 보행로 내 데브리 --------------------------------------------------
 
         static void AddDebris(List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng)
@@ -266,10 +346,19 @@ namespace Scavenger.Segment
         static void AddBlock(
             List<EnvironmentBlock> blocks, Vector3 position, Quaternion rotation, Vector3 scale, int paletteIndex)
         {
+            AddBlock(blocks, position, rotation, scale, paletteIndex, wave: 0f, phase: 0f);
+        }
+
+        static void AddBlock(
+            List<EnvironmentBlock> blocks, Vector3 position, Quaternion rotation, Vector3 scale,
+            int paletteIndex, float wave, float phase)
+        {
             blocks.Add(new EnvironmentBlock
             {
                 LocalMatrix = Matrix4x4.TRS(position, rotation, scale),
                 PaletteIndex = paletteIndex,
+                Wave = wave,
+                Phase = phase,
             });
         }
 
@@ -281,6 +370,11 @@ namespace Scavenger.Segment
         static float NextRange(System.Random rng, float min, float max)
         {
             return Mathf.Lerp(min, max, (float)rng.NextDouble());
+        }
+
+        static float NextPhase(System.Random rng)
+        {
+            return (float)rng.NextDouble() * Mathf.PI * 2f;
         }
 
         // 에디트 모드(사전 배치 윈도우)에서도 호출되므로 Destroy/DestroyImmediate 분기
