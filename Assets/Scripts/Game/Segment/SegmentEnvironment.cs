@@ -16,6 +16,7 @@ namespace Scavenger.Segment
         {
             BuildWalkFloor(parent, definition);
             BuildRubbleSides(parent, definition, rng);
+            BuildUpperStory(parent, definition, rng);
             BuildDebris(parent, definition, rng);
         }
 
@@ -86,6 +87,95 @@ namespace Scavenger.Segment
             Tint(block, new Color(0.16f + jitter, 0.18f + jitter, 0.22f + jitter));
         }
 
+        // -- 상부층 (복층 느낌) ------------------------------------------------
+
+        static void BuildUpperStory(Transform parent, SegmentDefinition definition, System.Random rng)
+        {
+            float length = definition.lengthMeters;
+            float halfWidth = definition.corridorHalfWidth;
+
+            GameObject upperRoot = new GameObject("UpperStory");
+            upperRoot.transform.SetParent(parent, false);
+
+            // 측면 상부 플랫폼: 복도 안쪽으로 오버행 - 2층 발코니/통로 느낌
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float z = NextRange(rng, 4f, 10f);
+
+                while (z < length - 9f)
+                {
+                    if (rng.NextDouble() < 0.6)
+                        SpawnPlatform(upperRoot.transform, rng, side, halfWidth, z);
+
+                    z += NextRange(rng, 9f, 16f);
+                }
+            }
+
+            // 브릿지: 복도를 가로지르는 상부 통로 - 플레이어 머리 위를 지나간다
+            float bridgeZ = NextRange(rng, 15f, 30f);
+
+            while (bridgeZ < length - 10f)
+            {
+                if (rng.NextDouble() < 0.55)
+                    SpawnBridge(upperRoot.transform, rng, halfWidth, bridgeZ);
+
+                bridgeZ += NextRange(rng, 22f, 40f);
+            }
+        }
+
+        static void SpawnPlatform(Transform parent, System.Random rng, int side, float halfWidth, float z)
+        {
+            float width = NextRange(rng, 3f, 4.5f);
+            float depth = NextRange(rng, 5f, 9f);
+            float height = NextRange(rng, 3.1f, 3.9f);
+            float overhang = NextRange(rng, 0.8f, 1.6f);
+
+            float innerX = halfWidth - overhang;
+            float centerX = side * (innerX + width * 0.5f);
+            float centerZ = z + depth * 0.5f;
+
+            GameObject slab = CreateBlock(parent, "PlatformSlab", withCollider: true);
+            slab.transform.localScale = new Vector3(width, 0.35f, depth);
+            slab.transform.localPosition = new Vector3(centerX, height, centerZ);
+            Tint(slab, UpperTone(rng));
+
+            // 안쪽 모서리 지지 기둥
+            GameObject pillar = CreateBlock(parent, "PlatformPillar", withCollider: true);
+            pillar.transform.localScale = new Vector3(0.35f, height, 0.35f);
+            pillar.transform.localPosition = new Vector3(side * (innerX + 0.2f), height * 0.5f, centerZ);
+            Tint(pillar, UpperTone(rng));
+
+            // 플랫폼 위 잡동사니 실루엣
+            if (rng.NextDouble() < 0.6)
+            {
+                float propSize = NextRange(rng, 0.5f, 1.1f);
+                GameObject prop = CreateBlock(parent, "PlatformProp", withCollider: false);
+                prop.transform.localScale = new Vector3(propSize, propSize, propSize);
+                prop.transform.localPosition = new Vector3(
+                    centerX + NextRange(rng, -width * 0.3f, width * 0.3f),
+                    height + 0.175f + propSize * 0.5f,
+                    centerZ + NextRange(rng, -depth * 0.3f, depth * 0.3f));
+                Tint(prop, UpperTone(rng));
+            }
+        }
+
+        static void SpawnBridge(Transform parent, System.Random rng, float halfWidth, float z)
+        {
+            float height = NextRange(rng, 3.4f, 4f);
+            float depth = NextRange(rng, 2.2f, 3.2f);
+
+            GameObject bridge = CreateBlock(parent, "Bridge", withCollider: true);
+            bridge.transform.localScale = new Vector3(halfWidth * 2f + 5f, 0.4f, depth);
+            bridge.transform.localPosition = new Vector3(0f, height, z + depth * 0.5f);
+            Tint(bridge, UpperTone(rng));
+        }
+
+        static Color UpperTone(System.Random rng)
+        {
+            float jitter = (float)rng.NextDouble() * 0.05f;
+            return new Color(0.2f + jitter, 0.22f + jitter, 0.27f + jitter);
+        }
+
         // -- 보행로 내 데브리 (비주얼 전용) -----------------------------------
 
         static void BuildDebris(Transform parent, SegmentDefinition definition, System.Random rng)
@@ -133,10 +223,22 @@ namespace Scavenger.Segment
                 Collider blockCollider = block.GetComponent<Collider>();
 
                 if (blockCollider != null)
-                    Object.Destroy(blockCollider);
+                    RemoveObject(blockCollider);
             }
 
             return block;
+        }
+
+        // 에디트 모드(사전 배치 윈도우)에서도 호출되므로 Destroy/DestroyImmediate 분기
+        static void RemoveObject(Object target)
+        {
+            if (Application.isPlaying)
+            {
+                Object.Destroy(target);
+                return;
+            }
+
+            Object.DestroyImmediate(target);
         }
 
         static void Tint(GameObject block, Color color)
@@ -146,7 +248,10 @@ namespace Scavenger.Segment
             if (blockRenderer == null)
                 return;
 
-            blockRenderer.material.color = color;
+            // 에디트 모드에서 .material 접근은 에러 - 인스턴스를 만들어 교체 (양쪽 모드 공용)
+            Material material = new Material(blockRenderer.sharedMaterial);
+            material.color = color;
+            blockRenderer.sharedMaterial = material;
         }
     }
 }

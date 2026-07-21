@@ -25,6 +25,11 @@ namespace Scavenger.Segment
 
         readonly List<SegmentRecord> aliveSegments = new List<SegmentRecord>();
         List<LootDefinition> lootCatalog;
+        EnvironmentAuthoring preplacedEnvironment;
+        bool preplacedSearched;
+
+        /// <summary>지금까지 생성된 구간 체인의 끝 z. 룩어헤드 생성 기준점.</summary>
+        public float TailEndZ { get; private set; }
 
         const int LootSpotsPerSegment = 8;
         const float LootInteractRadius = 1.4f;
@@ -61,13 +66,26 @@ namespace Scavenger.Segment
             BuildChoiceNode(root.transform, depth);
             BuildSignalEmitters(root.transform);
 
+            float endZ = startZ + Definition.lengthMeters;
+
             aliveSegments.Add(new SegmentRecord
             {
                 Root = root,
-                EndZ = startZ + Definition.lengthMeters,
+                EndZ = endZ,
             });
 
+            TailEndZ = Mathf.Max(TailEndZ, endZ);
             return root;
+        }
+
+        /// <summary>
+        /// 라운드 시작용 체인: 현재 구간 + 다음 구간을 함께 생성한다.
+        /// 다음 스테이지가 항상 시야에 확정 노출되어 끊김이 없다 (ADR-0004).
+        /// </summary>
+        public void BuildInitialChain(int depth, float startZ)
+        {
+            BuildSegment(depth, startZ);
+            BuildSegment(depth + 1, TailEndZ);
         }
 
         public void DespawnAll()
@@ -76,6 +94,7 @@ namespace Scavenger.Segment
                 DespawnSegment(segment);
 
             aliveSegments.Clear();
+            TailEndZ = 0f;
         }
 
         /// <summary>endZ가 기준보다 뒤인 구간을 제거한다 (지나간 구간 정리).</summary>
@@ -171,10 +190,12 @@ namespace Scavenger.Segment
 
             run.AdvanceDepth();
 
-            float nextStartZ = node.transform.position.z + 1.5f;
-            BuildSegment(run.Depth, nextStartZ);
+            // 플레이어가 들어설 다음 구간(run.Depth)은 룩어헤드로 이미 존재.
+            // 그 다음 구간을 미리 지어 선노출을 유지한다 (ADR-0004)
+            BuildSegment(run.Depth + 1, TailEndZ);
 
             // 방금 끝난 구간(플레이어 발밑)은 남기고 그보다 뒤만 제거
+            float nextStartZ = node.transform.position.z + 1.5f;
             DespawnBehind(nextStartZ - 0.5f);
         }
 
@@ -390,6 +411,20 @@ namespace Scavenger.Segment
 
         void BuildShell(Transform parent)
         {
+            // 사전 배치 배경(EnvironmentAuthoring)이 이 구간 범위를 커버하면
+            // 런타임 배경 생성을 건너뛴다 - 손으로 다듬은 배경 보존 (ADR-0004)
+            if (!preplacedSearched)
+            {
+                preplacedEnvironment = FindFirstObjectByType<EnvironmentAuthoring>();
+                preplacedSearched = true;
+            }
+
+            float startZ = parent.position.z;
+            float endZ = startZ + Definition.lengthMeters;
+
+            if (preplacedEnvironment != null && preplacedEnvironment.Covers(startZ, endZ))
+                return;
+
             RunManager run = RunManager.Instance;
             System.Random rng = run != null && run.Rng != null ? run.Rng : new System.Random(0);
 

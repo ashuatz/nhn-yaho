@@ -14,9 +14,18 @@
   모든 값 클램프 - 통과 불가 배치 방지 (blastMaxRadius x 2 < 복도 폭 유지 필수)
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.
   IsExtractionLocked 델리게이트로 탈출 잠금 판정 주입 (S6)
-- SegmentEnvironment.cs: 공간감 PCG 셸 (ADR-0003). 평탄 보행로(y=0 유지) +
-  측면 럽블 협곡(높이 보간 능선, 2열, 랜드마크 기둥) + 보행로 데브리(비주얼 전용).
-  난수는 주입된 rng(런 시드)만 사용. SegmentDefinition.wallHeight는 현재 미사용(구 셸 잔재)
+- SegmentEnvironment.cs: 공간감 PCG 셸 (ADR-0003/0004). 평탄 보행로(y=0 유지) +
+  측면 럽블 협곡 + 상부층(오버행 플랫폼/지지 기둥/브릿지 - 복층 느낌) + 데브리.
+  에디트 모드 안전 (Destroy/DestroyImmediate 분기, sharedMaterial 틴트).
+  난수는 주입된 rng만 사용. SegmentDefinition.wallHeight는 현재 미사용(구 셸 잔재)
+- EnvironmentAuthoring.cs: 사전 배치 배경 마커. 커버 z 범위 내 런타임 배경 생성 스킵.
+  생성은 에디터 윈도우 Scavenger > Environment Authoring (시드/구간 수 지정, 수동 다듬기 가능)
+
+## 룩어헤드 체인 (ADR-0004)
+
+- 다음 스테이지는 항상 미리 생성되어 확정 노출된다.
+  BuildInitialChain(depth, z) = 현재+다음. 전진 선택 시 depth+2를 선생성.
+  동시 생존 구간 최대 3개 (직전/현재/다음). TailEndZ가 체인 끝 기준점
 
 ## 스케일링 레퍼런스
 
