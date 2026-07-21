@@ -24,6 +24,7 @@ namespace Scavenger.UI
             DrawInventoryValue(run);
             DrawLootGauge();
             DrawChoicePrompt();
+            DrawSignalBanner();
             DrawRunResult(run);
         }
 
@@ -68,6 +69,21 @@ namespace Scavenger.UI
             }
 
             GUI.Box(area, "선택하라\nW: 더 깊이 전진 (고가치/고위험)  E: 탈출 (확정)");
+        }
+
+        const float SignalBannerSeconds = 3.5f;
+
+        static void DrawSignalBanner()
+        {
+            if (string.IsNullOrEmpty(SignalEmitter.LastMessage))
+                return;
+
+            if (Time.time - SignalEmitter.LastMessageAt > SignalBannerSeconds)
+                return;
+
+            float width = 360f;
+            Rect area = new Rect((Screen.width - width) * 0.5f, 30f, width, 28f);
+            GUI.Box(area, SignalEmitter.LastMessage);
         }
 
         void DrawRunResult(RunManager run)

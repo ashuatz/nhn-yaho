@@ -59,6 +59,7 @@ namespace Scavenger.Segment
             PopulateLoot(root.transform, depth);
             PopulateBombs(root.transform, depth);
             BuildChoiceNode(root.transform, depth);
+            BuildSignalEmitters(root.transform);
 
             aliveSegments.Add(new SegmentRecord
             {
@@ -116,7 +117,43 @@ namespace Scavenger.Segment
             ChoiceNode node = nodeObject.AddComponent<ChoiceNode>();
             node.Initialize(OnAdvanceChosen, OnExtractChosen);
 
+            // 시간 초과 = 탈출 잠금 (즉사 아님, 구현계획 v0.0.2 섹션 0.2)
+            node.IsExtractionLocked = IsExtractionLocked;
+
             BuildChoiceVisual(nodeObject.transform, halfWidth);
+        }
+
+        static bool IsExtractionLocked()
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null)
+                return false;
+
+            return run.Timer.IsExpired;
+        }
+
+        // -- 거리 신호 -------------------------------------------------------
+
+        void BuildSignalEmitters(Transform parent)
+        {
+            float length = Definition.lengthMeters;
+            float nodeZ = length - 1.5f;
+
+            // 구간의 30% / 60% / 85% 지점 통과 시 신호 발행
+            float[] fractions = { 0.3f, 0.6f, 0.85f };
+
+            foreach (float fraction in fractions)
+            {
+                float z = length * fraction;
+
+                GameObject emitterObject = new GameObject($"SignalEmitter_{fraction:F2}");
+                emitterObject.transform.SetParent(parent, false);
+                emitterObject.transform.localPosition = new Vector3(0f, 0f, z);
+
+                SignalEmitter emitter = emitterObject.AddComponent<SignalEmitter>();
+                emitter.Initialize(nodeZ - z, Definition.corridorHalfWidth * 2f);
+            }
         }
 
         void OnAdvanceChosen(ChoiceNode node)

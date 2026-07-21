@@ -119,6 +119,8 @@ namespace Scavenger
 
         void OnRunStarted()
         {
+            SignalEmitter.Clear();
+
             segmentSpawner.DespawnAll();
             segmentSpawner.BuildSegment(runManager.Depth, 0f);
 

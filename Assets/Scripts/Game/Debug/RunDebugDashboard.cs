@@ -1,4 +1,5 @@
 using Scavenger.Run;
+using Scavenger.Segment;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -58,9 +59,21 @@ namespace Scavenger.Diagnostics
             GUILayout.EndArea();
         }
 
-        /// <summary>이후 단계(인벤토리, 구간 소요 시간 등)에서 확장.</summary>
         void DrawExtraSections(RunManager run)
         {
+            GUILayout.Space(4f);
+
+            GUILayout.Label($"Inventory value: {run.Inventory.TotalValue}");
+            GUILayout.Label($"Inventory kinds: {run.Inventory.Entries.Count}");
+
+            GUILayout.Space(4f);
+
+            // 신호의 실거리 - 플레이어 HUD에는 절대 노출 금지
+            if (!string.IsNullOrEmpty(SignalEmitter.LastMessage))
+            {
+                GUILayout.Label($"Signal: {SignalEmitter.LastMessage}");
+                GUILayout.Label($"Signal real distance: {SignalEmitter.LastRealDistance:F1}m");
+            }
         }
 #endif
     }
