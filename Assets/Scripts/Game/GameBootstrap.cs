@@ -63,6 +63,9 @@ namespace Scavenger
             runManager = systems.AddComponent<RunManager>();
             systems.AddComponent<RunDebugDashboard>();
 
+            RunSettlement settlement = systems.AddComponent<RunSettlement>();
+            settlement.Attach(runManager);
+
             if (runSettings == null)
                 runSettings = RunSettings.CreateDefault();
 

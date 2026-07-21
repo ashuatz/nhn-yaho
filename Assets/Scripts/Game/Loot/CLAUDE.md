@@ -9,6 +9,9 @@
 - RunInventory.cs: 순수 클래스 (EditMode 테스트 대상). Add/Clear/TotalValue, id 기준 스택
 - LootSpot.cs: 씬 배치물. E 홀드 루팅, 좌우 입력/홀드 해제 = 취소(진행도 리셋).
   static Active = 현재 루팅 중 스팟 (HUD 게이지 참조)
+- PlayerStash.cs: 아웃게임 창고. 안정 ID 목록 저장 (가치 합계 아님 - 확장 대비).
+  원자적 저장(tmp 후 교체), 손상 파일 .corrupt 격리 후 빈 창고 복구.
+  경로 주입 가능 - EditMode 테스트 대상 (Assets/Tests/EditMode/PlayerStashTests.cs)
 
 ## 루팅 규칙 (ADR-0001)
 
@@ -17,6 +20,3 @@
 - 취소 시 진행도 보존 없음 - 고가치 = 긴 정지 리스크 유지
 - 동시 루팅 불가 (Active 단일 슬롯)
 
-## 예정
-
-- S7: PlayerStash (JSON 저장, 안정 ID 목록)

@@ -8,7 +8,10 @@
 - RunStateMachine.cs: 전이 검증 + StateChanged 이벤트. 전이 표는 IsValidTransition 참조
 - RunTimer.cs: 숨김 제한 시간. Begin/Stop, IsExpired = 탈출 잠금 (사망 아님)
 - RunSettings.cs: ScriptableObject (타이머 랜덤 범위, seedOverride). CreateDefault 폴백
-- RunManager.cs: 얇은 코디네이터. 시드 확정, 깊이, StartRun/AdvanceDepth/CompleteExtraction/KillRun
+- RunManager.cs: 얇은 코디네이터. 시드 확정, 깊이, 인벤토리 보유,
+  StartRun/AdvanceDepth/CompleteExtraction/KillRun
+- RunSettlement.cs: 정산. Extracted -> 인벤토리를 PlayerStash에 확정 저장,
+  Dead -> 아무것도 반영 안 함. 중복 정산은 상태 머신 전이 규칙이 차단
 
 ## 핵심 규칙
 
