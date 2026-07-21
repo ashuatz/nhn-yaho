@@ -8,9 +8,18 @@
         "Editor"
     ],
     "excludePlatforms": [],
+    "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "Newtonsoft.Json.dll"
+        "Newtonsoft.Json.dll",
+        "System.Collections.Immutable.dll",
+        "System.Reflection.Metadata.dll",
+        "Microsoft.CodeAnalysis.CSharp.dll",
+        "Microsoft.CodeAnalysis.dll",
+        "Microsoft.CodeAnalysis.CSharp.Workspaces.dll",
+        "Microsoft.CodeAnalysis.Workspaces.dll",
+        "SQLitePCLRaw.core.dll",
+        "SQLitePCLRaw.batteries_v2.dll"
     ],
     "autoReferenced": true,
     "defineConstraints": [],
@@ -19,6 +28,11 @@
             "name": "com.unity.visualeffectgraph",
             "expression": "0.0.0",
             "define": "UNITY_VFX_GRAPH"
+        },
+        {
+            "name": "com.coplaydev.unity-mcp",
+            "expression": "9.2.0",
+            "define": "USE_ROSLYN"
         }
     ],
     "noEngineReferences": false
