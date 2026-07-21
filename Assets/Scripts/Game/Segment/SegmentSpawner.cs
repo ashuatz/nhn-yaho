@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Scavenger.Loot;
+using Scavenger.Obstacle;
 using Scavenger.Run;
 using UnityEngine;
 
@@ -17,10 +18,20 @@ namespace Scavenger.Segment
         readonly List<GameObject> aliveSegments = new List<GameObject>();
         List<LootDefinition> lootCatalog;
 
-        // S3 임시 고정값. S5에서 DepthCurve로 대체
+        // S3/S4 임시 고정값. S5에서 DepthCurve로 대체
         const int LootSpotsPerSegment = 8;
         const float LootInteractRadius = 1.4f;
         static readonly float[] TierWeights = { 0.7f, 0.25f, 0.05f };
+
+        const int BombsPerSegment = 6;
+        const float BombDetectionRadius = 3.5f;
+        const float BombFuseSeconds = 1.6f;
+        const float BombExplosionRadius = 1.7f;
+
+        // 전 레인 봉쇄 금지: 같은 z 구간에 폭탄이 겹치지 않도록 최소 간격 강제.
+        // 폭발 반경(1.7) x 2 < 복도 폭(7)이라 단일 폭탄은 전체를 막을 수 없고,
+        // z 간격을 반경 합보다 크게 두면 이중 봉쇄도 불가능하다.
+        const float BombMinZGap = 6f;
 
         public void Configure(SegmentDefinition definition, List<LootDefinition> catalog)
         {
@@ -40,6 +51,7 @@ namespace Scavenger.Segment
 
             BuildShell(root.transform);
             PopulateLoot(root.transform, depth);
+            PopulateBombs(root.transform, depth);
 
             aliveSegments.Add(root);
             return root;
@@ -110,6 +122,60 @@ namespace Scavenger.Segment
 
                 SpawnLootSpot(parent, definition, new Vector3(x, 0f, z));
             }
+        }
+
+        // -- 폭탄 배치 -------------------------------------------------------
+
+        void PopulateBombs(Transform parent, int depth)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            float length = Definition.lengthMeters;
+            float halfWidth = Definition.corridorHalfWidth;
+
+            List<float> placedZ = new List<float>();
+            int attempts = 0;
+            int maxAttempts = BombsPerSegment * 10;
+
+            while (placedZ.Count < BombsPerSegment && attempts < maxAttempts)
+            {
+                attempts += 1;
+
+                // 초입은 비워서 스폰 직후 즉사 방지
+                float z = Mathf.Lerp(14f, length - 6f, (float)run.Rng.NextDouble());
+
+                if (!IsZGapValid(placedZ, z))
+                    continue;
+
+                float x = Mathf.Lerp(-halfWidth + 0.8f, halfWidth - 0.8f, (float)run.Rng.NextDouble());
+
+                SpawnBomb(parent, new Vector3(x, 0f, z));
+                placedZ.Add(z);
+            }
+        }
+
+        static bool IsZGapValid(List<float> placedZ, float z)
+        {
+            foreach (float existing in placedZ)
+            {
+                if (Mathf.Abs(existing - z) < BombMinZGap)
+                    return false;
+            }
+
+            return true;
+        }
+
+        static void SpawnBomb(Transform parent, Vector3 localPosition)
+        {
+            GameObject bombObject = new GameObject("Bomb");
+            bombObject.transform.SetParent(parent, false);
+            bombObject.transform.localPosition = localPosition;
+
+            Bomb bomb = bombObject.AddComponent<Bomb>();
+            bomb.Initialize(BombDetectionRadius, BombFuseSeconds, BombExplosionRadius);
         }
 
         LootDefinition PickLoot(System.Random rng)
