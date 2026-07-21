@@ -98,11 +98,11 @@ namespace Scavenger.UI
 
             if (state == RunState.Extracted)
             {
-                GUI.Box(area, $"탈출 성공. 확보 가치: {run.Inventory.TotalValue}\nR: 다음 런");
+                GUI.Box(area, $"탈출 성공. 확보 가치: {run.Inventory.TotalValue}\n클릭: 계속 전진");
                 return;
             }
 
-            GUI.Box(area, "사망. 획득물 전량 손실\nR: 다시 시도");
+            GUI.Box(area, "사망. 획득물 전량 손실\n클릭: 계속");
         }
     }
 }

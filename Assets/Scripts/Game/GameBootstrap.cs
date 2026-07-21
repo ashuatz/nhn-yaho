@@ -28,6 +28,7 @@ namespace Scavenger
         SegmentSpawner segmentSpawner;
         PlayerController player;
         FollowCamera followCamera;
+        bool worldInitialized;
 
         static readonly Vector3 PlayerStart = new Vector3(0f, 0.05f, 1.5f);
 
@@ -57,7 +58,7 @@ namespace Scavenger
 
         void Update()
         {
-            HandleRestartInput();
+            HandleContinueInput();
         }
 
         void OnDestroy()
@@ -112,6 +113,27 @@ namespace Scavenger
             followCamera = BuildCamera();
             followCamera.target = player.transform;
             followCamera.SnapAndLook();
+
+            BuildAtmosphere(followCamera.GetComponent<Camera>());
+        }
+
+        // 원경 깊이감: 멀수록 어둠에 잠기는 리니어 포그 (ADR-0003)
+        static void BuildAtmosphere(Camera sceneCamera)
+        {
+            Color depthColor = new Color(0.045f, 0.055f, 0.085f);
+
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogStartDistance = 18f;
+            RenderSettings.fogEndDistance = 65f;
+            RenderSettings.fogColor = depthColor;
+
+            if (sceneCamera == null)
+                return;
+
+            sceneCamera.clearFlags = CameraClearFlags.SolidColor;
+            sceneCamera.backgroundColor = depthColor;
+            sceneCamera.farClipPlane = 90f;
         }
 
         static FollowCamera BuildCamera()
@@ -136,49 +158,56 @@ namespace Scavenger
 
         // -- 런 수명 주기 ----------------------------------------------------
 
+        // 심리스 라운드 (ADR-0003): 텔레포트 없이 플레이어 현재 위치 앞으로
+        // 월드를 재생성한다. 첫 라운드만 원점 기준.
         void OnRunStarted()
         {
             SignalEmitter.Clear();
 
-            segmentSpawner.DespawnAll();
-            segmentSpawner.BuildSegment(runManager.Depth, 0f);
+            float startZ = 0f;
 
-            TeleportPlayer(PlayerStart);
+            if (worldInitialized)
+                startZ = player.transform.position.z - 2f;
+            else
+                worldInitialized = true;
+
+            segmentSpawner.DespawnAll();
+            segmentSpawner.BuildSegment(runManager.Depth, startZ);
+
             player.ResetForNewRun();
             followCamera.SnapAndLook();
         }
 
-        void TeleportPlayer(Vector3 position)
+        // 라운드 종료(탈출/사망) 후 클릭/스페이스 한 번으로 다음 라운드 (ADR-0003)
+        void HandleContinueInput()
         {
-            // CharacterController는 활성 상태에서 transform 이동을 무시하므로 잠시 끈다
-            CharacterController controller = player.GetComponent<CharacterController>();
-            controller.enabled = false;
-
-            player.transform.position = position;
-
-            controller.enabled = true;
-        }
-
-        // 그레이박스 편의: 런 종료(탈출/사망) 후 R로 재시작
-        void HandleRestartInput()
-        {
-            Keyboard keyboard = Keyboard.current;
-
-            if (keyboard == null)
-                return;
-
-            if (!keyboard.rKey.wasPressedThisFrame)
-                return;
-
             RunState state = runManager.StateMachine.Current;
 
             if (state != RunState.Extracted && state != RunState.Dead)
+                return;
+
+            if (!ReadContinuePressed())
                 return;
 
             if (!runManager.StateMachine.TryTransition(RunState.Ready))
                 return;
 
             runManager.StartRun();
+        }
+
+        static bool ReadContinuePressed()
+        {
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
+                return true;
+
+            Mouse mouse = Mouse.current;
+
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+                return true;
+
+            return false;
         }
     }
 }
