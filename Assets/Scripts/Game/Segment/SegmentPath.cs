@@ -12,6 +12,48 @@ namespace Scavenger.Segment
     {
         const float FloorStripDepth = 2f;
 
+        // 바닥 그리드 머티리얼 (웹 이식). Resources/FloorGrid에서 1회 로드해 공유.
+        // 스트립마다 인스턴스를 만들어 타일링(1m=1셀)을 스트립 크기에 맞춘다.
+        static Material sharedGridMaterial;
+        static bool gridLoadAttempted;
+
+        static readonly Color FloorTint = new Color(0.32f, 0.36f, 0.3f);
+
+        // 바닥에 그리드 머티리얼을 입힌다. 셀 1m 유지를 위해 타일링 = (폭, 깊이).
+        // 그리드 머티리얼이 없으면(생성 전) 기존 단색 tint로 폴백한다.
+        static void ApplyFloorGrid(GameObject stripObject, float width, float depth)
+        {
+            Material grid = ResolveGridMaterial();
+
+            if (grid == null)
+            {
+                SegmentEnvironment.TintGameObject(stripObject, FloorTint);
+                return;
+            }
+
+            Renderer renderer = stripObject.GetComponent<Renderer>();
+
+            if (renderer == null)
+                return;
+
+            // 인스턴스 머티리얼 - 스트립별 타일링. 셀 1m = 텍스처 1반복
+            Material instance = new Material(grid);
+            instance.mainTextureScale = new Vector2(width, depth);
+
+            renderer.sharedMaterial = instance;
+        }
+
+        static Material ResolveGridMaterial()
+        {
+            if (gridLoadAttempted)
+                return sharedGridMaterial;
+
+            gridLoadAttempted = true;
+            sharedGridMaterial = Resources.Load<Material>("FloorGrid");
+
+            return sharedGridMaterial;
+        }
+
         /// <summary>
         /// 보행로 바닥. 콜라이더가 필요해 GameObject로 만들되, 붕괴 단위인
         /// z 스트립으로 분할한다 (ADR-0006). 스트립 목록을 돌려준다.
@@ -36,7 +78,7 @@ namespace Scavenger.Segment
                 FloorStrip strip = stripObject.AddComponent<FloorStrip>();
                 strip.depthMeters = depth;
 
-                SegmentEnvironment.TintGameObject(stripObject, new Color(0.3f, 0.31f, 0.33f));
+                ApplyFloorGrid(stripObject, halfWidth * 2f + 1f, depth);
                 strips.Add(strip);
             }
 

@@ -148,7 +148,13 @@ namespace Scavenger.EditorTools
             sceneCamera.backgroundColor = DepthColor;
             sceneCamera.farClipPlane = 90f;
 
+            // 아이소메트릭 (ADR-0008 웹 이식): 직교 투영 - 원근 왜곡 제거
+            sceneCamera.orthographic = true;
+            sceneCamera.orthographicSize = 8f;
+
             cameraObject.AddComponent<AudioListener>();
+
+            // FollowCamera 기본값(pitch30/yaw45/size8)이 아이소 리그를 이미 담고 있다
             cameraObject.AddComponent<FollowCamera>();
 
             // 피격/위협 피드백 쉐이크. 수치는 프리팹에서 튜닝
