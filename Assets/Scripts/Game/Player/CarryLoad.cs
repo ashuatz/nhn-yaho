@@ -41,6 +41,23 @@ namespace Scavenger.Player
 
         void Update()
         {
+            RefreshNow();
+        }
+
+        // 튜닝 실수 가드: 임계 역전(과적 단계 소실)과 초과적이 과적보다 빠른 배율 방지
+        void OnValidate()
+        {
+            overloadedAt = Mathf.Max(0f, overloadedAt);
+            severelyOverloadedAt = Mathf.Max(overloadedAt, severelyOverloadedAt);
+            severelySpeedScale = Mathf.Min(severelySpeedScale, overloadedSpeedScale);
+        }
+
+        /// <summary>
+        /// 즉시 재판정. 런 재시작 등 인벤토리가 방금 바뀐 시점에 호출해
+        /// 다음 Update까지 이전 런의 배율이 남는 프레임을 없앤다 (Codex 검토 반영).
+        /// </summary>
+        public void RefreshNow()
+        {
             RunManager run = RunManager.Instance;
 
             if (run == null)

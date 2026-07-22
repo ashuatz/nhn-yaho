@@ -28,6 +28,7 @@ namespace Scavenger
 
         bool worldInitialized;
         CollapseFront collapseFront;
+        CarryLoad carryLoad;
 
         void Awake()
         {
@@ -66,8 +67,10 @@ namespace Scavenger
                 gameObject.AddComponent<UI.VirtualDPad>();
 
             // 무게 과적 (M2-1) - 기존 Player 프리팹에는 폴백으로 보강
-            if (player.GetComponent<CarryLoad>() == null)
-                player.gameObject.AddComponent<CarryLoad>();
+            carryLoad = player.GetComponent<CarryLoad>();
+
+            if (carryLoad == null)
+                carryLoad = player.gameObject.AddComponent<CarryLoad>();
 
             runManager.RunStarted += OnRunStarted;
         }
@@ -137,6 +140,11 @@ namespace Scavenger
             RecoverPlayerIfFallen(startZ);
 
             player.ResetForNewRun();
+
+            // 인벤토리는 StartRun에서 이미 비워졌다 - 이전 런의 과적 배율이
+            // 첫 이동 프레임에 남지 않게 즉시 재판정 (Codex 검토 반영)
+            carryLoad.RefreshNow();
+
             followCamera.SnapAndLook();
         }
 
