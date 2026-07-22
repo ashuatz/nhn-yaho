@@ -72,9 +72,8 @@ namespace Scavenger.Segment
             if (camera == null || definition == null)
                 return default;
 
-            Vector2 cameraPoint = new Vector2(
-                camera.lookAtOffset.x + camera.positionOffsetWorld.x,
-                camera.lookAtOffset.y + camera.positionOffsetWorld.y);
+            // 아이소 리그(ADR-0008): 카메라 오프셋은 회전/거리에서 유도된다
+            Vector2 cameraPoint = camera.CameraOffsetXY();
 
             Vector2 farPoint = new Vector2(-definition.corridorHalfWidth, 0f);
 
@@ -107,6 +106,9 @@ namespace Scavenger.Segment
             PopulateSinkTraps(depth);
             PopulatePushTraps(root.transform, depth);
             PopulateRockfalls(root.transform, depth);
+            PopulateHazardFloors(root.transform, depth);
+            PopulateStrikeZones(root.transform, depth);
+            PopulateRollingBlocks(root.transform, depth);
             BuildChoiceNode(root.transform, depth);
             BuildSignalEmitters(root.transform);
 

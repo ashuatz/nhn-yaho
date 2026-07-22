@@ -49,6 +49,21 @@ namespace Scavenger.Segment
         public float rockfallPerDepth = 0.5f;
         public int rockfallMaxCount = 3;
 
+        [Header("바닥 장판 수 (지속 피해)")]
+        public float hazardFloorBaseCount = 1f;
+        public float hazardFloorPerDepth = 0.5f;
+        public int hazardFloorMaxCount = 3;
+
+        [Header("미사일 폭격 구역 수 (반복 낙하)")]
+        public float strikeZoneBaseCount = 1f;
+        public float strikeZonePerDepth = 0.5f;
+        public int strikeZoneMaxCount = 3;
+
+        [Header("굴러오는 블록 스포너 수")]
+        public float rollingBlockBaseCount = 1f;
+        public float rollingBlockPerDepth = 0.34f;
+        public int rollingBlockMaxCount = 2;
+
         /// <summary>tier 1..3 가중치 배열 (합 1)을 돌려준다.</summary>
         public float[] EvaluateTierWeights(int depth)
         {
@@ -95,6 +110,24 @@ namespace Scavenger.Segment
         {
             int count = Mathf.FloorToInt(rockfallBaseCount + rockfallPerDepth * (depth - 1));
             return Mathf.Clamp(count, 0, rockfallMaxCount);
+        }
+
+        public int EvaluateHazardFloorCount(int depth)
+        {
+            int count = Mathf.FloorToInt(hazardFloorBaseCount + hazardFloorPerDepth * (depth - 1));
+            return Mathf.Clamp(count, 0, hazardFloorMaxCount);
+        }
+
+        public int EvaluateStrikeZoneCount(int depth)
+        {
+            int count = Mathf.FloorToInt(strikeZoneBaseCount + strikeZonePerDepth * (depth - 1));
+            return Mathf.Clamp(count, 0, strikeZoneMaxCount);
+        }
+
+        public int EvaluateRollingBlockCount(int depth)
+        {
+            int count = Mathf.FloorToInt(rollingBlockBaseCount + rollingBlockPerDepth * (depth - 1));
+            return Mathf.Clamp(count, 0, rollingBlockMaxCount);
         }
 
         public static DepthCurve CreateDefault()
