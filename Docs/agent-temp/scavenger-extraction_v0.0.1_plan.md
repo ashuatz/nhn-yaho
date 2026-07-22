@@ -1,6 +1,6 @@
 # 폐지줍기 익스트랙션 게임 - 기획 정리 v0.0.1 (plan)
 
-- 상태: 초안 (사용자 확인 대기)
+- 상태: 대체됨 (2026-07-22 기획 메모 반영, scavenger-extraction_v0.0.2_plan.md 참조)
 - 출처: 2026-07-21 브레인스토밍 (이호재, 정지상)
 - 브랜치: design/scavenger-roguelike-concept
 
