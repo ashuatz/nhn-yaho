@@ -109,6 +109,9 @@ namespace Scavenger.EditorTools
             cameraObject.AddComponent<AudioListener>();
             cameraObject.AddComponent<FollowCamera>();
 
+            // 피격/위협 피드백 쉐이크. 수치는 프리팹에서 튜닝
+            cameraObject.AddComponent<CameraShake>();
+
             return cameraObject;
         }
 

@@ -72,6 +72,10 @@ namespace Scavenger
             if (carryLoad == null)
                 carryLoad = player.gameObject.AddComponent<CarryLoad>();
 
+            // 카메라 쉐이크 (피격/위협 피드백) - 기존 카메라 프리팹에는 폴백으로 보강
+            if (followCamera.GetComponent<CameraShake>() == null)
+                followCamera.gameObject.AddComponent<CameraShake>();
+
             runManager.RunStarted += OnRunStarted;
         }
 

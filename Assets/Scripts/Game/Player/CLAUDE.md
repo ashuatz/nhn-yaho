@@ -24,6 +24,11 @@
 - PlayerStepAnimator.cs: 연속 이동용 워크 밥 (ADR-0006 개편). 이동 중 |sin| 홉 반복 +
   공중 스트레치, 정지 시 착지 스쿼시. 낙하 중 연출 정지. Visual 자식만 조작.
   bobHeight/bobFrequency/airStretch/landSquash = 인스펙터 튜닝 지점
+- CameraShake.cs: 카메라 쉐이크 (Main Camera 프리팹, FollowCamera 뒤 실행 순서 +100).
+  AddImpulse = 순간 충격 (폭발 피격/사망, 트라우마 제곱 커브 + 시간 감쇠),
+  RequestTremor = 지속 위협 (매 프레임 요청, 땅 꺼짐 예고 등),
+  붕괴 전선 근접 트레머 내장 (collapseTremorDistance 안에서 거리 비례).
+  maxPositionOffset/maxRollDegrees/frequency/감쇠 = 프리팹 튜닝 지점
 
 플레이어 리그(CC + 큐브 2개 비주얼)는 프리팹 (Assets/Prefabs/Player.prefab).
 

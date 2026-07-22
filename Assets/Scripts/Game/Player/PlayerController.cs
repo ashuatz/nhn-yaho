@@ -127,6 +127,10 @@ namespace Scavenger.Player
 
             Transition(PlayerState.Dead);
 
+            // 피격 피드백 (사용자 지시): 사망 순간 강한 쉐이크
+            if (CameraShake.Instance != null)
+                CameraShake.Instance.AddImpulse(0.8f);
+
             if (RunManager.Instance != null)
                 RunManager.Instance.KillRun(cause);
         }

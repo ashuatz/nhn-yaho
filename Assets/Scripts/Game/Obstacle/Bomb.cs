@@ -87,6 +87,13 @@ namespace Scavenger.Obstacle
 
                 if (distance <= explosionRadius)
                     trackedPlayer.Kill("bomb");
+
+                // 피격/근접 폭발 피드백 (사용자 지시): 가까울수록 강한 쉐이크
+                if (CameraShake.Instance != null)
+                {
+                    float proximity01 = 1f - Mathf.Clamp01(distance / (explosionRadius * 2f));
+                    CameraShake.Instance.AddImpulse(Mathf.Lerp(0.15f, 0.9f, proximity01));
+                }
             }
 
             // 배경이 폭발에 반응 (brg-shooter 바운스 이식)
