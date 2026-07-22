@@ -50,12 +50,41 @@ namespace Scavenger.EditorTools
                 Vector2.zero, new Vector2(60f, 60f),
                 new Color(1f, 1f, 1f, 0.55f));
 
-            // -- 가치/무게 박스 (조이스틱 오른쪽) ------------------------------
+            // -- 가방 패널 (조이스틱 오른쪽): 가치/무게/아이템 목록 ----------------
             RectTransform valueBox = CreatePanel(
-                root.transform, "ValueBox",
+                root.transform, "BagPanel",
                 new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f),
-                new Vector2(240f, 16f), new Vector2(330f, 64f));
-            Text valueText = CreateText(valueBox, "Text", 22, TextAnchor.MiddleLeft, padding: 12f);
+                new Vector2(240f, 16f), new Vector2(330f, 170f));
+            Text valueText = CreateText(valueBox, "Text", 20, TextAnchor.UpperLeft, padding: 12f);
+
+            // -- 체력/스테미나 바 (좌상단) -------------------------------------
+            RectTransform healthBar = CreatePanel(
+                root.transform, "HealthBar",
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(16f, -16f), new Vector2(260f, 28f));
+
+            RectTransform healthFill = CreateImageRect(
+                healthBar, "Fill",
+                new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f),
+                new Vector2(2f, 0f), new Vector2(0f, -4f),
+                new Color(0.85f, 0.3f, 0.25f, 0.9f));
+
+            Text healthLabel = CreateText(healthBar, "Label", 18, TextAnchor.MiddleCenter);
+            healthLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.8f);
+
+            RectTransform staminaBar = CreatePanel(
+                root.transform, "StaminaBar",
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(16f, -50f), new Vector2(260f, 28f));
+
+            RectTransform staminaFill = CreateImageRect(
+                staminaBar, "Fill",
+                new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f),
+                new Vector2(2f, 0f), new Vector2(0f, -4f),
+                new Color(0.4f, 0.75f, 0.35f, 0.9f));
+
+            Text staminaLabel = CreateText(staminaBar, "Label", 18, TextAnchor.MiddleCenter);
+            staminaLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.8f);
 
             // -- 상호작용 프롬프트 (우하단, 홀드 버튼 겸용) ---------------------
             RectTransform interactBox = CreatePanel(
@@ -135,6 +164,12 @@ namespace Scavenger.EditorTools
             HudController hud = root.AddComponent<HudController>();
             hud.valueRoot = valueBox.gameObject;
             hud.valueText = valueText;
+            hud.healthRoot = healthBar.gameObject;
+            hud.healthFill = healthFill;
+            hud.healthLabel = healthLabel;
+            hud.staminaRoot = staminaBar.gameObject;
+            hud.staminaFill = staminaFill;
+            hud.staminaLabel = staminaLabel;
             hud.interactRoot = interactBox.gameObject;
             hud.interactText = interactText;
             hud.gaugeRoot = gauge.gameObject;

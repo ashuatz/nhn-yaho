@@ -20,9 +20,19 @@ namespace Scavenger.UI
     [DefaultExecutionOrder(-150)]
     public sealed class HudController : MonoBehaviour
     {
-        [Header("가치/무게 (좌하단)")]
+        [Header("가방 (좌하단): 가치/무게/아이템 목록")]
         public GameObject valueRoot;
         public Text valueText;
+
+        [Header("체력 바 (좌상단)")]
+        public GameObject healthRoot;
+        public RectTransform healthFill;
+        public Text healthLabel;
+
+        [Header("스테미나 바 (체력 아래)")]
+        public GameObject staminaRoot;
+        public RectTransform staminaFill;
+        public Text staminaLabel;
 
         [Header("상호작용 프롬프트 (우하단) - 터치 홀드 버튼 겸용")]
         public GameObject interactRoot;
@@ -56,6 +66,9 @@ namespace Scavenger.UI
 
         CarryLoad carryLoad;
         PlayerController player;
+        PlayerHealth playerHealth;
+        PlayerStamina playerStamina;
+        readonly System.Text.StringBuilder bagBuilder = new System.Text.StringBuilder(256);
 
         void Update()
         {
@@ -70,6 +83,8 @@ namespace Scavenger.UI
             bool running = run.StateMachine.Current == RunState.Running;
 
             UpdateValue(run);
+            UpdateHealth();
+            UpdateStamina();
             UpdateInteract(running);
             UpdateGauge();
             UpdateChoice();
@@ -82,6 +97,8 @@ namespace Scavenger.UI
         void SetAllInactive()
         {
             SetActive(valueRoot, false);
+            SetActive(healthRoot, false);
+            SetActive(staminaRoot, false);
             SetActive(interactRoot, false);
             SetActive(gaugeRoot, false);
             SetActive(choiceRoot, false);
@@ -90,7 +107,7 @@ namespace Scavenger.UI
             SetActive(resultRoot, false);
         }
 
-        // 무게 상태 (M2-1): 가치 합계 아래에 무게와 적재 단계를 함께 표시
+        // 가방 패널 (사용자 지시): 가치/무게(적재 단계)/보유 아이템 목록을 한눈에
         void UpdateValue(RunManager run)
         {
             SetActive(valueRoot, true);
@@ -98,7 +115,25 @@ namespace Scavenger.UI
             if (valueText == null)
                 return;
 
-            valueText.text = $"가치 합계: {run.Inventory.TotalValue}\n{BuildWeightLine(run)}";
+            bagBuilder.Clear();
+            bagBuilder.Append("가방  |  가치 합계: ").Append(run.Inventory.TotalValue).Append('\n');
+            bagBuilder.Append(BuildWeightLine(run));
+
+            if (run.Inventory.Entries.Count == 0)
+            {
+                bagBuilder.Append("\n(비어 있음)");
+            }
+            else
+            {
+                foreach (RunInventory.Entry entry in run.Inventory.Entries)
+                {
+                    bagBuilder.Append('\n')
+                        .Append(entry.Definition.displayName)
+                        .Append(" x").Append(entry.Count);
+                }
+            }
+
+            valueText.text = bagBuilder.ToString();
         }
 
         string BuildWeightLine(RunManager run)
@@ -110,6 +145,63 @@ namespace Scavenger.UI
                 return $"무게: {run.Inventory.TotalWeight:F1}";
 
             return $"무게: {run.Inventory.TotalWeight:F1} ({CarryLoad.StageLabel(carryLoad.Stage)})";
+        }
+
+        void UpdateHealth()
+        {
+            if (playerHealth == null)
+                playerHealth = FindFirstObjectByType<PlayerHealth>();
+
+            if (playerHealth == null)
+            {
+                SetActive(healthRoot, false);
+                return;
+            }
+
+            SetActive(healthRoot, true);
+
+            if (healthLabel != null)
+                healthLabel.text = $"체력 {playerHealth.Current}/{playerHealth.maxHealth}";
+
+            SetFillRatio(healthFill,
+                playerHealth.maxHealth > 0 ? (float)playerHealth.Current / playerHealth.maxHealth : 0f);
+        }
+
+        void UpdateStamina()
+        {
+            if (playerStamina == null)
+                playerStamina = FindFirstObjectByType<PlayerStamina>();
+
+            if (playerStamina == null)
+            {
+                SetActive(staminaRoot, false);
+                return;
+            }
+
+            SetActive(staminaRoot, true);
+
+            if (staminaLabel != null)
+            {
+                staminaLabel.text = playerStamina.IsExhausted
+                    ? $"스테미나 {playerStamina.Current:F0} (탈진)"
+                    : $"스테미나 {playerStamina.Current:F0}";
+            }
+
+            SetFillRatio(staminaFill, playerStamina.Normalized);
+        }
+
+        static void SetFillRatio(RectTransform fill, float ratio01)
+        {
+            if (fill == null)
+                return;
+
+            RectTransform track = fill.parent as RectTransform;
+
+            if (track == null)
+                return;
+
+            float maxWidth = track.rect.width - GaugeFillPadding;
+            fill.sizeDelta = new Vector2(maxWidth * Mathf.Clamp01(ratio01), fill.sizeDelta.y);
         }
 
         // 상호작용 키 프롬프트: 루팅 시작 / 조각 줍기 / 루팅 중 안내.
@@ -169,16 +261,7 @@ namespace Scavenger.UI
             if (gaugeLabel != null)
                 gaugeLabel.text = $"루팅 중: {active.Definition.displayName} (+{active.Definition.value})";
 
-            if (gaugeFill == null)
-                return;
-
-            RectTransform track = gaugeFill.parent as RectTransform;
-
-            if (track == null)
-                return;
-
-            float maxWidth = track.rect.width - GaugeFillPadding;
-            gaugeFill.sizeDelta = new Vector2(maxWidth * active.Progress01, gaugeFill.sizeDelta.y);
+            SetFillRatio(gaugeFill, active.Progress01);
         }
 
         void UpdateChoice()
