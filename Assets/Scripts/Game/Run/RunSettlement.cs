@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Scavenger.Loot;
 using UnityEngine;
 
@@ -64,14 +65,18 @@ namespace Scavenger.Run
             }
         }
 
-        /// <summary>인벤토리를 스태시에 반영하는 순수 로직. EditMode 테스트 대상.</summary>
+        /// <summary>
+        /// 인벤토리를 스태시에 반영하는 순수 로직. EditMode 테스트 대상.
+        /// 등급 합성(A안)으로 런 중 Entries는 압축되지만, 스태시는 등급을 모른다 -
+        /// 합성 전 원본 개수(BankedCounts)로 저장해 창고의 id 스택을 유지한다.
+        /// </summary>
         public static void BankInventory(RunInventory inventory, PlayerStash stash)
         {
             if (inventory == null || stash == null)
                 return;
 
-            foreach (RunInventory.Entry entry in inventory.Entries)
-                stash.AddItem(entry.Definition.id, entry.Count);
+            foreach (KeyValuePair<string, int> banked in inventory.BankedCounts)
+                stash.AddItem(banked.Key, banked.Value);
         }
     }
 }
