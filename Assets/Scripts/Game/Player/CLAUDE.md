@@ -6,10 +6,10 @@
 
 - PlayerState.cs: 상태 enum (Advancing / Looting / AtChoice / Dead)
 - PlayerController.cs: 상태 소유자 + 입력. 외부 진입점:
-  TryBeginLoot / EndLoot, EnterChoice / ExitChoice, Kill, ResetForNewRun.
-  낙사 판정 (y < -4 -> Kill("fall"))
-- PlayerMotor.cs: CharacterController 이동. 4방향 토글 (ADR-0006):
-  ToggleDirection = 같은 방향 재입력 시 정지, 다른 방향 시 전환. moveSpeed = 튜닝 지점.
+  TryBeginLoot / EndLoot, EnterChoice / ExitChoice, Kill, ResetForNewRun,
+  SetExternalMoveInput(조이스틱 벡터). 낙사 판정 (y < -4 -> Kill("fall"))
+- PlayerMotor.cs: CharacterController 이동. 2D 벡터 홀드 (ADR-0007):
+  SetMoveInput(Vector2) = 입력이 있는 동안 이동, 아날로그 크기 비례. moveSpeed = 튜닝 지점.
   SpeedScale = 외부 시스템(CarryLoad)이 설정하는 이동속도 배율 (1 = 정상).
   x는 복도 반폭, z는 MinZ(붕괴 전선)로 이동 전 사전 클램프. 누적 중력 = 낙사 지원
 - CarryLoad.cs: 무게 -> 이동속도 배율 (M2-1). RunInventory.TotalWeight를 읽어
@@ -27,10 +27,11 @@
 
 플레이어 리그(CC + 큐브 2개 비주얼)는 프리팹 (Assets/Prefabs/Player.prefab).
 
-## 조작 (그레이박스, ADR-0006)
+## 조작 (그레이박스, ADR-0007)
 
-- WASD/화살표: 4방향 토글 이동 (1회 = 그 방향 연속 이동, 같은 키 = 정지, 다른 키 = 전환)
-- E 홀드: 루팅 (LootSpot이 InteractHeld를 읽음)
+- WASD/화살표 홀드: 2D 벡터 이동 (누르는 동안만, 대각 허용, 크기 1 클램프)
+- 좌하단 가상 조이스틱: 드래그 = 아날로그 벡터 (키보드와 합산)
+- E 홀드: 루팅 (LootSpot이 InteractHeld를 읽음). 좌우 입력 유지 중엔 시작 불가
 - 점프 없음. 낙사 있음 (바닥 없으면 추락, y < -4 사망)
 - 좌클릭/스페이스: 라운드 종료 후 계속 (GameFlow)
 

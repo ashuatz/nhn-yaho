@@ -62,9 +62,9 @@ namespace Scavenger
 
             collapseFront.Track(player);
 
-            // 가상 D-패드 (좌하단 조작계) - 기존 프리팹에는 폴백으로 보강
-            if (FindFirstObjectByType<UI.VirtualDPad>() == null)
-                gameObject.AddComponent<UI.VirtualDPad>();
+            // 가상 조이스틱 (좌하단 조작계, ADR-0007) - 기존 프리팹에는 폴백으로 보강
+            if (FindFirstObjectByType<UI.VirtualJoystick>() == null)
+                gameObject.AddComponent<UI.VirtualJoystick>();
 
             // 무게 과적 (M2-1) - 기존 Player 프리팹에는 폴백으로 보강
             carryLoad = player.GetComponent<CarryLoad>();

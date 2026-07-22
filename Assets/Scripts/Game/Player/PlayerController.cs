@@ -7,7 +7,8 @@ namespace Scavenger.Player
 {
     /// <summary>
     /// 플레이어 상태 소유자. 입력을 읽고 상태에 따라 PlayerMotor를 구동한다.
-    /// 조작 (ADR-0006): WASD/화살표 = 4방향 토글 이동 (같은 키 = 정지, 다른 키 = 전환),
+    /// 조작 (ADR-0007): WASD/화살표 홀드 = 2D 벡터 이동 (누르는 동안만 이동),
+    /// 가상 조이스틱은 SetExternalMoveInput으로 아날로그 벡터를 공급.
     /// E 홀드 = 루팅. 점프 없음. 낙사 있음 (일정 깊이 이하 낙하 시 사망).
     /// 실행 순서 -100: 입력 스냅샷을 소비자(LootSpot 등)보다 먼저 갱신.
     /// </summary>
@@ -28,6 +29,9 @@ namespace Scavenger.Player
         const float FallDeathY = -4f;
 
         PlayerMotor motor;
+
+        // 가상 조이스틱 등 외부 UI가 공급하는 이동 벡터 (매 프레임 갱신 전제)
+        Vector2 externalMoveInput;
 
         public PlayerMotor Motor
         {
@@ -55,13 +59,13 @@ namespace Scavenger.Player
             if (State == PlayerState.AtChoice || State == PlayerState.Looting)
             {
                 // 이동 입력은 무시하되 중력/붕괴 클램프는 유지 (검증 반영):
-                // 방향은 상태 진입 시 해제되어 있으므로 Tick은 낙하/경계 처리만 한다.
+                // 이동 벡터는 상태 진입 시 해제되어 있으므로 Tick은 낙하/경계 처리만 한다.
                 // 루팅/선택 대기 중에도 발밑이 무너지면 떨어진다 - 붕괴 면역 방지 (ADR-0006)
                 motor.Tick();
                 return;
             }
 
-            HandleDirectionInput();
+            ApplyMoveInput();
             motor.Tick();
         }
 
@@ -73,8 +77,8 @@ namespace Scavenger.Player
             if (State != PlayerState.Advancing)
                 return false;
 
-            // 루팅 = 정지. 이동 토글 해제
-            motor.ClearDirection();
+            // 루팅 = 정지. 이동 벡터 해제
+            motor.ClearMoveInput();
 
             Transition(PlayerState.Looting);
             return true;
@@ -95,7 +99,7 @@ namespace Scavenger.Player
             if (State == PlayerState.Dead)
                 return;
 
-            motor.ClearDirection();
+            motor.ClearMoveInput();
             Transition(PlayerState.AtChoice);
         }
 
@@ -114,11 +118,12 @@ namespace Scavenger.Player
             if (State == PlayerState.Dead)
                 return;
 
-            motor.ClearDirection();
+            motor.ClearMoveInput();
 
             // 잔존 입력 제거 - 사망 프레임에 루팅 판정이 이전 입력을 쓰지 못하게
             LateralInput = 0f;
             InteractHeld = false;
+            externalMoveInput = Vector2.zero;
 
             Transition(PlayerState.Dead);
 
@@ -126,19 +131,19 @@ namespace Scavenger.Player
                 RunManager.Instance.KillRun(cause);
         }
 
-        /// <summary>가상 D-패드 등 외부 UI의 방향 토글 요청. 키보드와 동일 규칙.</summary>
-        public void RequestToggle(Vector2 cardinal)
+        /// <summary>
+        /// 가상 조이스틱 등 외부 UI의 이동 벡터 공급 (ADR-0007).
+        /// 드래그 중 매 프레임 호출하고 놓으면 zero를 보낼 것.
+        /// </summary>
+        public void SetExternalMoveInput(Vector2 input)
         {
-            if (State != PlayerState.Advancing)
-                return;
-
-            motor.ToggleDirection(cardinal);
+            externalMoveInput = Vector2.ClampMagnitude(input, 1f);
         }
 
         /// <summary>런 재시작 시 GameFlow가 호출.</summary>
         public void ResetForNewRun()
         {
-            motor.ClearDirection();
+            motor.ClearMoveInput();
             motor.ResetVertical();
             Transition(PlayerState.Advancing);
         }
@@ -155,39 +160,45 @@ namespace Scavenger.Player
 
         void ReadInput()
         {
-            LateralInput = 0f;
             InteractHeld = false;
 
             Keyboard keyboard = Keyboard.current;
 
-            if (keyboard == null)
-                return;
+            if (keyboard != null)
+                InteractHeld = keyboard.eKey.isPressed;
 
-            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
-                LateralInput -= 1f;
-
-            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
-                LateralInput += 1f;
-
-            InteractHeld = keyboard.eKey.isPressed;
+            // 루팅 취소 판정용 좌우 입력 - 키보드와 조이스틱 합산 (ADR-0001)
+            LateralInput = Mathf.Clamp(ReadKeyboardMove().x + externalMoveInput.x, -1f, 1f);
         }
 
-        // 4방향 토글 (ADR-0006): 방향키 1회 = 그 방향 연속 이동, 같은 키 = 정지
-        void HandleDirectionInput()
+        // 2D 벡터 홀드 이동 (ADR-0007): 키보드 + 가상 조이스틱 합산, 크기 1 클램프
+        void ApplyMoveInput()
+        {
+            motor.SetMoveInput(ReadKeyboardMove() + externalMoveInput);
+        }
+
+        static Vector2 ReadKeyboardMove()
         {
             Keyboard keyboard = Keyboard.current;
 
             if (keyboard == null)
-                return;
+                return Vector2.zero;
 
-            if (keyboard.wKey.wasPressedThisFrame || keyboard.upArrowKey.wasPressedThisFrame)
-                motor.ToggleDirection(Vector2.up);
-            else if (keyboard.sKey.wasPressedThisFrame || keyboard.downArrowKey.wasPressedThisFrame)
-                motor.ToggleDirection(Vector2.down);
-            else if (keyboard.aKey.wasPressedThisFrame || keyboard.leftArrowKey.wasPressedThisFrame)
-                motor.ToggleDirection(Vector2.left);
-            else if (keyboard.dKey.wasPressedThisFrame || keyboard.rightArrowKey.wasPressedThisFrame)
-                motor.ToggleDirection(Vector2.right);
+            Vector2 move = Vector2.zero;
+
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
+                move.y += 1f;
+
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
+                move.y -= 1f;
+
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
+                move.x -= 1f;
+
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
+                move.x += 1f;
+
+            return move;
         }
 
         void Transition(PlayerState next)

@@ -179,7 +179,7 @@ namespace Scavenger.EditorTools
             GameObject flowObject = new GameObject("GameFlow");
             flowObject.AddComponent<GameFlow>();
             flowObject.AddComponent<HudOverlay>();
-            flowObject.AddComponent<VirtualDPad>();
+            flowObject.AddComponent<VirtualJoystick>();
             return flowObject;
         }
 

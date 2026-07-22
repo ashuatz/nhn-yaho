@@ -4,8 +4,9 @@ namespace Scavenger.Player
 {
     /// <summary>
     /// CharacterController 기반 이동만 담당. 상태 판정은 PlayerController가 소유.
-    /// 4방향 토글 이동 (ADR-0006): 방향을 지정하면 그 방향으로 연속 이동한다.
-    /// 낙사 도입: 바닥이 없으면 중력으로 떨어진다 (사망 판정은 PlayerController).
+    /// 2D 벡터 홀드 이동 (ADR-0007): 입력 벡터가 있는 동안 그 방향으로 이동한다.
+    /// 토글 방식(ADR-0006)은 폐기. 아날로그 크기(조이스틱)는 속도에 비례 반영.
+    /// 낙사: 바닥이 없으면 중력으로 떨어진다 (사망 판정은 PlayerController).
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public sealed class PlayerMotor : MonoBehaviour
@@ -22,12 +23,12 @@ namespace Scavenger.Player
         /// <summary>후퇴 한계 z (붕괴 전선 앞). CollapseFront가 매 프레임 갱신.</summary>
         public float MinZ { get; set; } = float.NegativeInfinity;
 
-        /// <summary>현재 토글된 이동 방향 (카디널 단위 벡터 또는 zero).</summary>
-        public Vector2 Direction { get; private set; }
+        /// <summary>현재 이동 입력 벡터 (x = 좌우, y = 전후). 크기 0..1.</summary>
+        public Vector2 MoveInput { get; private set; }
 
         public bool IsMoving
         {
-            get { return Direction != Vector2.zero; }
+            get { return MoveInput.sqrMagnitude > 0.0001f; }
         }
 
         /// <summary>접지 여부. 낙하 중 워크 밥을 끄는 데 사용.</summary>
@@ -44,21 +45,15 @@ namespace Scavenger.Player
             controller = GetComponent<CharacterController>();
         }
 
-        /// <summary>방향 토글. 같은 방향이면 정지, 다른 방향이면 전환.</summary>
-        public void ToggleDirection(Vector2 cardinal)
+        /// <summary>이동 입력 설정. 크기 1 초과는 클램프 (대각 가속 방지).</summary>
+        public void SetMoveInput(Vector2 input)
         {
-            if (Direction == cardinal)
-            {
-                Direction = Vector2.zero;
-                return;
-            }
-
-            Direction = cardinal;
+            MoveInput = Vector2.ClampMagnitude(input, 1f);
         }
 
-        public void ClearDirection()
+        public void ClearMoveInput()
         {
-            Direction = Vector2.zero;
+            MoveInput = Vector2.zero;
         }
 
         /// <summary>한 프레임 이동. 상태가 이동을 허용할 때만 호출된다.</summary>
@@ -77,9 +72,9 @@ namespace Scavenger.Player
             float backwardLimit = Mathf.Min(MinZ, transform.position.z);
 
             velocity.x = ComputeAxisSpeed(
-                transform.position.x, Direction.x, -corridorHalfWidth, corridorHalfWidth, deltaTime);
+                transform.position.x, MoveInput.x, -corridorHalfWidth, corridorHalfWidth, deltaTime);
             velocity.z = ComputeAxisSpeed(
-                transform.position.z, Direction.y, backwardLimit, float.PositiveInfinity, deltaTime);
+                transform.position.z, MoveInput.y, backwardLimit, float.PositiveInfinity, deltaTime);
 
             // 낙사용 누적 중력 (접지 시 소폭 유지로 접지 판정 안정화)
             if (controller.isGrounded)

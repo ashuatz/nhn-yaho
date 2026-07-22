@@ -107,6 +107,11 @@ namespace Scavenger.Loot
             if (!playerInRange.InteractHeld)
                 return;
 
+            // 홀드 이동(ADR-0007)에서 좌우 이동을 유지한 채 E = 시작 즉시 취소가
+            // 되므로 시작 자체를 막는다 - 좌우를 놓고 홀드해야 루팅
+            if (Mathf.Abs(playerInRange.LateralInput) > CancelLateralThreshold)
+                return;
+
             // 단차 위 보상은 올라와야 딴다 - 바닥 옆에서 트리거만 겹쳐도 불가
             if (playerInRange.transform.position.y < requiredMinPlayerY)
                 return;
