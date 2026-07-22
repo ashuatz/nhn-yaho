@@ -32,6 +32,10 @@ namespace Scavenger.UI
         public GameObject valueRoot;
         public Text valueText;
 
+        [Header("제한 시간 카운트다운 (상단 중앙, 웹 이식). 30초 미만 빨강")]
+        public GameObject timerRoot;
+        public Text timerText;
+
         [Header("무게 바 (좌상단, 웹 이식). Fill 폭 = 적재 비율, 색 = 단계")]
         public GameObject weightRoot;
         public RectTransform weightFill;
@@ -183,6 +187,7 @@ namespace Scavenger.UI
 
             UpdateHealth(running);
             UpdateDamageFlash();
+            UpdateTimer(run, running);
             UpdateWeight(running);
             UpdateBag(run, running);
             UpdateObjective(run, running);
@@ -202,6 +207,7 @@ namespace Scavenger.UI
         void SetAllInactive()
         {
             SetActive(healthRoot, false);
+            SetActive(timerRoot, false);
             SetActive(valueRoot, false);
             SetActive(weightRoot, false);
             SetActive(bagRoot, false);
@@ -480,6 +486,34 @@ namespace Scavenger.UI
             float inv = 1f - t;
 
             return inv * inv * p0 + 2f * inv * t * p1 + t * t * p2;
+        }
+
+        // 제한 시간 카운트다운 (웹 이식, ADR-0008): MM:SS, 30초 미만 빨강.
+        // 시간 압박 인지 표현 - 실수치를 그대로 보여준다(웹처럼). 붕괴와 이중 압박.
+        void UpdateTimer(RunManager run, bool running)
+        {
+            if (!running || run.Timer == null || run.Timer.LimitSeconds <= 0f)
+            {
+                SetActive(timerRoot, false);
+                return;
+            }
+
+            SetActive(timerRoot, true);
+
+            if (timerText == null)
+                return;
+
+            float remaining = run.Timer.Remaining;
+            int minutes = Mathf.FloorToInt(remaining / 60f);
+            int seconds = Mathf.FloorToInt(remaining % 60f);
+
+            timerText.text = $"{minutes:00}:{seconds:00}";
+
+            // 30초 미만 = 골드에서 빨강으로 (웹 warn)
+            if (remaining < 30f)
+                timerText.color = new Color(1f, 0.36f, 0.36f);
+            else
+                timerText.color = new Color(1f, 0.843f, 0.369f);
         }
 
         // 무게 바 (웹 이식): 적재 비율로 Fill 폭, 단계 색, "무게 / 최대 (단계)" 텍스트
@@ -903,27 +937,11 @@ namespace Scavenger.UI
             SetActive(gaugeRoot, false);
         }
 
+        // 끝 지점 웨이포인트(ADR-0008)는 밟으면 자동 발동 - 선택 UI가 필요 없다.
+        // 선택지 프롬프트는 항상 숨김 (choiceRoot 오브젝트는 프리팹에 잔존)
         void UpdateChoice()
         {
-            ChoiceNode active = ChoiceNode.Active;
-
-            SetActive(choiceRoot, active != null);
-
-            if (active == null)
-                return;
-
-            if (choiceText != null)
-                choiceText.text = "선택하라";
-
-            // 터치 선택 (키보드 없는 환경 소프트락 방지). 키보드 W/E는 ChoiceNode가 처리
-            if (choiceAdvanceButton != null && AnyPointerPressedInside(choiceAdvanceButton))
-            {
-                active.ChooseAdvance();
-                return;
-            }
-
-            if (choiceExtractButton != null && AnyPointerPressedInside(choiceExtractButton))
-                active.ChooseExtract();
+            SetActive(choiceRoot, false);
         }
 
         void UpdateSignal()

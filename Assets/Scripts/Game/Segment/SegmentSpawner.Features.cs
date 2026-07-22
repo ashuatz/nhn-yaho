@@ -65,30 +65,52 @@ namespace Scavenger.Segment
         // 전체를 막을 수 없고, z 간격을 두면 이중 봉쇄도 불가능하다.
         const float BombMinZGap = 6f;
 
-        // -- 선택지 노드 -----------------------------------------------------
+        // -- 끝 지점 웨이포인트 (웹 이식, ADR-0008 - ChoiceNode 대체) --------------
 
-        void BuildChoiceNode(Transform parent, int depth)
+        // 탈출 지점(왼쪽) + 다음 스테이지 포탈(오른쪽)을 나란히 배치. 밟으면 자동.
+        // 웹처럼 청록 빛기둥 랜드마크로 시각화 (탈출=청록, 다음=녹색).
+        static readonly Color ExtractColor = new Color(0.35f, 0.78f, 1f);
+        static readonly Color AdvanceColor = new Color(0.4f, 0.9f, 0.55f);
+
+        void BuildWaypoints(Transform parent, int depth)
         {
             float length = Definition.lengthMeters;
             float halfWidth = Definition.corridorHalfWidth;
 
-            GameObject nodeObject = new GameObject("ChoiceNode");
-            nodeObject.transform.SetParent(parent, false);
-            nodeObject.transform.localPosition = new Vector3(0f, 0f, length - 1.5f);
+            // 좌우로 벌려 배치 - 어느 쪽을 밟느냐로 결정
+            float sideX = halfWidth * 0.5f;
 
-            BoxCollider trigger = nodeObject.AddComponent<BoxCollider>();
-            trigger.isTrigger = true;
-            trigger.size = new Vector3(halfWidth * 2f, 3f, 1.5f);
-            trigger.center = new Vector3(0f, 1.5f, 0f);
+            BuildWaypoint(parent, ExtractionWaypoint.Kind.Extract,
+                new Vector3(-sideX, 0f, length - 1.5f), ExtractColor, "탈출 지점");
 
-            ChoiceNode node = nodeObject.AddComponent<ChoiceNode>();
-            node.Initialize(OnAdvanceChosen, OnExtractChosen);
-            // 탈출 잠금 규칙은 제거됨 - 압박은 바닥 붕괴가 담당 (ADR-0006)
-
-            BuildChoiceVisual(nodeObject.transform, halfWidth);
+            BuildWaypoint(parent, ExtractionWaypoint.Kind.Advance,
+                new Vector3(sideX, 0f, length - 1.5f), AdvanceColor, "다음 스테이지");
         }
 
-        void OnAdvanceChosen(ChoiceNode node)
+        void BuildWaypoint(
+            Transform parent, ExtractionWaypoint.Kind kind, Vector3 localPosition,
+            Color color, string label)
+        {
+            GameObject waypointObject = new GameObject($"Waypoint_{kind}");
+            waypointObject.transform.SetParent(parent, false);
+            waypointObject.transform.localPosition = localPosition;
+
+            BoxCollider trigger = waypointObject.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(2.4f, 3f, 2f);
+            trigger.center = new Vector3(0f, 1.5f, 0f);
+
+            ExtractionWaypoint waypoint = waypointObject.AddComponent<ExtractionWaypoint>();
+
+            if (kind == ExtractionWaypoint.Kind.Extract)
+                waypoint.Initialize(kind, OnExtractReached);
+            else
+                waypoint.Initialize(kind, OnAdvanceReached);
+
+            BuildWaypointVisual(waypointObject.transform, color);
+        }
+
+        void OnAdvanceReached(ExtractionWaypoint waypoint)
         {
             RunManager run = RunManager.Instance;
 
@@ -97,16 +119,15 @@ namespace Scavenger.Segment
 
             run.AdvanceDepth();
 
-            // 플레이어가 들어설 다음 구간(run.Depth)은 룩어헤드로 이미 존재.
-            // 그 다음 구간을 미리 지어 선노출을 유지한다 (ADR-0004)
+            // 다음 구간은 룩어헤드로 이미 존재. 그 다음을 미리 지어 선노출 유지 (ADR-0004)
             BuildSegment(run.Depth + 1, TailEndZ);
 
             // 방금 끝난 구간(플레이어 발밑)은 남기고 그보다 뒤만 제거
-            float nextStartZ = node.transform.position.z + 1.5f;
+            float nextStartZ = waypoint.transform.position.z + 1.5f;
             DespawnBehind(nextStartZ - 0.5f);
         }
 
-        static void OnExtractChosen(ChoiceNode node)
+        static void OnExtractReached(ExtractionWaypoint waypoint)
         {
             RunManager run = RunManager.Instance;
 
@@ -116,32 +137,63 @@ namespace Scavenger.Segment
             run.CompleteExtraction();
         }
 
-        static void BuildChoiceVisual(Transform parent, float halfWidth)
+        // 웹 탈출 지점 룩: 발광 바닥 큐브 + 위로 솟는 빛 기둥(반투명 quad) + 포인트라이트
+        static void BuildWaypointVisual(Transform parent, Color color)
         {
-            // 바닥 스트립: 선택 지점 표시
-            GameObject strip = CreateBlock(parent, "Strip");
-            strip.transform.localScale = new Vector3(halfWidth * 2f, 0.05f, 1.2f);
-            strip.transform.localPosition = new Vector3(0f, 0.03f, 0f);
-            Tint(strip, new Color(0.9f, 0.85f, 0.3f));
+            // 바닥 발광 큐브
+            GameObject pad = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            pad.name = "Pad";
+            pad.transform.SetParent(parent, false);
+            pad.transform.localScale = new Vector3(2.2f, 0.1f, 2.2f);
+            pad.transform.localPosition = new Vector3(0f, 0.05f, 0f);
 
-            Collider stripCollider = strip.GetComponent<Collider>();
+            Collider padCollider = pad.GetComponent<Collider>();
 
-            if (stripCollider != null)
-                Destroy(stripCollider);
+            if (padCollider != null)
+                Destroy(padCollider);
 
-            // 좌우 기둥
-            for (int side = -1; side <= 1; side += 2)
-            {
-                GameObject pillar = CreateBlock(parent, side < 0 ? "PillarLeft" : "PillarRight");
-                pillar.transform.localScale = new Vector3(0.4f, 2.6f, 0.4f);
-                pillar.transform.localPosition = new Vector3(side * (halfWidth - 0.3f), 1.3f, 0f);
-                Tint(pillar, new Color(0.9f, 0.85f, 0.3f));
+            ApplyGlowMaterial(pad, color);
 
-                Collider pillarCollider = pillar.GetComponent<Collider>();
+            // 빛 기둥: 세로로 긴 반투명 큐브 (웹 빛기둥 근사)
+            GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            beam.name = "Beam";
+            beam.transform.SetParent(parent, false);
+            beam.transform.localScale = new Vector3(0.6f, 6f, 0.6f);
+            beam.transform.localPosition = new Vector3(0f, 3f, 0f);
 
-                if (pillarCollider != null)
-                    Destroy(pillarCollider);
-            }
+            Collider beamCollider = beam.GetComponent<Collider>();
+
+            if (beamCollider != null)
+                Destroy(beamCollider);
+
+            ApplyGlowMaterial(beam, color);
+
+            // 포인트라이트 - Bloom과 함께 랜드마크로 눈에 띈다
+            GameObject lightObject = new GameObject("Glow");
+            lightObject.transform.SetParent(parent, false);
+            lightObject.transform.localPosition = new Vector3(0f, 1.5f, 0f);
+
+            Light glow = lightObject.AddComponent<Light>();
+            glow.type = LightType.Point;
+            glow.color = color;
+            glow.range = 6f;
+            glow.intensity = 2.5f;
+            glow.shadows = LightShadows.None;
+        }
+
+        // 발광(emissive) 머티리얼 적용 - 인스턴스라 Bloom과 함께 빛난다
+        static void ApplyGlowMaterial(GameObject target, Color color)
+        {
+            Renderer renderer = target.GetComponent<Renderer>();
+
+            if (renderer == null)
+                return;
+
+            Material material = renderer.material;
+            material.color = color;
+            material.EnableKeyword("_EMISSION");
+            material.SetColor("_EmissionColor", color * 2f);
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
         }
 
         // -- 거리 신호 -------------------------------------------------------

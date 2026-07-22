@@ -109,7 +109,7 @@ namespace Scavenger.Segment
             PopulateHazardFloors(root.transform, depth);
             PopulateStrikeZones(root.transform, depth);
             PopulateRollingBlocks(root.transform, depth);
-            BuildChoiceNode(root.transform, depth);
+            BuildWaypoints(root.transform, depth);
             BuildSignalEmitters(root.transform);
 
             float endZ = startZ + Definition.lengthMeters;

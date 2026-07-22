@@ -47,12 +47,23 @@ namespace Scavenger.Run
 
             StateMachine = GetComponent<RunStateMachine>();
             Timer = GetComponent<RunTimer>();
+
+            // 제한 시간 초과 = 탈출 지점 폐쇄(실패, 웹 이식)
+            Timer.TimeExpired += OnTimeExpired;
         }
 
         void OnDestroy()
         {
+            if (Timer != null)
+                Timer.TimeExpired -= OnTimeExpired;
+
             if (Instance == this)
                 Instance = null;
+        }
+
+        void OnTimeExpired()
+        {
+            KillRun("timeout");
         }
 
         public void Configure(RunSettings settings)
@@ -73,7 +84,8 @@ namespace Scavenger.Run
             Depth = 1;
             Inventory.Clear();
 
-            Timer.Begin();
+            // 제한 시간 카운트다운 시작 (웹 이식). 시간 초과 = 탈출 지점 폐쇄(실패)
+            Timer.Begin(Settings.timeLimitSeconds);
 
             UnityEngine.Debug.Log($"[Run] Started. seed={Seed} depth={Depth}");
             RunStarted?.Invoke();

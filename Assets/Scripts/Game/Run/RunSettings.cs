@@ -11,8 +11,9 @@ namespace Scavenger.Run
         [Header("시드. 0이면 매 런 랜덤, 그 외에는 고정 재현용")]
         public int seedOverride = 0;
 
-        // 시간 압박은 바닥 붕괴(CollapseFront)로 대체됨 (ADR-0006).
-        // 붕괴 속도 튜닝은 SegmentSpawner 프리팹의 CollapseFront에서.
+        [Header("제한 시간(초). 웹 이식(ADR-0008): 이 안에 탈출 지점 도달 못하면 실패.")]
+        [Header("붕괴 전선과 병행하는 이중 압박 (ADR-0006 타이머 폐기 일부 복원)")]
+        public float timeLimitSeconds = 150f;
 
         public static RunSettings CreateDefault()
         {
