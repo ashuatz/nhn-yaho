@@ -7,10 +7,8 @@
       "env": {}
     },
     "UnityMCP": {
-      "type": "stdio",
-      "command": "uvx",
-      "args": ["--from", "mcpforunityserver==10.1.0", "mcp-for-unity"],
-      "env": {}
+        "type": "http",
+        "url": "http://127.0.0.1:8080/mcp"
     }
   }
 }
