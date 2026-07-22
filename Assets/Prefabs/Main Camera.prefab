@@ -29,13 +29,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3356602680620845223}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.111974485, y: -0.46875504, z: 0.060045827, w: 0.8741424}
+  m_LocalRotation: {x: 0.11197272, y: -0.46875152, z: 0.060044274, w: 0.8741447}
   m_LocalPosition: {x: 16.73, y: 11.17, z: -4.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 14.599, y: -56.404, z: 0}
 --- !u!20 &7701882751091407557
 Camera:
   m_ObjectHideFlags: 0
@@ -109,9 +109,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Player.FollowCamera
   target: {fileID: 0}
   lookAtOffset: {x: 4.13, y: 7.23, z: 2.67}
-  positionOffsetWorld: {x: 12.6, y: 3.94, z: -8.37}
+  positionOffsetWorld: {x: 8.9, y: 14.72, z: -8.37}
   positionOffsetLocal: {x: 0, y: 0, z: 0}
   followSmoothTime: 0.15
+  backEdgeViewportY: 0.03
+  backLimitSlack: 0.5
+  backLimitMargin: 4
 --- !u!114 &1608556840358966547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -135,7 +138,7 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
