@@ -7,6 +7,8 @@ using Scavenger.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 namespace Scavenger.EditorTools
@@ -48,6 +50,7 @@ namespace Scavenger.EditorTools
             BuildLight();
             WireSceneReferences(runSystems, spawner, player, cameraObject, flow);
             ApplyAtmosphere();
+            BuildTiltShiftVolume(cameraObject);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
 
@@ -217,6 +220,44 @@ namespace Scavenger.EditorTools
             RenderSettings.fogStartDistance = 18f;
             RenderSettings.fogEndDistance = 65f;
             RenderSettings.fogColor = DepthColor;
+        }
+
+        // 틸트 시프트 뷰 (ADR-0006): 가우시안 DoF로 미니어처 룩.
+        // 초점 대역(start/end)은 프로파일 에셋에서 사용자가 튜닝
+        static void BuildTiltShiftVolume(GameObject cameraObject)
+        {
+            const string profilePath = "Assets/Settings/TiltShiftProfile.asset";
+
+            VolumeProfile profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(profilePath);
+
+            if (profile == null)
+            {
+                profile = ScriptableObject.CreateInstance<VolumeProfile>();
+                AssetDatabase.CreateAsset(profile, profilePath);
+
+                DepthOfField depthOfField = profile.Add<DepthOfField>(true);
+                depthOfField.mode.Override(DepthOfFieldMode.Gaussian);
+                depthOfField.gaussianStart.Override(14f);
+                depthOfField.gaussianEnd.Override(30f);
+                depthOfField.gaussianMaxRadius.Override(1.2f);
+
+                EditorUtility.SetDirty(profile);
+                AssetDatabase.SaveAssets();
+            }
+
+            GameObject volumeObject = new GameObject("TiltShift Volume");
+            Volume volume = volumeObject.AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.sharedProfile = profile;
+
+            // 카메라 포스트 프로세싱 활성화 (씬 인스턴스 오버라이드)
+            UniversalAdditionalCameraData cameraData =
+                cameraObject.GetComponent<UniversalAdditionalCameraData>();
+
+            if (cameraData == null)
+                cameraData = cameraObject.AddComponent<UniversalAdditionalCameraData>();
+
+            cameraData.renderPostProcessing = true;
         }
 
         static GameObject CreateVisualCube(Transform parent, string cubeName)

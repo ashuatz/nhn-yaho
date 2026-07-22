@@ -2,7 +2,9 @@
     "name": "Scavenger.Game.Editor",
     "rootNamespace": "Scavenger.EditorTools",
     "references": [
-        "Scavenger.Game"
+        "Scavenger.Game",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime"
     ],
     "includePlatforms": [
         "Editor"

@@ -27,6 +27,7 @@ namespace Scavenger
         [SerializeField] DepthCurve depthCurve;
 
         bool worldInitialized;
+        CollapseFront collapseFront;
 
         void Awake()
         {
@@ -51,6 +52,14 @@ namespace Scavenger
             segmentSpawner.Configure(segmentDefinition, lootCatalog, depthCurve);
             segmentSpawner.SetViewCamera(followCamera);
             player.Motor.corridorHalfWidth = segmentDefinition.corridorHalfWidth;
+
+            // 바닥 붕괴 (ADR-0006): 스포너와 같은 오브젝트에 상주
+            collapseFront = segmentSpawner.GetComponent<CollapseFront>();
+
+            if (collapseFront == null)
+                collapseFront = segmentSpawner.gameObject.AddComponent<CollapseFront>();
+
+            collapseFront.Track(player);
 
             runManager.RunStarted += OnRunStarted;
         }
@@ -113,8 +122,35 @@ namespace Scavenger
             // 현재 + 다음 구간을 함께 생성 - 다음 스테이지 확정 노출 (ADR-0004)
             segmentSpawner.BuildInitialChain(runManager.Depth, startZ);
 
+            // 붕괴 전선을 플레이어 뒤로 리셋 (ADR-0006)
+            collapseFront.ResetFront(player.transform.position.z - 8f);
+
+            // 낙사 후 재개: 구멍 아래에 있으면 바닥 위로 복귀
+            RecoverPlayerIfFallen(startZ);
+
             player.ResetForNewRun();
             followCamera.SnapAndLook();
+        }
+
+        void RecoverPlayerIfFallen(float startZ)
+        {
+            Vector3 position = player.transform.position;
+
+            if (position.y >= -0.5f)
+                return;
+
+            position.y = 0.05f;
+            position.x = Mathf.Clamp(
+                position.x, -segmentDefinition.corridorHalfWidth, segmentDefinition.corridorHalfWidth);
+            position.z = Mathf.Max(position.z, startZ + 2f);
+
+            // CharacterController는 활성 상태에서 transform 이동을 무시하므로 잠시 끈다
+            CharacterController controller = player.GetComponent<CharacterController>();
+            controller.enabled = false;
+
+            player.transform.position = position;
+
+            controller.enabled = true;
         }
 
         // 라운드 종료(탈출/사망) 후 클릭/스페이스 한 번으로 다음 라운드 (ADR-0003)

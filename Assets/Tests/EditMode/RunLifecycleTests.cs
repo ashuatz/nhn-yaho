@@ -28,26 +28,17 @@ namespace Scavenger.Tests
         }
 
         [Test]
-        public void StartRun_TimerWithinConfiguredRange()
+        public void StartRun_SameSeed_ReproducesRngSequence()
         {
             manager.StartRun();
-
-            Assert.GreaterOrEqual(manager.Timer.LimitSeconds, manager.Settings.timerMinSeconds);
-            Assert.LessOrEqual(manager.Timer.LimitSeconds, manager.Settings.timerMaxSeconds);
-        }
-
-        [Test]
-        public void StartRun_SameSeed_ReproducesTimerLimit()
-        {
-            manager.StartRun();
-            float firstLimit = manager.Timer.LimitSeconds;
+            int firstRoll = manager.Rng.Next();
 
             // 종료 후 같은 시드로 재시작
             manager.KillRun("test");
             manager.StateMachine.TryTransition(RunState.Ready);
             manager.StartRun();
 
-            Assert.AreEqual(firstLimit, manager.Timer.LimitSeconds, 0.0001f);
+            Assert.AreEqual(firstRoll, manager.Rng.Next());
         }
 
         [Test]
@@ -59,6 +50,15 @@ namespace Scavenger.Tests
 
             Assert.AreEqual(0, manager.Inventory.TotalValue);
             Assert.AreEqual(0, manager.Inventory.Entries.Count);
+        }
+
+        [Test]
+        public void StartRun_BeginsElapsedTimer()
+        {
+            manager.StartRun();
+
+            Assert.IsTrue(manager.Timer.IsTicking);
+            Assert.AreEqual(0f, manager.Timer.Elapsed, 0.0001f);
         }
 
         [Test]

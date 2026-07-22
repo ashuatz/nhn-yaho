@@ -23,6 +23,7 @@ namespace Scavenger.UI
             DrawLootGauge();
             DrawChoicePrompt();
             DrawSignalBanner();
+            DrawCollapseWarning(run);
             DrawRunResult(run);
         }
 
@@ -82,6 +83,24 @@ namespace Scavenger.UI
             float width = 360f;
             Rect area = new Rect((Screen.width - width) * 0.5f, 30f, width, 28f);
             GUI.Box(area, SignalEmitter.LastMessage);
+        }
+
+        const float CollapseWarningDistance = 12f;
+
+        // 시간 압박 인지 표현 (ADR-0006): 붕괴 전선 근접 경고
+        static void DrawCollapseWarning(RunManager run)
+        {
+            if (run.StateMachine.Current != RunState.Running)
+                return;
+
+            CollapseFront collapse = CollapseFront.Instance;
+
+            if (collapse == null || collapse.DistanceToPlayer > CollapseWarningDistance)
+                return;
+
+            float width = 340f;
+            Rect area = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.18f, width, 28f);
+            GUI.Box(area, "뒤에서 바닥이 무너지고 있다!");
         }
 
         void DrawRunResult(RunManager run)

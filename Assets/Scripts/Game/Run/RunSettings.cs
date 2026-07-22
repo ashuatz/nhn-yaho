@@ -8,12 +8,11 @@ namespace Scavenger.Run
     [CreateAssetMenu(menuName = "Scavenger/Run Settings", fileName = "RunSettings")]
     public sealed class RunSettings : ScriptableObject
     {
-        [Header("숨김 타이머 (초). 매 런 범위 내 랜덤 - 고정값은 암기됨")]
-        public float timerMinSeconds = 150f;
-        public float timerMaxSeconds = 210f;
-
         [Header("시드. 0이면 매 런 랜덤, 그 외에는 고정 재현용")]
         public int seedOverride = 0;
+
+        // 시간 압박은 바닥 붕괴(CollapseFront)로 대체됨 (ADR-0006).
+        // 붕괴 속도 튜닝은 SegmentSpawner 프리팹의 CollapseFront에서.
 
         public static RunSettings CreateDefault()
         {

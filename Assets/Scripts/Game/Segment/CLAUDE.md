@@ -13,7 +13,11 @@
 - DepthCurve.cs: 깊이 스케일링 단일 소스. tier 가중치 / 폭탄 수 / 기폭 시간 / 폭발 반경.
   모든 값 클램프 - 통과 불가 배치 방지 (blastMaxRadius x 2 < 복도 폭 유지 필수)
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.
-  IsExtractionLocked 델리게이트로 탈출 잠금 판정 주입 (S6)
+  (탈출 잠금 규칙은 ADR-0006에서 제거 - IsExtractionLocked는 기본 false)
+- FloorStrip.cs: 붕괴 단위 바닥 스트립 (2m). Sink = 콜라이더 off + 가라앉음 -> 낙사
+- CollapseFront.cs: 시간 압박의 단일 소스 (ADR-0006). 붕괴 전선이 뒤에서 전진하며
+  지나간 스트립을 가라앉히고 플레이어 z를 전선 앞으로 클램프 (후퇴 불가 겸용).
+  startDelay/baseSpeed/speedPerDepth/maxSpeed = 프리팹 튜닝 지점. static Instance
 - SegmentEnvironment.cs: 공간감 PCG 데이터 생성기 (ADR-0003/0004/0005).
   GenerateBlocks = 인스턴스 블록(행렬+팔레트 8색+웨이브/위상) 생성.
   레이어: 럽블 협곡(근경, wave 0.35) + 상부층(복층, 정적) + 데브리(정적) +

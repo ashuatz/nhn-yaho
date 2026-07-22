@@ -16,6 +16,9 @@ namespace Scavenger.Segment
     /// </summary>
     public sealed class EnvironmentRenderer : MonoBehaviour
     {
+        /// <summary>임펄스 발신자(폭탄/붕괴)가 참조하는 활성 렌더러.</summary>
+        public static EnvironmentRenderer Active { get; private set; }
+
         [Header("비우면 런타임 폴백 (내장 큐브 + URP Lit)")]
         [SerializeField] Mesh instanceMesh;
         [SerializeField] Material baseMaterial;
@@ -25,6 +28,10 @@ namespace Scavenger.Segment
         public float waveSpeed = 1.4f;
         public float waveAmplitude = 0.35f;
 
+        [Header("이벤트 임펄스 (brg-shooter 바운스 이식) - 스프링 감쇠")]
+        public float impulseStiffness = 26f;
+        public float impulseDamping = 5f;
+
         sealed class AnimatedGroup
         {
             public Vector3[] BasePositions;
@@ -32,6 +39,8 @@ namespace Scavenger.Segment
             public Vector3[] BaseScales;
             public float[] Waves;
             public float[] Phases;
+            public float[] ImpulseOffsets;
+            public float[] ImpulseVelocities;
             public Matrix4x4[] WorkMatrices;
         }
 
@@ -119,6 +128,47 @@ namespace Scavenger.Segment
             chunks.Clear();
         }
 
+        void OnEnable()
+        {
+            Active = this;
+        }
+
+        void OnDisable()
+        {
+            if (Active == this)
+                Active = null;
+        }
+
+        /// <summary>
+        /// 이벤트 지점 주변의 동적 셀에 바운스 임펄스를 준다 (폭발, 붕괴 등).
+        /// brg-shooter의 이벤트 반응 셀 이동을 스프링-감쇠로 이식한 것.
+        /// </summary>
+        public void AddImpulse(Vector3 worldPosition, float radius, float strength)
+        {
+            foreach (Chunk chunk in chunks.Values)
+            {
+                foreach (AnimatedGroup group in chunk.AnimatedByPalette)
+                {
+                    if (group == null)
+                        continue;
+
+                    for (int i = 0; i < group.BasePositions.Length; i++)
+                    {
+                        Vector3 toCell = group.BasePositions[i] - worldPosition;
+                        toCell.y = 0f;
+
+                        float distance = toCell.magnitude;
+
+                        if (distance > radius)
+                            continue;
+
+                        float falloff = 1f - distance / radius;
+                        group.ImpulseVelocities[i] += strength * falloff;
+                    }
+                }
+            }
+        }
+
         static AnimatedGroup BuildAnimatedGroup(List<EnvironmentBlock> worldBlocks)
         {
             if (worldBlocks.Count == 0)
@@ -133,6 +183,8 @@ namespace Scavenger.Segment
                 BaseScales = new Vector3[count],
                 Waves = new float[count],
                 Phases = new float[count],
+                ImpulseOffsets = new float[count],
+                ImpulseVelocities = new float[count],
                 WorkMatrices = new Matrix4x4[count],
             };
 
@@ -171,6 +223,8 @@ namespace Scavenger.Segment
 
         void AnimateChunk(Chunk chunk, float time)
         {
+            float deltaTime = Time.deltaTime;
+
             foreach (AnimatedGroup group in chunk.AnimatedByPalette)
             {
                 if (group == null)
@@ -178,8 +232,19 @@ namespace Scavenger.Segment
 
                 for (int i = 0; i < group.WorkMatrices.Length; i++)
                 {
+                    // 스프링-감쇠 임펄스 적분 (brg-shooter 바운스 이식)
+                    float offset = group.ImpulseOffsets[i];
+                    float velocity = group.ImpulseVelocities[i];
+
+                    velocity += (-impulseStiffness * offset - impulseDamping * velocity) * deltaTime;
+                    offset += velocity * deltaTime;
+
+                    group.ImpulseOffsets[i] = offset;
+                    group.ImpulseVelocities[i] = velocity;
+
                     float offsetY = Mathf.Sin(time * waveSpeed + group.Phases[i])
-                                    * waveAmplitude * group.Waves[i];
+                                    * waveAmplitude * group.Waves[i]
+                                    + offset;
 
                     Vector3 position = group.BasePositions[i];
                     position.y += offsetY;

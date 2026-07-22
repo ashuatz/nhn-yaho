@@ -179,21 +179,9 @@ namespace Scavenger.Segment
 
             ChoiceNode node = nodeObject.AddComponent<ChoiceNode>();
             node.Initialize(OnAdvanceChosen, OnExtractChosen);
-
-            // 시간 초과 = 탈출 잠금 (즉사 아님, 구현계획 v0.0.2 섹션 0.2)
-            node.IsExtractionLocked = IsExtractionLocked;
+            // 탈출 잠금 규칙은 제거됨 - 압박은 바닥 붕괴가 담당 (ADR-0006)
 
             BuildChoiceVisual(nodeObject.transform, halfWidth);
-        }
-
-        static bool IsExtractionLocked()
-        {
-            RunManager run = RunManager.Instance;
-
-            if (run == null)
-                return false;
-
-            return run.Timer.IsExpired;
         }
 
         // -- 거리 신호 -------------------------------------------------------
@@ -467,8 +455,16 @@ namespace Scavenger.Segment
             RunManager run = RunManager.Instance;
             System.Random rng = run != null && run.Rng != null ? run.Rng : new System.Random(0);
 
-            // 바닥만 GameObject (콜라이더), 배경 블록은 인스턴스 렌더링 (ADR-0005)
-            SegmentEnvironment.BuildWalkFloor(parent, Definition);
+            // 바닥만 GameObject (콜라이더), 배경 블록은 인스턴스 렌더링 (ADR-0005).
+            // 바닥은 붕괴 단위 스트립으로 분할하고 CollapseFront에 등록 (ADR-0006)
+            List<FloorStrip> strips = SegmentEnvironment.BuildWalkFloorStrips(parent, Definition);
+
+            CollapseFront collapse = GetComponent<CollapseFront>();
+
+            if (collapse == null)
+                collapse = gameObject.AddComponent<CollapseFront>();
+
+            collapse.RegisterStrips(strips);
 
             if (environmentRenderer == null)
             {

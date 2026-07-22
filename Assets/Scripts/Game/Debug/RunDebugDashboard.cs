@@ -48,11 +48,16 @@ namespace Scavenger.Diagnostics
 
             GUILayout.Space(4f);
 
-            // 아래 시간 값들은 숨김 정보 - 플레이어 HUD에는 절대 노출 금지
             GUILayout.Label($"Elapsed: {run.Timer.Elapsed:F1}s");
-            GUILayout.Label($"Limit (hidden): {run.Timer.LimitSeconds:F1}s");
-            GUILayout.Label($"Remaining (hidden): {run.Timer.Remaining:F1}s");
-            GUILayout.Label($"Extraction locked: {run.Timer.IsExpired}");
+
+            // 붕괴 전선 실수치 - 플레이어 HUD에는 근접 경고만 노출
+            CollapseFront collapse = CollapseFront.Instance;
+
+            if (collapse != null)
+            {
+                GUILayout.Label($"Collapse front z: {collapse.FrontZ:F1}");
+                GUILayout.Label($"Collapse distance: {collapse.DistanceToPlayer:F1}m");
+            }
 
             DrawExtraSections(run);
 

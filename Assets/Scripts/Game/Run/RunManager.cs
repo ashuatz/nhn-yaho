@@ -73,12 +73,7 @@ namespace Scavenger.Run
             Depth = 1;
             Inventory.Clear();
 
-            // 타이머 한계도 시드 난수에서 뽑아 같은 시드 = 같은 런이 되게 한다
-            float limit = Mathf.Lerp(
-                Settings.timerMinSeconds,
-                Settings.timerMaxSeconds,
-                (float)Rng.NextDouble());
-            Timer.Begin(limit);
+            Timer.Begin();
 
             UnityEngine.Debug.Log($"[Run] Started. seed={Seed} depth={Depth}");
             RunStarted?.Invoke();

@@ -61,12 +61,6 @@ namespace Scavenger.Segment
 
         string BuildMessage()
         {
-            RunManager run = RunManager.Instance;
-
-            // 시간 초과: 거리 대신 신호 두절만 알린다 (수치 노출 금지)
-            if (run != null && run.Timer.IsExpired)
-                return "...신호가 끊겼다. 탈출구가 닫힌 것 같다";
-
             if (distanceToNode > 45f)
                 return "탈출 신호가 아주 희미하게 잡힌다";
 

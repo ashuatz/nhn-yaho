@@ -89,6 +89,13 @@ namespace Scavenger.Obstacle
                     trackedPlayer.Kill("bomb");
             }
 
+            // 배경이 폭발에 반응 (brg-shooter 바운스 이식)
+            if (Scavenger.Segment.EnvironmentRenderer.Active != null)
+            {
+                Scavenger.Segment.EnvironmentRenderer.Active.AddImpulse(
+                    transform.position, radius: 14f, strength: 2.4f);
+            }
+
             SpawnExplosionVisual();
             Destroy(gameObject);
         }
