@@ -291,44 +291,6 @@ namespace Scavenger.EditorTools
             cubeRenderer.sharedMaterial = material;
         }
 
-        /// <summary>
-        /// 기존 프리팹의 깨진(마젠타) 머티리얼을 에셋 머티리얼로 교체.
-        /// 프리팹의 다른 튜닝 값은 건드리지 않는다.
-        /// </summary>
-        [MenuItem("Scavenger/Repair Greybox Materials")]
-        public static void RepairMaterials()
-        {
-            GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
-
-            if (playerPrefab == null)
-            {
-                UnityEngine.Debug.LogWarning("[Setup] Player prefab not found - run Ensure Prefabs first.");
-                return;
-            }
-
-            GameObject contents = PrefabUtility.LoadPrefabContents(PlayerPrefabPath);
-
-            try
-            {
-                Transform body = contents.transform.Find("Visual/Body");
-                Transform head = contents.transform.Find("Visual/Head");
-
-                if (body != null)
-                    AssignMaterial(body.gameObject, GreyboxMaterials.Ensure("PlayerBody", new Color(0.8f, 0.6f, 0.2f)));
-
-                if (head != null)
-                    AssignMaterial(head.gameObject, GreyboxMaterials.Ensure("PlayerHead", new Color(0.9f, 0.75f, 0.6f)));
-
-                PrefabUtility.SaveAsPrefabAsset(contents, PlayerPrefabPath);
-                UnityEngine.Debug.Log("[Setup] Player prefab materials repaired.");
-            }
-            finally
-            {
-                PrefabUtility.UnloadPrefabContents(contents);
-            }
-
-            // 사전 배치 배경이 마젠타면 Environment Authoring 윈도우에서 재생성
-            // (재생성 경로가 에셋 머티리얼을 쓰도록 수정됨)
-        }
+        // (일회성 마젠타 리페어 메뉴는 사용 완료 후 제거 - 2026-07-22)
     }
 }
