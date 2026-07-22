@@ -32,8 +32,32 @@ namespace Scavenger.Segment
         public float rockfallWarnSeconds = 0.95f;
         public float rockfallImpactRadius = 1.6f;
 
+        [Header("바닥 장판 (지속 피해, 프리팹 튜닝 지점)")]
+        public float hazardFloorHalfWidthX = 1.5f;
+        public float hazardFloorHalfWidthZ = 1f;
+        public float hazardFloorDamagePerSecond = 26f;
+
+        [Header("미사일 폭격 구역 (반복 낙하, 프리팹 튜닝 지점)")]
+        public float strikeZoneHalfWidthX = 2.5f;
+        public float strikeZoneLengthZ = 4f;
+        public float strikeTelegraphSeconds = 1.35f;
+        public float strikeDamage = 40f;
+        public float strikeActivateDistance = 16f;
+        public float strikeReloadMinSeconds = 2.4f;
+        public float strikeReloadMaxSeconds = 4f;
+
+        [Header("굴러오는 블록 (프리팹 튜닝 지점)")]
+        public float rollingSpawnAheadDistance = 20f;
+        public float rollingActivateDistance = 22f;
+        public float rollingSpeedMin = 6.5f;
+        public float rollingSpeedMax = 9.5f;
+        public float rollingDamage = 35f;
+        public float rollingIntervalMinSeconds = 3.5f;
+        public float rollingIntervalMaxSeconds = 6.5f;
+
         const int LootSpotsPerSegment = 8;
-        const float LootInteractRadius = 1.4f;
+        // 자동 수집 반경 (웹 프로토타입 sqrt(0.85) 근사 - 밟으면 먹는 손맛)
+        const float LootCollectRadius = 1f;
         const float BombDetectionRadius = 3.5f;
 
         // 전 레인 봉쇄 금지: 같은 z 구간에 폭탄이 겹치지 않도록 최소 간격 강제.
@@ -180,11 +204,8 @@ namespace Scavenger.Segment
                 LootDefinition definition = PickLoot(run.Rng, tierWeights);
                 LootSpot spot = SpawnLootSpot(parent, definition, new Vector3(x, 0f, z));
 
-                // 완료 시 조각이 복도 밖(허공)에 떨어지지 않게 착지 x 클램프
-                spot.scatterClampHalfWidth = halfWidth - 0.4f;
-
-                // 바닥이 가라앉으면 위 요소도 함께 - 공중에 뜬 루트가 인접 스트립에서
-                // 상호작용 가능해지는 것 방지 (Codex 교차 검토)
+                // 바닥이 가라앉으면 아이템도 함께 - 공중에 뜬 아이템이 인접 스트립에서
+                // 수집되는 것 방지 (Codex 교차 검토)
                 AttachToSupportingStrip(spot.transform);
 
                 spawned += 1;
@@ -225,14 +246,7 @@ namespace Scavenger.Segment
             spotObject.transform.localPosition = localPosition;
 
             LootSpot spot = spotObject.AddComponent<LootSpot>();
-            spot.Initialize(definition, LootInteractRadius);
-
-            // 조각 산포는 게임 결과 (동선/손실 가치) - 배치 스트림에서 시드 배정
-            // (시드 재현성 규약, Codex 교차 검토)
-            RunManager run = RunManager.Instance;
-
-            if (run != null && run.Rng != null)
-                spot.scatterSeed = run.Rng.Next(1, int.MaxValue);
+            spot.Initialize(definition, LootCollectRadius);
 
             BuildLootVisual(spotObject.transform, definition.tier);
             return spot;
@@ -243,16 +257,24 @@ namespace Scavenger.Segment
             GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.name = "Visual";
             cube.transform.SetParent(parent, false);
-            cube.transform.localScale = new Vector3(0.6f, 0.6f, 0.6f);
-            cube.transform.localPosition = new Vector3(0f, 0.3f, 0f);
+            cube.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+            cube.transform.localPosition = new Vector3(0f, 0.4f, 0f);
 
-            // 비주얼 전용 - 상호작용 판정은 루트의 SphereCollider 트리거가 담당
+            // 큐브를 살짝 기울여 아이소 화면에서 각이 서게 (웹 룩 - 마름모 발광)
+            cube.transform.localRotation = Quaternion.Euler(0f, 45f, 0f);
+
+            // 비주얼 전용 - 수집 판정은 LootSpot이 거리로 담당
             Collider cubeCollider = cube.GetComponent<Collider>();
 
             if (cubeCollider != null)
                 Destroy(cubeCollider);
 
-            Tint(cube, LootDefinition.TierColor(tier));
+            Color tierColor = LootDefinition.TierColor(tier);
+            Tint(cube, tierColor);
+
+            // 발광 + 부유 연출 (ADR-0008 웹 이식). 루트에 붙여 자식 "Visual"을 조작
+            LootVisual visual = parent.gameObject.AddComponent<LootVisual>();
+            visual.Configure(tierColor);
         }
 
         // -- 폭탄 배치 -------------------------------------------------------
@@ -448,6 +470,167 @@ namespace Scavenger.Segment
                 // 시드 배정 (시드 재현성 규약). 안전 레인 폭은 땅 꺼짐과 공유
                 zone.scatterSeed = run.Rng.Next(1, int.MaxValue);
                 zone.safeLaneWidth = sinkTrapSafeLaneWidth;
+
+                placedZ.Add(z);
+            }
+        }
+
+        // -- 바닥 장판 배치 (지속 피해, 웹 이식) -------------------------------
+
+        void PopulateHazardFloors(Transform parent, int depth)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            int zoneCount = Curve.EvaluateHazardFloorCount(depth);
+
+            if (zoneCount <= 0)
+                return;
+
+            float length = Definition.lengthMeters;
+            float halfWidth = Definition.corridorHalfWidth;
+
+            List<float> placedZ = new List<float>();
+            int attempts = 0;
+
+            while (placedZ.Count < zoneCount && attempts < zoneCount * 10)
+            {
+                attempts += 1;
+
+                // 초입/선택지 앞은 비운다 (다른 위협과 동일 규칙)
+                float z = Mathf.Lerp(14f, length - 8f, (float)run.Rng.NextDouble());
+
+                if (!IsZGapValid(placedZ, z, minZGap: 8f))
+                    continue;
+
+                // 단차 진입로를 장판으로 덮으면 보상 동선이 사실상 봉쇄된다 - 제외
+                if (IsInLedgeZRange(z, margin: 1f))
+                    continue;
+
+                // 복도 한쪽에만 깔아 우회 여지를 남긴다 (전폭 장판 = 강제 피해 봉쇄 금지)
+                float side = run.Rng.Next(0, 2) == 0 ? -1f : 1f;
+                float x = side * Mathf.Lerp(0.4f, halfWidth - hazardFloorHalfWidthX - 0.2f, (float)run.Rng.NextDouble());
+
+                GameObject zoneObject = new GameObject("HazardFloor");
+                zoneObject.transform.SetParent(parent, false);
+                zoneObject.transform.localPosition = new Vector3(x, 0f, z);
+
+                HazardFloor hazard = zoneObject.AddComponent<HazardFloor>();
+                hazard.halfWidthX = hazardFloorHalfWidthX;
+                hazard.halfWidthZ = hazardFloorHalfWidthZ;
+                hazard.damagePerSecond = hazardFloorDamagePerSecond;
+
+                // 바닥과 함께 침몰 (루트/폭탄과 동일 규칙)
+                AttachToSupportingStrip(zoneObject.transform);
+
+                placedZ.Add(z);
+            }
+        }
+
+        // -- 미사일 폭격 구역 배치 (반복 낙하, 웹 이식) ------------------------
+
+        void PopulateStrikeZones(Transform parent, int depth)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            int zoneCount = Curve.EvaluateStrikeZoneCount(depth);
+
+            if (zoneCount <= 0)
+                return;
+
+            float length = Definition.lengthMeters;
+
+            List<float> placedZ = new List<float>();
+            int attempts = 0;
+
+            while (placedZ.Count < zoneCount && attempts < zoneCount * 10)
+            {
+                attempts += 1;
+
+                // 초입/선택지 앞은 비운다 (진입 직후 폭격 방지)
+                float z = Mathf.Lerp(22f, length - 12f, (float)run.Rng.NextDouble());
+
+                // 구역끼리 겹치면 폭격 콤보로 회피 불가 - 간격 강제
+                if (!IsZGapValid(placedZ, z, minZGap: 12f))
+                    continue;
+
+                if (IsInLedgeZRange(z, margin: 1f))
+                    continue;
+
+                GameObject zoneObject = new GameObject("StrikeZone");
+                zoneObject.transform.SetParent(parent, false);
+                zoneObject.transform.localPosition = new Vector3(0f, 0f, z);
+
+                StrikeZone zone = zoneObject.AddComponent<StrikeZone>();
+                zone.halfWidthX = strikeZoneHalfWidthX;
+                zone.lengthZ = strikeZoneLengthZ;
+                zone.telegraphSeconds = strikeTelegraphSeconds;
+                zone.damage = strikeDamage;
+                zone.activateDistance = strikeActivateDistance;
+                zone.reloadMinSeconds = strikeReloadMinSeconds;
+                zone.reloadMaxSeconds = strikeReloadMaxSeconds;
+
+                // 셀 선택 산포는 사망을 결정하는 게임 결과 - 배치 스트림에서 시드 배정
+                zone.scatterSeed = run.Rng.Next(1, int.MaxValue);
+
+                placedZ.Add(z);
+            }
+        }
+
+        // -- 굴러오는 블록 스포너 배치 (웹 이식) -------------------------------
+
+        void PopulateRollingBlocks(Transform parent, int depth)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            int spawnerCount = Curve.EvaluateRollingBlockCount(depth);
+
+            if (spawnerCount <= 0)
+                return;
+
+            float length = Definition.lengthMeters;
+            float halfWidth = Definition.corridorHalfWidth;
+
+            List<float> placedZ = new List<float>();
+            int attempts = 0;
+
+            while (placedZ.Count < spawnerCount && attempts < spawnerCount * 10)
+            {
+                attempts += 1;
+
+                // 스포너는 구역 중심 z - 스폰은 플레이어 정면이라 위치가 곧 활성 구간
+                float z = Mathf.Lerp(20f, length - 16f, (float)run.Rng.NextDouble());
+
+                if (!IsZGapValid(placedZ, z, minZGap: 16f))
+                    continue;
+
+                if (IsInLedgeZRange(z, margin: 1f))
+                    continue;
+
+                GameObject spawnerObject = new GameObject("RollingBlockSpawner");
+                spawnerObject.transform.SetParent(parent, false);
+                spawnerObject.transform.localPosition = new Vector3(0f, 0f, z);
+
+                RollingBlockSpawner spawner = spawnerObject.AddComponent<RollingBlockSpawner>();
+                spawner.spawnAheadDistance = rollingSpawnAheadDistance;
+                spawner.activateDistance = rollingActivateDistance;
+                spawner.speedMin = rollingSpeedMin;
+                spawner.speedMax = rollingSpeedMax;
+                spawner.damage = rollingDamage;
+                spawner.intervalMinSeconds = rollingIntervalMinSeconds;
+                spawner.intervalMaxSeconds = rollingIntervalMaxSeconds;
+                spawner.spawnHalfWidth = halfWidth;
+
+                // 스폰 x 산포는 회피 동선을 좌우하는 게임 결과 - 배치 스트림에서 시드 배정
+                spawner.scatterSeed = run.Rng.Next(1, int.MaxValue);
 
                 placedZ.Add(z);
             }
