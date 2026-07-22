@@ -12,8 +12,8 @@
 | Player/ | Scavenger.Player | (S2) 상태 기반 이동 |
 | Loot/ | Scavenger.Loot | (S3) 루팅, 인벤토리, 스태시 |
 | Segment/ | Scavenger.Segment | (S2/S5) 구간 생성, 선택지, 거리 신호 |
-| Obstacle/ | Scavenger.Obstacle | (S4) 폭탄 |
-| UI/ | Scavenger.UI | (S3+) 플레이어 HUD |
+| Obstacle/ | Scavenger.Obstacle | (S4) 폭탄, 밀기 트랩, 낙하물 존(RockfallZone) |
+| UI/ | Scavenger.UI | (S3+) 플레이어 HUD - M5-1부터 uGUI (HudCanvas 프리팹) |
 
 ## 루트 파일
 
@@ -25,7 +25,7 @@
 ## 씬 구성 (프리팹 기반)
 
 - 시스템은 전부 Assets/Prefabs/ 프리팹으로 관리: Main Camera / Player / RunSystems /
-  SegmentSpawner / GameFlow. 사용자가 프리팹을 직접 수정해 튜닝한다.
+  SegmentSpawner / GameFlow / HudCanvas (M5-1 uGUI). 사용자가 프리팹을 직접 수정해 튜닝한다.
 - Scavenger > Setup Greybox Scene = 프리팹 인스턴스 배치 + 참조 배선 + 라이트/포그.
   프리팹이 없으면 기본 템플릿으로 1회 생성, 있으면 절대 덮어쓰지 않음
   (Scavenger > Ensure Prefabs로 프리팹만 생성 가능).

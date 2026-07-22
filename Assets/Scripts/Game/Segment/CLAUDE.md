@@ -13,11 +13,13 @@
   (RegisterPreplacedStrips), 단차(PopulateLedges/BuildLedge), 발밑 부착
   (AttachToSupportingStrip), currentStrips/currentLedges
 - SegmentSpawner.Features.cs: 기능 카테고리. 루트(tier 가중치)/폭탄(z 간격 검증)/
-  땅꺼짐·밀기 트랩/ChoiceNode/거리 신호 배치 + 트랩 튜닝 필드.
+  땅꺼짐·밀기 트랩/낙하물 존(RockfallZone, 초입·선택지 앞·단차 제외, z 간격 9m)/
+  ChoiceNode/거리 신호 배치 + 트랩 튜닝 필드.
   전진 콜백에서 다음 구간 생성과 뒤쪽 정리 수행 (동시 생존 최대 2구간)
 - SegmentPath.cs: 길 공용 지오메트리 (정적). BuildWalkFloorStrips - 런타임과
   사전 배치 윈도우 공용 (SegmentEnvironment에서 이동)
-- DepthCurve.cs: 깊이 스케일링 단일 소스. tier 가중치 / 폭탄 수 / 기폭 시간 / 폭발 반경.
+- DepthCurve.cs: 깊이 스케일링 단일 소스. tier 가중치 / 폭탄 수 / 기폭 시간 / 폭발 반경 /
+  땅꺼짐·밀기 트랩 수 / 낙하물 존 수 (EvaluateRockfallCount).
   모든 값 클램프 - 통과 불가 배치 방지 (blastMaxRadius x 2 < 복도 폭 유지 필수)
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.
   (탈출 잠금 규칙은 ADR-0006에서 제거 - IsExtractionLocked는 기본 false)
@@ -49,10 +51,14 @@
   startDelay/baseSpeed/speedPerDepth/maxSpeed = 프리팹 튜닝 지점. static Instance
 - SegmentEnvironment.cs: 공간감 PCG 데이터 생성기 (ADR-0003/0004/0005).
   GenerateBlocks = 인스턴스 블록(행렬+팔레트 8색+웨이브/위상) 생성.
-  레이어: 럽블 협곡(근경, wave 0.35) + 상부층(복층, 정적) + 데브리(정적) +
-  중경 매스(팔레트 6, wave 0.6) + 원경 스카이라인(팔레트 7, wave 1.0).
-  FarPaletteStart(6)부터 원거리 레이어 - 렌더러가 그림자 생략.
-  BuildWalkFloor = 바닥만 GameObject (콜라이더 필요). BuildGameObjects = 수동 편집용 GO 백엔드.
+  좌우 비대칭 (사용자 지시: 카메라측 지형이 발판을 가리면 안 됨):
+  CameraSide(clearance) = 카메라 쪽 부호 (+x 기본). 카메라측 = 계단식 하강 지형
+  (AddTerracedDescent, 상판 항상 y<0, 3열이 복도에서 멀수록 낮아짐) + 상부
+  플랫폼 제외 + 중경/원경도 침강 배치 (상판 y<0, 저지대 잔해 인상).
+  시야 반대측 = 기존 럽블 능선 + 상부층 + 위로 솟는 중경/원경 스카이라인.
+  레이어: 럽블(wave 0.35) + 상부층(정적) + 데브리(정적) + 중경(팔레트 6, wave 0.6)
+  + 원경(팔레트 7, wave 1.0). FarPaletteStart(6)부터 렌더러가 그림자 생략.
+  브릿지는 카메라 반대측에서 복도 중앙까지만 (CameraSide 미러).
   난수는 주입된 rng만 사용. SegmentDefinition.wallHeight는 현재 미사용(구 셸 잔재)
 - EnvironmentRenderer.cs: Graphics.RenderMeshInstanced 드로우 (ADR-0005, 웹 호환 -
   BRG는 WebGL2 미지원이라 기각). 구간 청크 등록/해제(AddChunk/RemoveChunk),

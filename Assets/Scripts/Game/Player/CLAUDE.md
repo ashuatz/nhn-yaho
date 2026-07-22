@@ -7,7 +7,8 @@
 - PlayerState.cs: 상태 enum (Advancing / Looting / AtChoice / Dead)
 - PlayerController.cs: 상태 소유자 + 입력. 외부 진입점:
   TryBeginLoot / EndLoot, EnterChoice / ExitChoice, Kill, ResetForNewRun,
-  SetExternalMoveInput(조이스틱 벡터). 낙사 판정 (y < -4 -> Kill("fall"))
+  SetExternalMoveInput(조이스틱 벡터), SetExternalInteractHeld(모바일 홀드 버튼,
+  M5-1 - 키보드 E와 OR 합성). 낙사 판정 (y < -4 -> Kill("fall"))
 - PlayerMotor.cs: CharacterController 이동. 2D 벡터 홀드 (ADR-0007):
   SetMoveInput(Vector2) = 입력이 있는 동안 이동, 아날로그 크기 비례. moveSpeed = 튜닝 지점.
   SpeedScale = 외부 시스템(CarryLoad)이 설정하는 이동속도 배율 (1 = 정상).
@@ -20,8 +21,11 @@
   EvaluateStage/ResolveSpeedScale/StageLabel = 정적 순수 함수 (EditMode 테스트 대상)
 - FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003) + 벨트스크롤
   (ADR-0007 5항): z 추적은 전진 전용 래칫 - 플레이어가 후퇴해도 물러나지 않고,
-  BackLimitZ(래칫 - backLimitMargin)를 Motor.CameraMinZ로 공급해 가시 영역 밖
-  이탈을 막는다. 리그 구성 순서:
+  BackLimitZ를 Motor.CameraMinZ로 공급해 가시 영역 밖 이탈을 막는다.
+  BackLimitZ = 카메라 뷰포트 하단 에지(backEdgeViewportY)의 시선-지면(y=0) 교점 z
+  - backLimitSlack (사용자 지시: 화면에 아슬아슬하게 걸릴 때까지 후퇴 허용,
+  카메라 튜닝에 자동 추종). Camera 컴포넌트 부재 시 구 방식(래칫 - backLimitMargin) 폴백.
+  리그 구성 순서:
   lookAtOffset(앵커 기준 월드축, 바라보는 지점) -> positionOffsetWorld(룩앳 기준
   월드축, 카메라 위치) -> positionOffsetLocal(시선 로컬축, 회전 확정 후 구도 시프트 -
   시선 방향 불변). followSmoothTime = 지연 추적(SmoothDamp, 0이면 즉시).

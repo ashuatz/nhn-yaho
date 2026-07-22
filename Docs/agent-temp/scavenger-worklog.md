@@ -5,6 +5,51 @@
 
 ---
 
+## 2026-07-22 (7) - 후퇴 한계 / 배경 비대칭 / 파밍 드롭 / M5-1 uGUI / 낙하물
+
+사용자 지시 5건 + 세션 중 추가 1건(낙하물).
+
+### 완료
+
+- 후퇴 한계 확장: BackLimitZ = 카메라 뷰포트 하단 에지(backEdgeViewportY 0.03)의
+  지면 교점 - backLimitSlack(0.5). 화면에 아슬아슬하게 걸릴 때까지 후퇴 가능,
+  카메라 튜닝 자동 추종. Camera 부재 시 구 마진 방식 폴백
+- 배경 좌우 비대칭 (발판 가림 금지): 카메라측(+x)은 계단식 하강 지형
+  (3열, 상판 항상 y<0) + 상부 플랫폼 제외 + 중경/원경 침강 배치.
+  시야측(-x)은 럽블 능선/상부층/솟는 중경·원경 유지 + 밀도 강화.
+  SegmentEnvironment.CameraSide(clearance)가 부호 단일 소스
+- 파밍 연출 (사용자 지시): 루팅 중 0.28s 주기 큐브 파편(LootBurst),
+  완료 시 조각 3개가 포물선 낙하(LootPickup, 1회 바운스) -> E 홀드로 줍기
+  (상호작용 키 공용). 가치/무게는 조각에 분배 - 합계 보존. 획득 시점 =
+  줍는 순간 (방치 = 두고 간 가치). 조각은 지지 스트립 자식 - 함께 침몰.
+  복도 밖 착지 클램프(scatterClampHalfWidth), 단차 위는 좁은 산포
+- M5-1 uGUI 전환: IMGUI HudOverlay 삭제 -> HudCanvas 프리팹
+  (HudController + LootLabelLayer + VirtualJoystick uGUI 재작성).
+  아이템 머리 위 라벨 (이름/+가치/무게/한 줄 설명 - LootDefinition.shortDescription).
+  상호작용 프롬프트 박스 = 모바일 홀드 버튼 겸용 (SetExternalInteractHeld).
+  EventSystem 미사용 (포인터 직접 판독). 폰트 = LegacyRuntime (한글 OS 폴백, TMP 기각).
+  asmdef에 UnityEngine.UI 참조 추가. 기존 GameFlow 프리팹의 구 컴포넌트는
+  Ensure Prefabs가 자동 제거
+- 낙하물 위협 (세션 중 추가 지시): RockfallZone - 접근 시 착탄점 예고
+  (DangerGrid 셀 점멸 + 근접 트레머 0.95s) 후 돌 낙하. 직격 = 사망,
+  착탄 지점 FloorStrip.Sink = 발판 파괴(낙사 구멍). 착탄점은 플레이어 전방
+  0.9~2.4m + 좌우 산포 (즉사 저격 금지). DepthCurve.EvaluateRockfallCount
+  (기본 d1=1, +0.5/깊이, 최대 3). 초입/선택지 앞/단차 z 제외, 존 간격 9m
+- 검증: dotnet 3 프로젝트 0 에러, EditMode 43/43, Ensure Prefabs +
+  Setup Greybox Scene 재실행 (HudCanvas 포함 씬 커밋)
+
+### 규약 메모
+
+- 비주얼/산포 전용 난수는 new System.Random(GetInstanceID()) - SinkDebris 선례.
+  RunManager.Rng(배치 스트림)는 런타임 이펙트가 소비하면 맵 재현성이 깨지므로 금지
+
+### 다음 작업
+
+M2-2 획득 피드 (조각 줍기 피드로 대체 가능성 검토) -> M2-3~6.
+uGUI 배치/폰트 크기는 플레이테스트 후 프리팹에서 튜닝.
+
+---
+
 ## 2026-07-22 (6) - 뷰좌표 입력 / 벨트스크롤 / 붕괴 연출 / 프롬프트 / 교차 검토
 
 사용자 피드백 연속 반영 세션 (플레이테스트 병행).
