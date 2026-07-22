@@ -138,9 +138,8 @@ namespace Scavenger.EditorTools
         public static void GenerateFloorGridMenu()
         {
             EnsureFloorGrid();
-            EnsureArrowMaterial();
             AssetDatabase.SaveAssets();
-            UnityEngine.Debug.Log("[Grid] 바닥 그리드/화살표 머티리얼 생성 완료 (Assets/Resources)");
+            UnityEngine.Debug.Log("[Grid] 바닥 그리드 머티리얼 생성 완료 (Assets/Resources)");
         }
 
         /// <summary>
