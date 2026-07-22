@@ -14,11 +14,14 @@ namespace Scavenger.Player
         [Header("이동 (이동느낌 튜닝 지점)")]
         public float moveSpeed = 4.2f;
 
-        /// <summary>이동속도 배율. 과적(CarryLoad) 등 외부 시스템이 설정. 1 = 정상.</summary>
+        /// <summary>이동속도 배율. 과적(CarryLoad)이 설정. 1 = 정상.</summary>
         public float SpeedScale { get; set; } = 1f;
 
-        /// <summary>이동 가능한 복도 반폭. GameFlow가 구간 정의로 갱신.</summary>
-        public float corridorHalfWidth = 3.5f;
+        /// <summary>스테미나 배율 (PlayerStamina - 탈진 시 감속). SpeedScale과 곱 합성.</summary>
+        public float StaminaScale { get; set; } = 1f;
+
+        /// <summary>이동 가능한 복도 반폭. GameFlow가 구간 정의로 갱신, 체크포인트가 일시 확장.</summary>
+        public float corridorHalfWidth = 5.25f;
 
         /// <summary>후퇴 한계 z (붕괴 전선 앞). CollapseFront가 매 프레임 갱신.</summary>
         public float MinZ { get; set; } = float.NegativeInfinity;
@@ -91,8 +94,9 @@ namespace Scavenger.Player
             float backwardLimit = Mathf.Min(Mathf.Max(MinZ, CameraMinZ), transform.position.z);
 
             // 입력 속도 + 외부 임펄스 합산 후 축별 경계 클램프
-            float desiredX = MoveInput.x * moveSpeed * SpeedScale + externalVelocity.x;
-            float desiredZ = MoveInput.y * moveSpeed * SpeedScale + externalVelocity.z;
+            float effectiveSpeed = moveSpeed * SpeedScale * StaminaScale;
+            float desiredX = MoveInput.x * effectiveSpeed + externalVelocity.x;
+            float desiredZ = MoveInput.y * effectiveSpeed + externalVelocity.z;
 
             velocity.x = ComputeAxisSpeed(
                 transform.position.x, desiredX, -corridorHalfWidth, corridorHalfWidth, deltaTime);

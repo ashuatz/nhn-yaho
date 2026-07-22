@@ -172,6 +172,10 @@ namespace Scavenger.EditorTools
             // 무게 과적 -> 이동속도 배율 (M2-1). 임계/배율은 프리팹에서 튜닝
             root.AddComponent<CarryLoad>();
 
+            // 체력/스테미나 (HUD 표시 대상). 수치는 프리팹에서 튜닝
+            root.AddComponent<PlayerHealth>();
+            root.AddComponent<PlayerStamina>();
+
             // 비주얼: 큐브 2개 (머리 + 몸) - 로직 루트와 분리해 트랙 B에서 교체 가능
             GameObject visual = new GameObject("Visual");
             visual.transform.SetParent(root.transform, false);

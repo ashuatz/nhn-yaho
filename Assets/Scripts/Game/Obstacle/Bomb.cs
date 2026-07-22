@@ -98,8 +98,16 @@ namespace Scavenger.Obstacle
             {
                 float distance = Vector3.Distance(trackedPlayer.transform.position, transform.position);
 
+                // 체력 도입 (사용자 지시): 즉사 대신 큰 피해. 컴포넌트 없으면 즉사 폴백
                 if (distance <= explosionRadius)
-                    trackedPlayer.Kill("bomb");
+                {
+                    PlayerHealth health = trackedPlayer.GetComponent<PlayerHealth>();
+
+                    if (health != null)
+                        health.Damage(2, "bomb");
+                    else
+                        trackedPlayer.Kill("bomb");
+                }
 
                 // 피격/근접 폭발 피드백 (사용자 지시): 가까울수록 강한 쉐이크
                 if (CameraShake.Instance != null)
