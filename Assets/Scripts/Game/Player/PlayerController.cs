@@ -33,6 +33,9 @@ namespace Scavenger.Player
         // 가상 조이스틱 등 외부 UI가 공급하는 이동 벡터 (매 프레임 갱신 전제)
         Vector2 externalMoveInput;
 
+        // 모바일 상호작용 버튼(uGUI, M5-1)이 공급하는 홀드 상태. 키보드 E와 OR 합성
+        bool externalInteractHeld;
+
         // 뷰 좌표계 변환 기준 (사용자 지시: 입력 축 = 화면 기준).
         // 카메라 리그의 yaw는 고정이므로 매 프레임 평면 투영만 한다
         Transform viewAnchor;
@@ -128,6 +131,7 @@ namespace Scavenger.Player
             LateralInput = 0f;
             InteractHeld = false;
             externalMoveInput = Vector2.zero;
+            externalInteractHeld = false;
 
             Transition(PlayerState.Dead);
 
@@ -146,6 +150,15 @@ namespace Scavenger.Player
         public void SetExternalMoveInput(Vector2 input)
         {
             externalMoveInput = Vector2.ClampMagnitude(input, 1f);
+        }
+
+        /// <summary>
+        /// 모바일 상호작용 버튼(uGUI)의 홀드 상태 공급 (M5-1, E 키 대체).
+        /// 누르는 동안 매 프레임 true를 보낼 것 - 다음 ReadInput에서 합성된다.
+        /// </summary>
+        public void SetExternalInteractHeld(bool held)
+        {
+            externalInteractHeld = held;
         }
 
         /// <summary>런 재시작 시 GameFlow가 호출.</summary>
@@ -168,12 +181,12 @@ namespace Scavenger.Player
 
         void ReadInput()
         {
-            InteractHeld = false;
+            InteractHeld = externalInteractHeld;
 
             Keyboard keyboard = Keyboard.current;
 
             if (keyboard != null)
-                InteractHeld = keyboard.eKey.isPressed;
+                InteractHeld |= keyboard.eKey.isPressed;
 
             // 루팅 취소 판정용 좌우 입력 - 키보드와 조이스틱 합산 (ADR-0001)
             LateralInput = Mathf.Clamp(ReadKeyboardMove().x + externalMoveInput.x, -1f, 1f);

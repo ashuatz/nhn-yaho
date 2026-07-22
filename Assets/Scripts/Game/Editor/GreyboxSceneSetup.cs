@@ -28,6 +28,7 @@ namespace Scavenger.EditorTools
         const string RunSystemsPrefabPath = "Assets/Prefabs/RunSystems.prefab";
         const string SpawnerPrefabPath = "Assets/Prefabs/SegmentSpawner.prefab";
         const string GameFlowPrefabPath = "Assets/Prefabs/GameFlow.prefab";
+        const string HudCanvasPrefabPath = "Assets/Prefabs/HudCanvas.prefab";
 
         static readonly Color DepthColor = new Color(0.045f, 0.055f, 0.085f);
 
@@ -46,6 +47,7 @@ namespace Scavenger.EditorTools
             GameObject player = InstantiatePrefab(PlayerPrefabPath);
             GameObject cameraObject = InstantiatePrefab(CameraPrefabPath);
             GameObject flow = InstantiatePrefab(GameFlowPrefabPath);
+            InstantiatePrefab(HudCanvasPrefabPath);
 
             BuildLight();
             WireSceneReferences(runSystems, spawner, player, cameraObject, flow);
@@ -70,8 +72,41 @@ namespace Scavenger.EditorTools
             EnsurePrefab(RunSystemsPrefabPath, BuildRunSystemsTemplate);
             EnsurePrefab(SpawnerPrefabPath, BuildSpawnerTemplate);
             EnsurePrefab(GameFlowPrefabPath, BuildGameFlowTemplate);
+            EnsurePrefab(HudCanvasPrefabPath, HudCanvasTemplate.Build);
+
+            RemoveLegacyImguiFromGameFlowPrefab();
 
             AssetDatabase.SaveAssets();
+        }
+
+        // M5-1 uGUI 전환: 기존 GameFlow 프리팹에 남은 IMGUI HUD 잔재 정리 -
+        // 삭제된 HudOverlay(missing script)와 캔버스로 이사한 VirtualJoystick 제거
+        static void RemoveLegacyImguiFromGameFlowPrefab()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(GameFlowPrefabPath);
+
+            if (prefab == null)
+                return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(GameFlowPrefabPath);
+            int removedCount = 0;
+
+            foreach (Transform child in contents.GetComponentsInChildren<Transform>(true))
+                removedCount += GameObjectUtility.RemoveMonoBehavioursWithMissingScript(child.gameObject);
+
+            foreach (VirtualJoystick joystick in contents.GetComponentsInChildren<VirtualJoystick>(true))
+            {
+                Object.DestroyImmediate(joystick, true);
+                removedCount += 1;
+            }
+
+            if (removedCount > 0)
+            {
+                PrefabUtility.SaveAsPrefabAsset(contents, GameFlowPrefabPath);
+                UnityEngine.Debug.Log($"[Setup] GameFlow 프리팹에서 구 IMGUI 컴포넌트 {removedCount}개 제거");
+            }
+
+            PrefabUtility.UnloadPrefabContents(contents);
         }
 
         static void EnsurePrefab(string path, System.Func<GameObject> buildTemplate)
@@ -183,12 +218,11 @@ namespace Scavenger.EditorTools
             return spawnerObject;
         }
 
+        // HUD/조이스틱은 M5-1부터 HudCanvas 프리팹 소속 (uGUI)
         static GameObject BuildGameFlowTemplate()
         {
             GameObject flowObject = new GameObject("GameFlow");
             flowObject.AddComponent<GameFlow>();
-            flowObject.AddComponent<HudOverlay>();
-            flowObject.AddComponent<VirtualJoystick>();
             return flowObject;
         }
 

@@ -10,8 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 7668195432646699053}
   - component: {fileID: 4397969001742651752}
-  - component: {fileID: 5756614213621477233}
-  - component: {fileID: 2219686863829821638}
   m_Layer: 0
   m_Name: GameFlow
   m_TagString: Untagged
@@ -53,32 +51,3 @@ MonoBehaviour:
   runSettings: {fileID: 0}
   segmentDefinition: {fileID: 0}
   depthCurve: {fileID: 0}
---- !u!114 &5756614213621477233
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8624025190762300524}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 328fc7c10d8699348839e56475aac48e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Scavenger.Game::Scavenger.UI.HudOverlay
---- !u!114 &2219686863829821638
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8624025190762300524}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4871d93699f892f44bdf6ff5dbb64c13, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Scavenger.Game::Scavenger.UI.VirtualJoystick
-  baseRadius: 80
-  knobRadius: 30
-  marginLeft: 36
-  marginBottom: 36
-  deadZone: 0.12

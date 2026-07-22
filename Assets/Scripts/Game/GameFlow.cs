@@ -62,9 +62,11 @@ namespace Scavenger
 
             collapseFront.Track(player);
 
-            // 가상 조이스틱 (좌하단 조작계, ADR-0007) - 기존 프리팹에는 폴백으로 보강
-            if (FindFirstObjectByType<UI.VirtualJoystick>() == null)
-                gameObject.AddComponent<UI.VirtualJoystick>();
+            // uGUI HUD (M5-1)는 HudCanvas 프리팹으로 씬에 배치된다.
+            // 런타임 생성 금지 규약 - 없으면 경고만 (씬 재구성 안내)
+            if (FindFirstObjectByType<UI.HudController>() == null)
+                UnityEngine.Debug.LogWarning(
+                    "[Flow] HudCanvas 프리팹이 씬에 없다. 'Scavenger > Setup Greybox Scene' 재실행 필요.");
 
             // 무게 과적 (M2-1) - 기존 Player 프리팹에는 폴백으로 보강
             carryLoad = player.GetComponent<CarryLoad>();
