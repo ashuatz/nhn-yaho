@@ -128,15 +128,17 @@ namespace Scavenger.EditorTools
             GameObject visual = new GameObject("Visual");
             visual.transform.SetParent(root.transform, false);
 
+            // 머티리얼은 반드시 디스크 에셋 - 인메모리 머티리얼은 프리팹 저장 시
+            // 참조가 깨져 마젠타가 된다 (실제 발생, GreyboxMaterials 참조)
             GameObject body = CreateVisualCube(visual.transform, "Body");
             body.transform.localScale = new Vector3(0.7f, 0.9f, 0.45f);
             body.transform.localPosition = new Vector3(0f, 0.65f, 0f);
-            Tint(body, new Color(0.8f, 0.6f, 0.2f));
+            AssignMaterial(body, GreyboxMaterials.Ensure("PlayerBody", new Color(0.8f, 0.6f, 0.2f)));
 
             GameObject head = CreateVisualCube(visual.transform, "Head");
             head.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
             head.transform.localPosition = new Vector3(0f, 1.35f, 0f);
-            Tint(head, new Color(0.9f, 0.75f, 0.6f));
+            AssignMaterial(head, GreyboxMaterials.Ensure("PlayerHead", new Color(0.9f, 0.75f, 0.6f)));
 
             // 스텝 연출 (스쿼시/스트레치 + 홉). Awake에서 Visual 자식 자동 탐색
             root.AddComponent<PlayerStepAnimator>();
@@ -174,6 +176,7 @@ namespace Scavenger.EditorTools
             GameObject flowObject = new GameObject("GameFlow");
             flowObject.AddComponent<GameFlow>();
             flowObject.AddComponent<HudOverlay>();
+            flowObject.AddComponent<VirtualDPad>();
             return flowObject;
         }
 
@@ -278,17 +281,54 @@ namespace Scavenger.EditorTools
             return cube;
         }
 
-        static void Tint(GameObject cube, Color color)
+        static void AssignMaterial(GameObject cube, Material material)
         {
             Renderer cubeRenderer = cube.GetComponent<Renderer>();
 
             if (cubeRenderer == null)
                 return;
 
-            // 에디트 모드에서는 sharedMaterial 인스턴스를 새로 만들어 틴트
-            Material material = new Material(cubeRenderer.sharedMaterial);
-            material.color = color;
             cubeRenderer.sharedMaterial = material;
+        }
+
+        /// <summary>
+        /// 기존 프리팹의 깨진(마젠타) 머티리얼을 에셋 머티리얼로 교체.
+        /// 프리팹의 다른 튜닝 값은 건드리지 않는다.
+        /// </summary>
+        [MenuItem("Scavenger/Repair Greybox Materials")]
+        public static void RepairMaterials()
+        {
+            GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
+
+            if (playerPrefab == null)
+            {
+                UnityEngine.Debug.LogWarning("[Setup] Player prefab not found - run Ensure Prefabs first.");
+                return;
+            }
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(PlayerPrefabPath);
+
+            try
+            {
+                Transform body = contents.transform.Find("Visual/Body");
+                Transform head = contents.transform.Find("Visual/Head");
+
+                if (body != null)
+                    AssignMaterial(body.gameObject, GreyboxMaterials.Ensure("PlayerBody", new Color(0.8f, 0.6f, 0.2f)));
+
+                if (head != null)
+                    AssignMaterial(head.gameObject, GreyboxMaterials.Ensure("PlayerHead", new Color(0.9f, 0.75f, 0.6f)));
+
+                PrefabUtility.SaveAsPrefabAsset(contents, PlayerPrefabPath);
+                UnityEngine.Debug.Log("[Setup] Player prefab materials repaired.");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
+
+            // 사전 배치 배경이 마젠타면 Environment Authoring 윈도우에서 재생성
+            // (재생성 경로가 에셋 머티리얼을 쓰도록 수정됨)
         }
     }
 }

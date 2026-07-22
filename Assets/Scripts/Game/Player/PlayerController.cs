@@ -126,6 +126,15 @@ namespace Scavenger.Player
                 RunManager.Instance.KillRun(cause);
         }
 
+        /// <summary>가상 D-패드 등 외부 UI의 방향 토글 요청. 키보드와 동일 규칙.</summary>
+        public void RequestToggle(Vector2 cardinal)
+        {
+            if (State != PlayerState.Advancing)
+                return;
+
+            motor.ToggleDirection(cardinal);
+        }
+
         /// <summary>런 재시작 시 GameFlow가 호출.</summary>
         public void ResetForNewRun()
         {

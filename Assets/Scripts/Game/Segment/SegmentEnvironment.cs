@@ -512,10 +512,45 @@ namespace Scavenger.Segment
             if (blockRenderer == null)
                 return;
 
-            // 에디트 모드에서 .material 접근은 에러 - 인스턴스를 만들어 교체 (양쪽 모드 공용)
+#if UNITY_EDITOR
+            // 에디트 모드(사전 배치)에서는 반드시 디스크 에셋 머티리얼 사용 -
+            // 인메모리 머티리얼은 씬 저장 후 참조가 깨져 마젠타가 된다 (실제 발생)
+            if (!Application.isPlaying)
+            {
+                blockRenderer.sharedMaterial = EnsureEditorMaterialAsset(color);
+                return;
+            }
+#endif
+
+            // 플레이 모드: 세션 수명의 인스턴스로 충분
             Material material = new Material(blockRenderer.sharedMaterial);
             material.color = color;
             blockRenderer.sharedMaterial = material;
         }
+
+#if UNITY_EDITOR
+        static Material EnsureEditorMaterialAsset(Color color)
+        {
+            if (!UnityEditor.AssetDatabase.IsValidFolder("Assets/Materials"))
+                UnityEditor.AssetDatabase.CreateFolder("Assets", "Materials");
+
+            if (!UnityEditor.AssetDatabase.IsValidFolder("Assets/Materials/Greybox"))
+                UnityEditor.AssetDatabase.CreateFolder("Assets/Materials", "Greybox");
+
+            string hex = ColorUtility.ToHtmlStringRGB(color);
+            string path = $"Assets/Materials/Greybox/Env_{hex}.mat";
+
+            Material material = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(path);
+
+            if (material != null)
+                return material;
+
+            material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            material.color = color;
+
+            UnityEditor.AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+#endif
     }
 }

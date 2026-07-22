@@ -61,6 +61,10 @@ namespace Scavenger
 
             collapseFront.Track(player);
 
+            // 가상 D-패드 (좌하단 조작계) - 기존 프리팹에는 폴백으로 보강
+            if (FindFirstObjectByType<UI.VirtualDPad>() == null)
+                gameObject.AddComponent<UI.VirtualDPad>();
+
             runManager.RunStarted += OnRunStarted;
         }
 
