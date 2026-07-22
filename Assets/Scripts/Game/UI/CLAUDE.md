@@ -4,8 +4,9 @@
 
 ## 파일 목차
 
-- HudOverlay.cs: IMGUI HUD. 가치 합계 + 무게/적재 단계(M2-1, D-패드 오른쪽 하단),
-  루팅 게이지, 선택지 프롬프트, 신호 배너, 붕괴 근접 경고(12m), 런 결과 패널(클릭 재개).
+- HudOverlay.cs: IMGUI HUD. 가치 합계 + 무게/적재 단계(M2-1, 조이스틱 오른쪽 하단),
+  상호작용 키 프롬프트(우하단, LootSpot.PromptTarget - E 꾹 안내), 루팅 게이지,
+  선택지 프롬프트, 신호 배너, 붕괴 근접 경고(12m), 런 결과 패널(클릭 재개).
 - VirtualJoystick.cs: 좌하단 가상 조이스틱 (ADR-0007, 토글 D-패드 대체).
   베이스 원 안 드래그 = 2D 벡터 -> PlayerController.SetExternalMoveInput.
   마우스/터치 공용, 데드존(반경 비율). Running 상태에서만 표시/입력.

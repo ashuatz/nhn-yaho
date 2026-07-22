@@ -18,7 +18,10 @@
   3단계(일반/과적/초과적) 판정 후 Motor.SpeedScale 반영. 임계(overloadedAt/
   severelyOverloadedAt)와 배율은 Player 프리팹 튜닝 지점.
   EvaluateStage/ResolveSpeedScale/StageLabel = 정적 순수 함수 (EditMode 테스트 대상)
-- FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003). 리그 구성 순서:
+- FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003) + 벨트스크롤
+  (ADR-0007 5항): z 추적은 전진 전용 래칫 - 플레이어가 후퇴해도 물러나지 않고,
+  BackLimitZ(래칫 - backLimitMargin)를 Motor.CameraMinZ로 공급해 가시 영역 밖
+  이탈을 막는다. 리그 구성 순서:
   lookAtOffset(앵커 기준 월드축, 바라보는 지점) -> positionOffsetWorld(룩앳 기준
   월드축, 카메라 위치) -> positionOffsetLocal(시선 로컬축, 회전 확정 후 구도 시프트 -
   시선 방향 불변). followSmoothTime = 지연 추적(SmoothDamp, 0이면 즉시).
@@ -46,7 +49,8 @@
 
 ## 규칙 (ADR-0001 + ADR-0006)
 
-- 루팅 중 이동 완전 정지, 토글 입력 무시. 좌우 입력은 루팅 취소 신호 (판정은 LootSpot 소유)
-- 후퇴는 붕괴 전선(Motor.MinZ 클램프)까지만 가능
+- 루팅 중 이동 완전 정지. 좌우 입력은 루팅 취소 신호 (판정은 LootSpot 소유)
+- 후퇴는 붕괴 전선(Motor.MinZ)과 카메라 후방 한계(Motor.CameraMinZ) 중
+  앞선 것까지만 가능 (벨트스크롤)
 - 상태 전이는 PlayerController.Transition만 사용. 외부에서 State 직접 변경 불가
 - CharacterController 텔레포트는 반드시 비활성화 후 위치 설정 (GameFlow.RecoverPlayerIfFallen)

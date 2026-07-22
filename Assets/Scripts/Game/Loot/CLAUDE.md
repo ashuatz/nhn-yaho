@@ -10,6 +10,7 @@
   TotalWeight는 CarryLoad(Player/)의 과적 판정 입력 (M2-1)
 - LootSpot.cs: 씬 배치물. E 홀드 루팅, 좌우 입력/홀드 해제 = 취소(진행도 리셋).
   static Active = 현재 루팅 중 스팟 (HUD 게이지 참조).
+  static PromptTarget = 시작 가능 조건 충족 스팟 (HUD 우하단 키 프롬프트 참조).
   진행 중에도 시작 조건 재검증 (범위 이탈/requiredMinPlayerY 미달 시 취소 - 교차 검토)
 - PlayerStash.cs: 아웃게임 창고. 안정 ID 목록 저장 (가치 합계 아님 - 확장 대비).
   원자적 저장(tmp 후 교체), 손상 파일 .corrupt 격리 후 빈 창고 복구.

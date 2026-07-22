@@ -22,6 +22,9 @@
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.
   (탈출 잠금 규칙은 ADR-0006에서 제거 - IsExtractionLocked는 기본 false)
 - FloorStrip.cs: 붕괴 단위 바닥 스트립 (2m). Sink = 자식 포함 콜라이더 off + 가라앉음 -> 낙사.
+  표면 렌더러가 있으면 SinkDebris로 그리드 셀 조각 낙하 연출 (판정은 일괄 유지).
+- SinkDebris.cs: 붕괴 연출 전용 (순수 비주얼). 표면을 1m 셀로 쪼개 조각별
+  지연/낙하 속도/월드 틸트 회전. 상한 80조각, 공유 런타임 머티리얼, 자체 파괴.
   단차(Ledge) 같은 복합 요소 루트에도 부착 가능.
   preserveOnSink(사전 배치용) = 파괴 대신 비활성 보존, Restore = 런 재시작 복구
   (미복구 시 재시작 낙사 루프 - 교차 검토 P1). 코리도 루트/폭탄은 지지 스트립의
@@ -31,8 +34,9 @@
   바닥 루트/폭탄은 단차 영역 제외, 붕괴 전선에 등록되어 함께 가라앉음
 - DangerGrid.cs: 위험 범위 셀 표시 (M3-1, 큐비트 방식). ShowCircle/ShowRect -> 핸들,
   Hide(핸들). 셀 풀링 + 공통 점멸 (런타임 머티리얼). 폭탄 기폭 시작 시 폭발 반경 표시,
-  땅 꺼짐 등 후속 위협 공용. CellsInCircle/CellsInRect = 순수 함수 (EditMode 테스트).
-  cellSize/색/점멸 = 프리팹 튜닝 지점. static Instance
+  땅 꺼짐 등 후속 위협 공용. 셀 포함은 보수적 (일부라도 겹치면 표시 - 최근접점/
+  실면적 판정, 교차 검토 반영). CellsInCircle/CellsInRect = 순수 함수 (EditMode
+  테스트). cellSize/색/점멸 = 프리팹 튜닝 지점. static Instance
 - SinkTrap.cs: 땅 꺼짐 트랩 (M3-2). FloorStrip과 동일 오브젝트. 플레이어 z 근접 시
   예고 (DangerGrid 사각 점멸 + 근접 비례 CameraShake 트레머) 후 FloorStrip.Sink.
   붕괴 전선이 먼저 침몰시키면 무효. 수치는 SegmentSpawner 필드가 주입.
