@@ -50,6 +50,20 @@ namespace Scavenger.EditorTools
                 Vector2.zero, new Vector2(60f, 60f),
                 new Color(1f, 1f, 1f, 0.55f));
 
+            // -- 체력 바 (좌상단) --------------------------------------------
+            RectTransform healthBox = CreatePanel(
+                root.transform, "HealthBar",
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(16f, -16f), new Vector2(300f, 40f));
+
+            RectTransform healthFill = CreateImageRect(
+                healthBox, "Fill",
+                new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f),
+                new Vector2(2f, 0f), new Vector2(0f, -4f),
+                new Color(0.88f, 0.27f, 0.24f, 0.9f));
+
+            Text healthText = CreateText(healthBox, "Text", 20, TextAnchor.MiddleCenter);
+
             // -- 가치/무게 박스 (조이스틱 오른쪽) ------------------------------
             RectTransform valueBox = CreatePanel(
                 root.transform, "ValueBox",
@@ -131,8 +145,20 @@ namespace Scavenger.EditorTools
                 Vector2.zero, new Vector2(430f, 84f));
             Text resultText = CreateText(resultBox, "Text", 24, TextAnchor.MiddleCenter);
 
+            // -- 피격 붉은 화면 플래시 (전체 화면, 최상단) ----------------------
+            RectTransform flashRect = CreateStretchRect(root.transform, "DamageFlash");
+            Image damageFlash = flashRect.gameObject.AddComponent<Image>();
+            damageFlash.color = new Color(0.85f, 0.1f, 0.1f, 0f);
+            damageFlash.raycastTarget = false;
+            flashRect.SetAsLastSibling();
+            flashRect.gameObject.SetActive(false);
+
             // -- 컴포넌트 배선 ------------------------------------------------
             HudController hud = root.AddComponent<HudController>();
+            hud.healthRoot = healthBox.gameObject;
+            hud.healthFill = healthFill;
+            hud.healthText = healthText;
+            hud.damageFlash = damageFlash;
             hud.valueRoot = valueBox.gameObject;
             hud.valueText = valueText;
             hud.interactRoot = interactBox.gameObject;
