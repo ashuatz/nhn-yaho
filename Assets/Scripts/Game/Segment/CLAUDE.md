@@ -14,13 +14,17 @@
   (AttachToSupportingStrip), currentStrips/currentLedges
 - SegmentSpawner.Features.cs: 기능 카테고리. 루트(tier 가중치)/폭탄(z 간격 검증)/
   땅꺼짐·밀기 트랩/낙하물 존(RockfallZone, 초입·선택지 앞·단차 제외, z 간격 9m)/
-  ChoiceNode/거리 신호 배치 + 트랩 튜닝 필드. 루트 조각 산포/낙하물 착탄 시드는
-  배치 시 RunManager.Rng에서 배정 (게임 결과 난수 = 재현성 대상).
+  바닥 장판(PopulateHazardFloors, 한쪽만 깔아 우회 여지)/폭격 구역(PopulateStrikeZones,
+  z 간격 12m)/굴림블록 스포너(PopulateRollingBlocks, z 간격 16m) - 뒤 3종 ADR-0008
+  웹 이식/ChoiceNode/거리 신호 배치 + 트랩 튜닝 필드. 루트 조각 산포/낙하물 착탄/
+  폭격 셀/굴림 스폰 시드는 배치 시 RunManager.Rng에서 배정 (게임 결과 난수 = 재현성 대상).
   전진 콜백에서 다음 구간 생성과 뒤쪽 정리 수행 (동시 생존 최대 2구간)
 - SegmentPath.cs: 길 공용 지오메트리 (정적). BuildWalkFloorStrips - 런타임과
   사전 배치 윈도우 공용 (SegmentEnvironment에서 이동)
 - DepthCurve.cs: 깊이 스케일링 단일 소스. tier 가중치 / 폭탄 수 / 기폭 시간 / 폭발 반경 /
-  땅꺼짐·밀기 트랩 수 / 낙하물 존 수 (EvaluateRockfallCount).
+  땅꺼짐·밀기 트랩 수 / 낙하물 존 수 (EvaluateRockfallCount) / 바닥 장판 수
+  (EvaluateHazardFloorCount) / 폭격 구역 수 (EvaluateStrikeZoneCount) / 굴림블록
+  스포너 수 (EvaluateRollingBlockCount) - 뒤 3종은 ADR-0008 웹 이식.
   모든 값 클램프 - 통과 불가 배치 방지 (blastMaxRadius x 2 < 복도 폭 유지 필수)
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.
   (탈출 잠금 규칙은 ADR-0006에서 제거 - IsExtractionLocked는 기본 false)

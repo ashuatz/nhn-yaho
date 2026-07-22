@@ -8,9 +8,13 @@
   id는 스태시 안정 키 - 배포 후 변경 금지. static TierColor(tier) = 표시 색 단일 소스
 - LootCatalog.cs: 코드 폴백 카탈로그 3종 (폐지 t1 w1 / 고철 t2 w4 / 금고 t3 w9)
   + 한 줄 설명 (HUD 라벨용). 정식 에셋 승격은 트랙 B 이후
-- RunInventory.cs: 순수 클래스 (EditMode 테스트 대상). Add/Clear/TotalValue/TotalWeight, id 기준 스택.
-  Add(definition, value, weight) 오버로드 = 조각 지분 획득용 (LootPickup).
-  TotalWeight는 CarryLoad(Player/)의 과적 판정 입력 (M2-1)
+- RunInventory.cs: 순수 클래스 (EditMode 테스트 대상). Add/Clear/TotalValue/TotalWeight,
+  (id, 등급) 기준 스택. Add(definition, value, weight) 오버로드 = 조각 지분 획득용
+  (LootPickup). TotalWeight는 CarryLoad(Player/)의 과적 판정 입력 (M2-1).
+  등급 합성 (ADR-0008 A안): 같은 (id, 등급) 5개 -> 상위 등급 1개 자동 합성(연쇄,
+  최대 레어). Entry.Grade/Weight/Value 보유, 무게 1개분 압축 + 가치 x6 배수.
+  스태시 저장은 등급 미인식 - BankedCounts(id별 실물 총 획득 개수, 합성 전 원본)를
+  별도 누적해 RunSettlement.BankInventory가 참조 (아웃게임 창고 설계 불변)
 - LootSpot.cs: 씬 배치물. E 홀드 루팅, 좌우 입력/홀드 해제 = 취소(진행도 리셋).
   static All = 라벨 순회용 레지스트리 / Active = 현재 루팅 중 스팟 (HUD 게이지 참조).
   static PromptTarget = 시작 가능 조건 충족 스팟 (HUD 우하단 키 프롬프트 참조).

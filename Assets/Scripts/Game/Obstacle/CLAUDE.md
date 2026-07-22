@@ -10,6 +10,23 @@
 - PushTrap.cs: 밀기 트랩 (M3-3). 감지 반경 진입 -> 예고 점멸 -> 붕괴 쪽(-z)으로
   PlayerMotor.AddImpulse. 쿨다운 후 재장전 (머무르면 반복). Initialize(반경, 예고,
   밀기 속도, 쿨다운) - 수치는 SegmentSpawner 필드가 주입.
+- RockfallZone.cs: 낙하물 존 (1회성). 접근 시 착탄 예고 -> 돌 낙하 -> 직격 즉사
+  (Kill) + 착탄 발판 파괴(우회로 남김). 착탄 산포는 RunManager.Rng 시드.
+
+## 웹 프로토타입 이식 장애물 (ADR-0008, 전부 HP 데미지형)
+
+- HazardFloor.cs: 바닥 장판 (지속 피해). 사각 영역 위에 서 있는 동안
+  PlayerHealth.Damage(dps*dt, "hazard"). DangerGrid.ShowRect로 상시 표시
+  (예고 아닌 지속 위험). 발판 위(공중)/사망 시 면제. halfWidthX/Z, damagePerSecond
+  = SegmentSpawner 주입. Health 없으면 무시 (즉사 아님).
+- StrikeZone.cs: 미사일 폭격 구역 (반복). 플레이어가 activateDistance 안이면
+  재장전 반복 - 3~5셀 예고(telegraphSeconds) -> 폭발 PlayerHealth.Damage(40, "strike").
+  회피 가능. 셀 산포는 배치 시 RunManager.Rng 시드(scatterSeed). NextRange 지연 초기화.
+- RollingBlock.cs: 굴러오는 개별 블록. -z로 굴러오며 접촉 시 Damage(35, "rolling", 1회).
+  뒤로 지나가거나 CollapseFront.FrontZ 도달 시 자멸. 이동/충돌만 담당.
+- RollingBlockSpawner.cs: 굴림블록 스포너 (구역 기반). 근처면 interval마다
+  플레이어 정면(spawnAheadDistance 앞)에 RollingBlock 스폰. 스폰 x 산포는
+  RunManager.Rng 시드. 웹의 전역 타이머를 구역 기반으로 이식.
 
 ## 규칙
 
