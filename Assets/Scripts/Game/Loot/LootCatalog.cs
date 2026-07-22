@@ -13,9 +13,9 @@ namespace Scavenger.Loot
         {
             List<LootDefinition> catalog = new List<LootDefinition>
             {
-                LootDefinition.Create("scrap_paper", "폐지 더미", 10, 1, 1.2f),
-                LootDefinition.Create("scrap_metal", "고철", 30, 2, 2.5f),
-                LootDefinition.Create("lockbox", "잠긴 금고", 90, 3, 4.5f),
+                LootDefinition.Create("scrap_paper", "폐지 더미", 10, 1, 1.2f, 1f),
+                LootDefinition.Create("scrap_metal", "고철", 30, 2, 2.5f, 4f),
+                LootDefinition.Create("lockbox", "잠긴 금고", 90, 3, 4.5f, 9f),
             };
 
             return catalog;

@@ -65,6 +65,10 @@ namespace Scavenger
             if (FindFirstObjectByType<UI.VirtualDPad>() == null)
                 gameObject.AddComponent<UI.VirtualDPad>();
 
+            // 무게 과적 (M2-1) - 기존 Player 프리팹에는 폴백으로 보강
+            if (player.GetComponent<CarryLoad>() == null)
+                player.gameObject.AddComponent<CarryLoad>();
+
             runManager.RunStarted += OnRunStarted;
         }
 

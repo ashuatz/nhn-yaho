@@ -19,7 +19,11 @@ namespace Scavenger.Loot
         [Header("루팅 홀드 시간 (초) = 정지 리스크")]
         public float holdSeconds = 1.5f;
 
-        public static LootDefinition Create(string id, string displayName, int value, int tier, float holdSeconds)
+        [Header("무게 - 과적 이동속도 판정의 입력 (M2-1)")]
+        public float weight = 1f;
+
+        public static LootDefinition Create(
+            string id, string displayName, int value, int tier, float holdSeconds, float weight = 1f)
         {
             LootDefinition definition = CreateInstance<LootDefinition>();
             definition.name = $"Loot ({id})";
@@ -28,6 +32,7 @@ namespace Scavenger.Loot
             definition.value = value;
             definition.tier = tier;
             definition.holdSeconds = holdSeconds;
+            definition.weight = weight;
             return definition;
         }
     }

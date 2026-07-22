@@ -23,12 +23,16 @@ namespace Scavenger.Loot
 
         public int TotalValue { get; private set; }
 
+        /// <summary>무게 합산 (M2-1). CarryLoad가 과적 판정에 사용.</summary>
+        public float TotalWeight { get; private set; }
+
         public void Add(LootDefinition definition)
         {
             if (definition == null)
                 return;
 
             TotalValue += definition.value;
+            TotalWeight += definition.weight;
 
             Entry existing = FindEntry(definition.id);
 
@@ -45,6 +49,7 @@ namespace Scavenger.Loot
         {
             entries.Clear();
             TotalValue = 0;
+            TotalWeight = 0f;
         }
 
         Entry FindEntry(string id)

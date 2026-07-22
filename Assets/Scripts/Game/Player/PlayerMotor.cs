@@ -13,6 +13,9 @@ namespace Scavenger.Player
         [Header("이동 (이동느낌 튜닝 지점)")]
         public float moveSpeed = 4.2f;
 
+        /// <summary>이동속도 배율. 과적(CarryLoad) 등 외부 시스템이 설정. 1 = 정상.</summary>
+        public float SpeedScale { get; set; } = 1f;
+
         /// <summary>이동 가능한 복도 반폭. GameFlow가 구간 정의로 갱신.</summary>
         public float corridorHalfWidth = 3.5f;
 
@@ -99,7 +102,7 @@ namespace Scavenger.Player
         // 경계를 넘지 않도록 이동 전에 축 속도를 미리 깎는다
         float ComputeAxisSpeed(float current, float axisInput, float min, float max, float deltaTime)
         {
-            float target = current + axisInput * moveSpeed * deltaTime;
+            float target = current + axisInput * moveSpeed * SpeedScale * deltaTime;
             target = Mathf.Clamp(target, min, max);
 
             return (target - current) / deltaTime;

@@ -12,6 +12,8 @@ namespace Scavenger.UI
     /// </summary>
     public sealed class HudOverlay : MonoBehaviour
     {
+        CarryLoad carryLoad;
+
         void OnGUI()
         {
             RunManager run = RunManager.Instance;
@@ -27,10 +29,23 @@ namespace Scavenger.UI
             DrawRunResult(run);
         }
 
-        static void DrawInventoryValue(RunManager run)
+        // 무게 상태 (M2-1): 가치 합계 아래에 무게와 적재 단계를 함께 표시.
+        // x 204 = 가상 D-패드(좌하단, 폭 약 192px) 오른쪽 - 겹침 방지 (배치 정리는 M5-1)
+        void DrawInventoryValue(RunManager run)
         {
-            Rect area = new Rect(10f, Screen.height - 40f, 300f, 30f);
-            GUI.Box(area, $"가치 합계: {run.Inventory.TotalValue}");
+            Rect area = new Rect(204f, Screen.height - 64f, 300f, 54f);
+            GUI.Box(area, $"가치 합계: {run.Inventory.TotalValue}\n{BuildWeightLine(run)}");
+        }
+
+        string BuildWeightLine(RunManager run)
+        {
+            if (carryLoad == null)
+                carryLoad = FindFirstObjectByType<CarryLoad>();
+
+            if (carryLoad == null)
+                return $"무게: {run.Inventory.TotalWeight:F1}";
+
+            return $"무게: {run.Inventory.TotalWeight:F1} ({CarryLoad.StageLabel(carryLoad.Stage)})";
         }
 
         static void DrawLootGauge()
