@@ -42,6 +42,9 @@ namespace Scavenger.Loot
         Vector3 tumbleAxis = Vector3.right;
         float tumbleSpeed;
         Material visualMaterial;
+        Material trailMaterial;
+        Transform visual;
+        TrailRenderer trail;
 
         static PlayerController player;
 
@@ -74,6 +77,7 @@ namespace Scavenger.Loot
             pickup.tumbleSpeed = 180f + (float)rng.NextDouble() * 360f;
 
             pickup.BuildVisual(definition.tier);
+            pickup.BuildTrail(definition.tier);
             return pickup;
         }
 
@@ -95,6 +99,9 @@ namespace Scavenger.Loot
             // 비주얼용 인스턴스 머티리얼 해제 (누수 방지 - Codex 교차 검토)
             if (visualMaterial != null)
                 Destroy(visualMaterial);
+
+            if (trailMaterial != null)
+                Destroy(trailMaterial);
         }
 
         void Update()
@@ -121,7 +128,11 @@ namespace Scavenger.Loot
 
             velocity.y -= Gravity * deltaTime;
             transform.position += velocity * deltaTime;
-            transform.Rotate(tumbleAxis, tumbleSpeed * deltaTime, Space.World);
+
+            // 회전은 비주얼 자식만 자기 중심으로 - 루트를 돌리면 오프셋 자식이
+            // 궤도를 돌아 메쉬가 깨져 보인다 (사용자 지적)
+            if (visual != null)
+                visual.Rotate(tumbleAxis, tumbleSpeed * deltaTime, Space.World);
 
             if (velocity.y >= 0f || transform.position.y > floorY)
                 return;
@@ -141,7 +152,17 @@ namespace Scavenger.Loot
             }
 
             IsResting = true;
-            transform.rotation = Quaternion.identity;
+
+            if (visual != null)
+                visual.localRotation = Quaternion.identity;
+
+            // 트레일은 잔상만 남기고 페이드 - 착지 후에는 그리지 않는다
+            if (trail != null)
+            {
+                trail.emitting = false;
+                Destroy(trail.gameObject, 0.6f);
+                trail = null;
+            }
         }
 
         void TickPickup()
@@ -201,6 +222,29 @@ namespace Scavenger.Loot
             return player != null;
         }
 
+        // 비행 잔상 (사용자 지시: 간단한 트레일). 착지 시 페이드 후 제거
+        void BuildTrail(int tier)
+        {
+            GameObject trailObject = new GameObject("Trail");
+            trailObject.transform.SetParent(transform, false);
+            trailObject.transform.localPosition = new Vector3(0f, VisualSize * 0.5f, 0f);
+
+            trail = trailObject.AddComponent<TrailRenderer>();
+            trail.time = 0.28f;
+            trail.startWidth = 0.16f;
+            trail.endWidth = 0.02f;
+            trail.minVertexDistance = 0.05f;
+            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            trailMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            trailMaterial.color = LootDefinition.TierColor(tier);
+            trail.sharedMaterial = trailMaterial;
+
+            Color tierColor = LootDefinition.TierColor(tier);
+            trail.startColor = tierColor;
+            trail.endColor = new Color(tierColor.r, tierColor.g, tierColor.b, 0f);
+        }
+
         void BuildVisual(int tier)
         {
             GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -208,6 +252,7 @@ namespace Scavenger.Loot
             cube.transform.SetParent(transform, false);
             cube.transform.localScale = new Vector3(VisualSize, VisualSize, VisualSize);
             cube.transform.localPosition = new Vector3(0f, VisualSize * 0.5f, 0f);
+            visual = cube.transform;
 
             // 판정은 거리 기반 - 콜라이더 불필요
             Collider cubeCollider = cube.GetComponent<Collider>();
