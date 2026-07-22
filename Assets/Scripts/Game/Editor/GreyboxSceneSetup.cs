@@ -160,8 +160,10 @@ namespace Scavenger.EditorTools
         {
             GameObject spawnerObject = new GameObject("SegmentSpawner");
 
-            // 배경 인스턴스 렌더러 (ADR-0005) - 스포너와 같은 오브젝트에 상주
+            // 배경 인스턴스 렌더러 (ADR-0005) + 붕괴 전선 (ADR-0006) - 스포너와 동거.
+            // 기존 프리팹에는 런타임 GetComponent/AddComponent 폴백이 보강한다
             spawnerObject.AddComponent<EnvironmentRenderer>();
+            spawnerObject.AddComponent<CollapseFront>();
             spawnerObject.AddComponent<SegmentSpawner>();
 
             return spawnerObject;
@@ -211,14 +213,16 @@ namespace Scavenger.EditorTools
             lightObject.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
         }
 
-        // 원경 깊이감: 멀수록 어둠에 잠기는 리니어 포그 (ADR-0003).
+        // 전방 시야 차단 포그 (M1-2, 기획 확정: 전방은 포그로 가려짐).
+        // 연출용이 아니라 정보 차단용 - 다음 선택지 노드(구간 끝)가 근접 전까지
+        // 식별되지 않도록 가시 한계를 짧게 잡는다. 거리 신호가 유일한 힌트가 된다.
         // RenderSettings는 씬에 저장되므로 에디트 모드에서 룩 확인 가능
         static void ApplyAtmosphere()
         {
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = 18f;
-            RenderSettings.fogEndDistance = 65f;
+            RenderSettings.fogStartDistance = 10f;
+            RenderSettings.fogEndDistance = 42f;
             RenderSettings.fogColor = DepthColor;
         }
 

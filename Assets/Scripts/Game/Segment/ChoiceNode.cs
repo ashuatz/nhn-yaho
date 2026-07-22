@@ -14,9 +14,6 @@ namespace Scavenger.Segment
         /// <summary>HUD 프롬프트가 참조하는 현재 활성 노드.</summary>
         public static ChoiceNode Active { get; private set; }
 
-        /// <summary>탈출이 잠겨 있으면 HUD에 잠금 표기 (S6).</summary>
-        public Func<bool> IsExtractionLocked = () => false;
-
         Action<ChoiceNode> onAdvance;
         Action<ChoiceNode> onExtract;
         PlayerController player;
@@ -86,12 +83,6 @@ namespace Scavenger.Segment
 
         void ChooseExtract()
         {
-            if (IsExtractionLocked())
-            {
-                UnityEngine.Debug.Log("[Choice] Extraction locked (time expired).");
-                return;
-            }
-
             consumed = true;
             Active = null;
 

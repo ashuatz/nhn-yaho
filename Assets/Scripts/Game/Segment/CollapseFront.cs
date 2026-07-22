@@ -75,7 +75,13 @@ namespace Scavenger.Segment
 
         public void RegisterStrips(List<FloorStrip> newStrips)
         {
-            strips.AddRange(newStrips);
+            foreach (FloorStrip strip in newStrips)
+            {
+                if (strip == null || strips.Contains(strip))
+                    continue;
+
+                strips.Add(strip);
+            }
         }
 
         void Update()
@@ -114,9 +120,11 @@ namespace Scavenger.Segment
                     continue;
                 }
 
-                if (strip.EndZ >= FrontZ)
+                // 긴 요소(단차)는 전선이 2m 파고들면 무너진다 - 면역 구간 방지 (검증 반영)
+                if (strip.SinkThresholdZ >= FrontZ)
                     continue;
 
+                float sinkZ = strip.EndZ;
                 strip.Sink();
                 strips.RemoveAt(i);
 
@@ -124,7 +132,7 @@ namespace Scavenger.Segment
                 if (EnvironmentRenderer.Active != null)
                 {
                     EnvironmentRenderer.Active.AddImpulse(
-                        new Vector3(0f, 0f, strip.EndZ), radius: 10f, strength: 1.6f);
+                        new Vector3(0f, 0f, sinkZ), radius: 10f, strength: 1.6f);
                 }
             }
         }

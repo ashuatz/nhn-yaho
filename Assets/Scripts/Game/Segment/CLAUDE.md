@@ -14,7 +14,11 @@
   모든 값 클램프 - 통과 불가 배치 방지 (blastMaxRadius x 2 < 복도 폭 유지 필수)
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.
   (탈출 잠금 규칙은 ADR-0006에서 제거 - IsExtractionLocked는 기본 false)
-- FloorStrip.cs: 붕괴 단위 바닥 스트립 (2m). Sink = 콜라이더 off + 가라앉음 -> 낙사
+- FloorStrip.cs: 붕괴 단위 바닥 스트립 (2m). Sink = 자식 포함 콜라이더 off + 가라앉음 -> 낙사.
+  단차(Ledge) 같은 복합 요소 루트에도 부착 가능
+- 단차 (M1-1, SegmentSpawner.PopulateLedges): 구간당 1-2개, 측면 상판(0.7-1.1m) +
+  진입 경사로(-z, 약 21도). 상판에 tier 2-3 고가치 루트. 시야 클리어런스 적용,
+  바닥 루트/폭탄은 단차 영역 제외, 붕괴 전선에 등록되어 함께 가라앉음
 - CollapseFront.cs: 시간 압박의 단일 소스 (ADR-0006). 붕괴 전선이 뒤에서 전진하며
   지나간 스트립을 가라앉히고 플레이어 z를 전선 앞으로 클램프 (후퇴 불가 겸용).
   startDelay/baseSpeed/speedPerDepth/maxSpeed = 프리팹 튜닝 지점. static Instance

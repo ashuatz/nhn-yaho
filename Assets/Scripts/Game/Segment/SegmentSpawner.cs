@@ -57,6 +57,34 @@ namespace Scavenger.Segment
             viewCamera = camera;
         }
 
+        CollapseFront EnsureCollapseFront()
+        {
+            CollapseFront collapse = GetComponent<CollapseFront>();
+
+            if (collapse == null)
+                collapse = gameObject.AddComponent<CollapseFront>();
+
+            return collapse;
+        }
+
+        void RegisterPreplacedStrips(float startZ, float endZ)
+        {
+            if (preplacedEnvironment == null)
+                return;
+
+            FloorStrip[] allStrips = preplacedEnvironment.GetComponentsInChildren<FloorStrip>();
+            List<FloorStrip> inRange = new List<FloorStrip>();
+
+            foreach (FloorStrip strip in allStrips)
+            {
+                if (strip.EndZ > startZ - 0.1f && strip.EndZ <= endZ + 0.1f)
+                    inRange.Add(strip);
+            }
+
+            // 중복 등록은 CollapseFront가 걸러낸다
+            EnsureCollapseFront().RegisterStrips(inRange);
+        }
+
         /// <summary>
         /// 카메라 리그 수치로 시야 라인 클리어런스를 만든다.
         /// 먼 끝점은 복도 반대편 바닥 (플레이어가 -x 끝에 있어도 가리지 않게 보수적).
@@ -95,6 +123,7 @@ namespace Scavenger.Segment
             root.transform.position = new Vector3(0f, 0f, startZ);
 
             int envChunkId = BuildShell(root.transform);
+            PopulateLedges(root.transform, depth);
             PopulateLoot(root.transform, depth);
             PopulateBombs(root.transform, depth);
             BuildChoiceNode(root.transform, depth);
@@ -182,6 +211,168 @@ namespace Scavenger.Segment
             // 탈출 잠금 규칙은 제거됨 - 압박은 바닥 붕괴가 담당 (ADR-0006)
 
             BuildChoiceVisual(nodeObject.transform, halfWidth);
+        }
+
+        // -- 수직 요소: 단차 (M1-1, ADR-0006 낙사 연계) -------------------------
+
+        sealed class LedgeRecord
+        {
+            public float MinX, MaxX, MinZ, MaxZ;
+        }
+
+        // 현재 빌드 중인 구간의 단차 점유 영역 (루트/폭탄 배치 제외용)
+        readonly List<LedgeRecord> currentLedges = new List<LedgeRecord>();
+
+        const float LedgeRampSlopeRatio = 2.6f;
+
+        void PopulateLedges(Transform parent, int depth)
+        {
+            currentLedges.Clear();
+
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            System.Random rng = run.Rng;
+            float length = Definition.lengthMeters;
+            float halfWidth = Definition.corridorHalfWidth;
+            SightClearance clearance = BuildSightClearance(viewCamera, Definition);
+
+            int ledgeCount = rng.NextDouble() < 0.5 ? 2 : 1;
+            int attempts = 0;
+
+            while (currentLedges.Count < ledgeCount && attempts < ledgeCount * 8)
+            {
+                attempts += 1;
+
+                float ledgeWidth = Lerp(rng, 2.4f, 3.4f);
+                float ledgeLength = Lerp(rng, 4f, 7f);
+                float ledgeHeight = Lerp(rng, 0.7f, 1.1f);
+                float rampLength = ledgeHeight * LedgeRampSlopeRatio;
+
+                float side = rng.Next(0, 2) == 0 ? -1f : 1f;
+                float centerX = side * (halfWidth - ledgeWidth * 0.5f - 0.2f);
+                float startZ = Lerp(rng, 12f + rampLength, length - 14f - ledgeLength);
+
+                Vector3 boxCenter = new Vector3(centerX, ledgeHeight * 0.5f, startZ + ledgeLength * 0.5f);
+                Vector3 boxScale = new Vector3(ledgeWidth, ledgeHeight, ledgeLength);
+
+                // 카메라 시야 라인과 겹치면 생성 거부 (배경과 동일 규칙).
+                // 상판 위 보상 루트(약 1m 비주얼)까지 포함해 검사 (검증 반영)
+                Vector3 lootProbeCenter = new Vector3(centerX, ledgeHeight + 0.5f, boxCenter.z);
+                Vector3 lootProbeScale = new Vector3(1f, 1f, 1f);
+
+                if (clearance.Rejects(boxCenter, boxScale) || clearance.Rejects(lootProbeCenter, lootProbeScale))
+                    continue;
+
+                if (OverlapsExistingLedgeZ(startZ - rampLength, startZ + ledgeLength, gap: 4f))
+                    continue;
+
+                BuildLedge(parent, rng, centerX, startZ, ledgeWidth, ledgeLength, ledgeHeight, rampLength);
+            }
+        }
+
+        bool OverlapsExistingLedgeZ(float minZ, float maxZ, float gap)
+        {
+            foreach (LedgeRecord ledge in currentLedges)
+            {
+                if (maxZ + gap >= ledge.MinZ && minZ - gap <= ledge.MaxZ)
+                    return true;
+            }
+
+            return false;
+        }
+
+        void BuildLedge(
+            Transform parent, System.Random rng, float centerX, float startZ,
+            float width, float length, float height, float rampLength)
+        {
+            float totalLength = rampLength + length;
+            float featureCenterZ = startZ - rampLength + totalLength * 0.5f;
+
+            GameObject ledgeRoot = new GameObject("Ledge");
+            ledgeRoot.transform.SetParent(parent, false);
+            ledgeRoot.transform.localPosition = new Vector3(centerX, 0f, featureCenterZ);
+
+            // 상판 (보행 가능)
+            GameObject top = CreateBlock(ledgeRoot.transform, "LedgeTop");
+            top.transform.localScale = new Vector3(width, height, length);
+            top.transform.localPosition = new Vector3(
+                0f, height * 0.5f, startZ + length * 0.5f - featureCenterZ);
+            Tint(top, new Color(0.36f, 0.36f, 0.39f));
+
+            // 진입 경사로 (-z 쪽에서 올라온다). 기울기 약 21도 - CC 기본 slopeLimit 이내
+            float rampAngle = Mathf.Atan2(height, rampLength) * Mathf.Rad2Deg;
+            float rampSurfaceLength = Mathf.Sqrt(height * height + rampLength * rampLength);
+
+            GameObject ramp = CreateBlock(ledgeRoot.transform, "LedgeRamp");
+            ramp.transform.localScale = new Vector3(width, 0.18f, rampSurfaceLength);
+            ramp.transform.localPosition = new Vector3(
+                0f, height * 0.5f - 0.05f, startZ - rampLength * 0.5f - featureCenterZ);
+            ramp.transform.localRotation = Quaternion.Euler(-rampAngle, 0f, 0f);
+            Tint(ramp, new Color(0.33f, 0.33f, 0.36f));
+
+            // 상판 위 고가치 루트 - 올라가는 수고에 대한 보상
+            if (lootCatalog != null && lootCatalog.Count > 0)
+            {
+                int rewardTier = rng.NextDouble() < 0.6 ? 2 : 3;
+                LootDefinition reward = FindByTier(rewardTier);
+
+                LootSpot rewardSpot = SpawnLootSpot(
+                    ledgeRoot.transform, reward,
+                    new Vector3(0f, height, startZ + length * 0.5f - featureCenterZ));
+
+                // 올라와야 딴다 - 바닥 옆에서 트리거만 겹쳐도 루팅 불가 (검증 반영)
+                rewardSpot.requiredMinPlayerY = height - 0.3f;
+            }
+
+            // 붕괴 연계: 전선이 지나가면 단차도 가라앉는다 (낙사)
+            FloorStrip strip = ledgeRoot.AddComponent<FloorStrip>();
+            strip.depthMeters = totalLength;
+
+            CollapseFront collapse = GetComponent<CollapseFront>();
+
+            if (collapse != null)
+                collapse.RegisterStrips(new List<FloorStrip> { strip });
+
+            currentLedges.Add(new LedgeRecord
+            {
+                MinX = centerX - width * 0.5f,
+                MaxX = centerX + width * 0.5f,
+                MinZ = startZ - rampLength,
+                MaxZ = startZ + length,
+            });
+        }
+
+        bool IsInLedgeZRange(float z, float margin)
+        {
+            foreach (LedgeRecord ledge in currentLedges)
+            {
+                if (z >= ledge.MinZ - margin && z <= ledge.MaxZ + margin)
+                    return true;
+            }
+
+            return false;
+        }
+
+        bool IsInsideLedge(float x, float z, float margin)
+        {
+            foreach (LedgeRecord ledge in currentLedges)
+            {
+                bool insideX = x >= ledge.MinX - margin && x <= ledge.MaxX + margin;
+                bool insideZ = z >= ledge.MinZ - margin && z <= ledge.MaxZ + margin;
+
+                if (insideX && insideZ)
+                    return true;
+            }
+
+            return false;
+        }
+
+        static float Lerp(System.Random rng, float min, float max)
+        {
+            return Mathf.Lerp(min, max, (float)rng.NextDouble());
         }
 
         // -- 거리 신호 -------------------------------------------------------
@@ -279,9 +470,12 @@ namespace Scavenger.Segment
             float halfWidth = Definition.corridorHalfWidth;
             float[] tierWeights = Curve.EvaluateTierWeights(depth);
 
-            for (int i = 0; i < LootSpotsPerSegment; i++)
+            int spawned = 0;
+            int attempts = 0;
+
+            while (spawned < LootSpotsPerSegment && attempts < LootSpotsPerSegment * 8)
             {
-                LootDefinition definition = PickLoot(run.Rng, tierWeights);
+                attempts += 1;
 
                 // 파밍 요소는 길 가장자리에 배치 - 주우러 가는 좌우 이동이 리스크가 되게
                 float side = run.Rng.Next(0, 2) == 0 ? -1f : 1f;
@@ -290,7 +484,13 @@ namespace Scavenger.Segment
                 float x = side * Mathf.Lerp(edgeMin, edgeMax, (float)run.Rng.NextDouble());
                 float z = Mathf.Lerp(8f, length - 8f, (float)run.Rng.NextDouble());
 
+                // 단차 내부(바닥 레벨)에 묻히는 배치 방지 - 단차 위 루트는 BuildLedge가 배치
+                if (IsInsideLedge(x, z, margin: 0.5f))
+                    continue;
+
+                LootDefinition definition = PickLoot(run.Rng, tierWeights);
                 SpawnLootSpot(parent, definition, new Vector3(x, 0f, z));
+                spawned += 1;
             }
         }
 
@@ -321,7 +521,7 @@ namespace Scavenger.Segment
             return lootCatalog[0];
         }
 
-        void SpawnLootSpot(Transform parent, LootDefinition definition, Vector3 localPosition)
+        LootSpot SpawnLootSpot(Transform parent, LootDefinition definition, Vector3 localPosition)
         {
             GameObject spotObject = new GameObject($"LootSpot_{definition.id}");
             spotObject.transform.SetParent(parent, false);
@@ -331,6 +531,7 @@ namespace Scavenger.Segment
             spot.Initialize(definition, LootInteractRadius);
 
             BuildLootVisual(spotObject.transform, definition.tier);
+            return spot;
         }
 
         static void BuildLootVisual(Transform parent, int tier)
@@ -407,6 +608,11 @@ namespace Scavenger.Segment
 
                 float x = Mathf.Lerp(-halfWidth + 0.8f, halfWidth - 0.8f, (float)run.Rng.NextDouble());
 
+                // 단차 아래/내부에 숨는 폭탄 방지 + 단차 z구간 전체 제외:
+                // 옆 통로 폭 < 폭발 지름이면 사실상 봉쇄가 되므로 (검증 반영)
+                if (IsInLedgeZRange(z, margin: 0.8f))
+                    continue;
+
                 SpawnBomb(parent, new Vector3(x, 0f, z), fuseSeconds, blastRadius);
                 placedZ.Add(z);
             }
@@ -450,7 +656,12 @@ namespace Scavenger.Segment
             float endZ = startZ + Definition.lengthMeters;
 
             if (preplacedEnvironment != null && preplacedEnvironment.Covers(startZ, endZ))
+            {
+                // 사전 배치 바닥도 붕괴 대상이다 - 범위 내 스트립을 등록 (검증 반영,
+                // 미등록 시 사전 배치 구간에서 붕괴 압박이 무효화된다)
+                RegisterPreplacedStrips(startZ, endZ);
                 return 0;
+            }
 
             RunManager run = RunManager.Instance;
             System.Random rng = run != null && run.Rng != null ? run.Rng : new System.Random(0);
@@ -458,13 +669,7 @@ namespace Scavenger.Segment
             // 바닥만 GameObject (콜라이더), 배경 블록은 인스턴스 렌더링 (ADR-0005).
             // 바닥은 붕괴 단위 스트립으로 분할하고 CollapseFront에 등록 (ADR-0006)
             List<FloorStrip> strips = SegmentEnvironment.BuildWalkFloorStrips(parent, Definition);
-
-            CollapseFront collapse = GetComponent<CollapseFront>();
-
-            if (collapse == null)
-                collapse = gameObject.AddComponent<CollapseFront>();
-
-            collapse.RegisterStrips(strips);
+            EnsureCollapseFront().RegisterStrips(strips);
 
             if (environmentRenderer == null)
             {

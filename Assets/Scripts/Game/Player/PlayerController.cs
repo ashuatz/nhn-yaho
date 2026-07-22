@@ -52,12 +52,12 @@ namespace Scavenger.Player
 
             ReadInput();
 
-            if (State == PlayerState.AtChoice)
-                return;
-
-            if (State == PlayerState.Looting)
+            if (State == PlayerState.AtChoice || State == PlayerState.Looting)
             {
-                // 루팅 중 이동 비허용 (ADR-0001) - 토글 입력 무시, 이동 완전 정지
+                // 이동 입력은 무시하되 중력/붕괴 클램프는 유지 (검증 반영):
+                // 방향은 상태 진입 시 해제되어 있으므로 Tick은 낙하/경계 처리만 한다.
+                // 루팅/선택 대기 중에도 발밑이 무너지면 떨어진다 - 붕괴 면역 방지 (ADR-0006)
+                motor.Tick();
                 return;
             }
 

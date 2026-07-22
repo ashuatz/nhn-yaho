@@ -61,12 +61,6 @@ namespace Scavenger.UI
             float width = 340f;
             Rect area = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.3f, width, 64f);
 
-            if (active.IsExtractionLocked())
-            {
-                GUI.Box(area, "탈출 신호 없음 - 이미 늦었다\nW: 더 깊이 전진");
-                return;
-            }
-
             GUI.Box(area, "선택하라\nW: 더 깊이 전진 (고가치/고위험)  E: 탈출 (확정)");
         }
 

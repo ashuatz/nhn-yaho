@@ -68,10 +68,15 @@ namespace Scavenger.Player
 
             Vector3 velocity = Vector3.zero;
 
+            // z 하한은 현재 위치보다 앞으로 당기지 않는다 - 붕괴 전선이 정지한
+            // 플레이어를 밀어주는 컨베이어가 되면 안 된다 (검증 반영, ADR-0006:
+            // 정지 = 발밑 붕괴 = 낙사가 압박의 본질)
+            float backwardLimit = Mathf.Min(MinZ, transform.position.z);
+
             velocity.x = ComputeAxisSpeed(
                 transform.position.x, Direction.x, -corridorHalfWidth, corridorHalfWidth, deltaTime);
             velocity.z = ComputeAxisSpeed(
-                transform.position.z, Direction.y, MinZ, float.PositiveInfinity, deltaTime);
+                transform.position.z, Direction.y, backwardLimit, float.PositiveInfinity, deltaTime);
 
             // 낙사용 누적 중력 (접지 시 소폭 유지로 접지 판정 안정화)
             if (controller.isGrounded)
