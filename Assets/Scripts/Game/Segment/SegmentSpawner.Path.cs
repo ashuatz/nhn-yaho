@@ -104,6 +104,7 @@ namespace Scavenger.Segment
         void AttachToSupportingStrip(Transform feature)
         {
             float z = feature.position.z;
+            float x = feature.position.x;
 
             foreach (FloorStrip strip in currentStrips)
             {
@@ -113,9 +114,56 @@ namespace Scavenger.Segment
                 if (z < startZ || z > endZ)
                     continue;
 
+                // 분할 스트립(땅 꺼짐 우회로) 대응 - x 범위도 일치해야 발밑이다
+                float halfWidth = strip.transform.localScale.x * 0.5f;
+
+                if (Mathf.Abs(x - strip.transform.position.x) > halfWidth)
+                    continue;
+
                 feature.SetParent(strip.transform, true);
                 return;
             }
+        }
+
+        /// <summary>
+        /// 땅 꺼짐 트랩용 스트립 분할 (검증 반영: 전폭 함몰 = 우회 불가 봉쇄).
+        /// 원본 스트립을 안전 레인(우회로)으로 축소하고, 침몰 조각을 새로 만들어
+        /// 돌려준다. 두 조각 모두 붕괴 전선에 등록된다.
+        /// </summary>
+        FloorStrip SplitStripForSinkTrap(FloorStrip strip, float safeLaneWidth, float sinkSide)
+        {
+            Transform stripTransform = strip.transform;
+            Vector3 scale = stripTransform.localScale;
+            Vector3 localPosition = stripTransform.localPosition;
+
+            float fullWidth = scale.x;
+            float laneWidth = Mathf.Clamp(safeLaneWidth, 1f, fullWidth - 1f);
+            float sinkWidth = fullWidth - laneWidth;
+
+            // 침몰 조각 (신규) - 지정된 쪽 가장자리
+            float sinkCenterX = sinkSide * (fullWidth * 0.5f - sinkWidth * 0.5f);
+
+            GameObject sinkObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            sinkObject.name = "FloorStrip (SinkTrap)";
+            sinkObject.transform.SetParent(stripTransform.parent, false);
+            sinkObject.transform.localScale = new Vector3(sinkWidth, scale.y, scale.z);
+            sinkObject.transform.localPosition = new Vector3(
+                localPosition.x + sinkCenterX, localPosition.y, localPosition.z);
+
+            FloorStrip sinkStrip = sinkObject.AddComponent<FloorStrip>();
+            sinkStrip.depthMeters = strip.depthMeters;
+            SegmentEnvironment.TintGameObject(sinkObject, new Color(0.3f, 0.31f, 0.33f));
+
+            // 원본 = 안전 레인 (우회로, 반대쪽 가장자리)
+            float laneCenterX = -sinkSide * (fullWidth * 0.5f - laneWidth * 0.5f);
+            stripTransform.localScale = new Vector3(laneWidth, scale.y, scale.z);
+            stripTransform.localPosition = new Vector3(
+                localPosition.x + laneCenterX, localPosition.y, localPosition.z);
+
+            EnsureCollapseFront().RegisterStrips(new List<FloorStrip> { sinkStrip });
+            currentStrips.Add(sinkStrip);
+
+            return sinkStrip;
         }
 
         // -- 수직 요소: 단차 (M1-1, ADR-0006 낙사 연계) -------------------------

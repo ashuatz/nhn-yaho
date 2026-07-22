@@ -18,6 +18,9 @@ namespace Scavenger.Segment
         public float sinkTrapWarnSeconds = 1.1f;
         [Range(0f, 1f)] public float sinkTrapTremorMax = 0.4f;
 
+        [Header("땅 꺼짐 우회로 폭 (전폭 함몰 = 봉쇄 금지)")]
+        public float sinkTrapSafeLaneWidth = 2.6f;
+
         [Header("밀기 트랩 (M3-3, 프리팹 튜닝 지점)")]
         public float pushTrapDetectionRadius = 2.2f;
         public float pushTrapTelegraphSeconds = 0.45f;
@@ -364,10 +367,29 @@ namespace Scavenger.Segment
                 if (IsInLedgeZRange(localZ, margin: 1f))
                     continue;
 
-                if (strip.GetComponent<SinkTrap>() != null)
+                if (strip.GetComponentInChildren<SinkTrap>() != null)
                     continue;
 
-                SinkTrap trap = strip.gameObject.AddComponent<SinkTrap>();
+                // 이미 분할된 조각(우회로/침몰편)은 재분할 금지
+                if (strip.transform.localScale.x < Definition.corridorHalfWidth * 2f)
+                    continue;
+
+                // 이미 루트/폭탄/트랩이 붙은 스트립은 제외 - 분할 시 소속이 꼬인다
+                if (strip.GetComponentInChildren<LootSpot>() != null)
+                    continue;
+
+                if (strip.GetComponentInChildren<Bomb>() != null)
+                    continue;
+
+                if (strip.GetComponentInChildren<PushTrap>() != null)
+                    continue;
+
+                // 전폭 함몰 = 우회 불가 봉쇄가 되므로 스트립을 분할해
+                // 한쪽에 안전 레인(우회로)을 남긴다 (사용자 지시)
+                float sinkSide = run.Rng.Next(0, 2) == 0 ? -1f : 1f;
+                FloorStrip sinkStrip = SplitStripForSinkTrap(strip, sinkTrapSafeLaneWidth, sinkSide);
+
+                SinkTrap trap = sinkStrip.gameObject.AddComponent<SinkTrap>();
                 trap.triggerDistance = sinkTrapTriggerDistance;
                 trap.warnSeconds = sinkTrapWarnSeconds;
                 trap.warnTremorMax = sinkTrapTremorMax;

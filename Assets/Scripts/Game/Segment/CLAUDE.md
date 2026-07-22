@@ -36,7 +36,10 @@
 - SinkTrap.cs: 땅 꺼짐 트랩 (M3-2). FloorStrip과 동일 오브젝트. 플레이어 z 근접 시
   예고 (DangerGrid 사각 점멸 + 근접 비례 CameraShake 트레머) 후 FloorStrip.Sink.
   붕괴 전선이 먼저 침몰시키면 무효. 수치는 SegmentSpawner 필드가 주입.
-  배치는 PopulateSinkTraps (초입 12m/선택지 앞 8m/단차 z구간 제외, DepthCurve 수량)
+  배치는 PopulateSinkTraps (초입 12m/선택지 앞 8m/단차 z구간/기부착 스트립 제외,
+  DepthCurve 수량). 배치 시 SplitStripForSinkTrap이 스트립을 분할해 침몰편에만
+  트랩을 달고 반대쪽에 안전 레인(우회로, sinkTrapSafeLaneWidth) 보존 - 전폭
+  함몰 봉쇄 금지 (사용자 지시)
 - CollapseFront.cs: 시간 압박의 단일 소스 (ADR-0006). 붕괴 전선이 뒤에서 전진하며
   지나간 스트립을 가라앉히고 플레이어 z를 전선 앞으로 클램프 (후퇴 불가 겸용).
   startDelay/baseSpeed/speedPerDepth/maxSpeed = 프리팹 튜닝 지점. static Instance

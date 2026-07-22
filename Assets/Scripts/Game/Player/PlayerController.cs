@@ -33,6 +33,10 @@ namespace Scavenger.Player
         // 가상 조이스틱 등 외부 UI가 공급하는 이동 벡터 (매 프레임 갱신 전제)
         Vector2 externalMoveInput;
 
+        // 뷰 좌표계 변환 기준 (사용자 지시: 입력 축 = 화면 기준).
+        // 카메라 리그의 yaw는 고정이므로 매 프레임 평면 투영만 한다
+        Transform viewAnchor;
+
         public PlayerMotor Motor
         {
             get { return motor; }
@@ -175,10 +179,49 @@ namespace Scavenger.Player
             LateralInput = Mathf.Clamp(ReadKeyboardMove().x + externalMoveInput.x, -1f, 1f);
         }
 
-        // 2D 벡터 홀드 이동 (ADR-0007): 키보드 + 가상 조이스틱 합산, 크기 1 클램프
+        // 2D 벡터 홀드 이동 (ADR-0007): 키보드 + 가상 조이스틱 합산, 크기 1 클램프.
+        // 입력 축은 뷰 좌표계 기준 - 화면 위 = 카메라 전방의 평면 투영 (사용자 지시)
         void ApplyMoveInput()
         {
-            motor.SetMoveInput(ReadKeyboardMove() + externalMoveInput);
+            Vector2 screenInput = ReadKeyboardMove() + externalMoveInput;
+
+            motor.SetMoveInput(ScreenToWorldMove(screenInput));
+        }
+
+        Vector2 ScreenToWorldMove(Vector2 screenInput)
+        {
+            if (screenInput == Vector2.zero)
+                return Vector2.zero;
+
+            if (!TryResolveViewAnchor())
+                return screenInput;
+
+            Vector3 forward = viewAnchor.forward;
+            forward.y = 0f;
+
+            // 수직 부감 등 평면 전방이 소실되면 월드축 폴백
+            if (forward.sqrMagnitude < 0.0001f)
+                return screenInput;
+
+            forward.Normalize();
+            Vector3 right = new Vector3(forward.z, 0f, -forward.x);
+
+            Vector3 world = right * screenInput.x + forward * screenInput.y;
+            return new Vector2(world.x, world.z);
+        }
+
+        bool TryResolveViewAnchor()
+        {
+            if (viewAnchor != null)
+                return true;
+
+            FollowCamera camera = FindFirstObjectByType<FollowCamera>();
+
+            if (camera == null)
+                return false;
+
+            viewAnchor = camera.transform;
+            return true;
         }
 
         static Vector2 ReadKeyboardMove()
