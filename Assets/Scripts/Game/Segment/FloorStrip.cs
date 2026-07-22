@@ -60,6 +60,14 @@ namespace Scavenger.Segment
 
             foreach (Collider featureCollider in colliders)
                 featureCollider.enabled = false;
+
+            // 무너짐 표현 (사용자 지시): 판정은 위의 일괄 처리 그대로 두고,
+            // 표면 렌더러만 그리드 셀 조각으로 쪼개 지연/틸트 낙하시킨다.
+            // 표면 렌더러가 본체에 있는 코리도 스트립만 해당 (단차 루트는 렌더러 없음)
+            Renderer surface = GetComponent<Renderer>();
+
+            if (surface != null)
+                SinkDebris.Spawn(surface);
         }
 
         /// <summary>런 재시작 시 보존된 스트립을 원위치로 복구한다 (사전 배치 전용).</summary>
@@ -74,6 +82,12 @@ namespace Scavenger.Segment
 
             foreach (Collider featureCollider in colliders)
                 featureCollider.enabled = true;
+
+            // Sink가 데브리 연출을 위해 껐던 표면 렌더러 복구
+            Renderer surface = GetComponent<Renderer>();
+
+            if (surface != null)
+                surface.enabled = true;
 
             gameObject.SetActive(true);
         }
