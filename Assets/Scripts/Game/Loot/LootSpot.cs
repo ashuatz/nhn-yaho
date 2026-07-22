@@ -38,6 +38,13 @@ namespace Scavenger.Loot
         /// <summary>조각 착지 x 클램프 반폭 (복도 밖 낙하 방지). 0 = 클램프 없음.</summary>
         public float scatterClampHalfWidth;
 
+        /// <summary>
+        /// 조각 산포 시드. 착지 위치는 획득 동선에 영향을 주는 게임 결과이므로
+        /// 스포너가 배치 시 RunManager.Rng에서 배정한다 (시드 재현성 - Codex 교차 검토).
+        /// 0이면 인스턴스 id 폴백 (에디터 수동 배치 등).
+        /// </summary>
+        public int scatterSeed;
+
         public float Progress01
         {
             get
@@ -268,17 +275,22 @@ namespace Scavenger.Loot
         }
 
         // 조각을 포물선으로 흩뿌린다. 착지 높이 = 스팟 바닥 (단차 위 스팟은 상판).
-        // 난수는 비주얼/산포 전용 스트림 - 배치 스트림(RunManager.Rng) 오염 금지
+        // 산포 난수는 배치 시 배정된 시드의 로컬 스트림 - 발동 시점과 무관하게 결정적
         void ScatterPickups()
         {
-            System.Random rng = new System.Random(GetInstanceID());
+            System.Random rng = new System.Random(scatterSeed != 0 ? scatterSeed : GetInstanceID());
 
             float floorY = transform.position.y;
             Vector3 origin = transform.position + Vector3.up * DropOriginHeight;
 
+            int baseValue = Definition.value / DropPieces;
+            int valueRemainder = Definition.value - baseValue * DropPieces;
+            float pieceWeight = Definition.weight / DropPieces;
+
             for (int i = 0; i < DropPieces; i++)
             {
-                LootDefinition piece = CreatePieceDefinition(i);
+                // 가치/무게는 조각에 분배 (합계 보존, 나머지는 앞 조각에)
+                int pieceValue = baseValue + (i < valueRemainder ? 1 : 0);
 
                 float angle = (float)rng.NextDouble() * Mathf.PI * 2f;
                 float radius = Mathf.Lerp(
@@ -297,23 +309,11 @@ namespace Scavenger.Loot
                 Vector3 velocity = ComputeArcVelocity(origin, landing, floorY, flightSeconds);
 
                 // 스팟이 아니라 스팟의 부모(지지 스트립)에 부착 - 스팟 파괴 후에도
-                // 바닥과 함께 침몰하는 규칙 유지
-                LootPickup.Launch(transform.parent, piece, origin, velocity, floorY, rng);
+                // 바닥과 함께 침몰하는 규칙 유지. 정의는 공유 참조 + 지분만 전달
+                LootPickup.Launch(
+                    transform.parent, Definition, pieceValue, pieceWeight,
+                    origin, velocity, floorY, rng);
             }
-        }
-
-        // 원본 가치/무게를 조각 수로 분배 (합계 보존, 나머지는 앞 조각에).
-        // id가 같아 인벤토리 스택/스태시 저장 키는 그대로 동작한다
-        LootDefinition CreatePieceDefinition(int index)
-        {
-            int baseValue = Definition.value / DropPieces;
-            int remainder = Definition.value - baseValue * DropPieces;
-            int pieceValue = baseValue + (index < remainder ? 1 : 0);
-
-            return LootDefinition.Create(
-                Definition.id, Definition.displayName, pieceValue,
-                Definition.tier, Definition.holdSeconds, Definition.weight / DropPieces,
-                Definition.shortDescription);
         }
 
         // 발사 지점에서 landing(x, z) / floorY(y)에 flightSeconds 만에 도달하는 초기 속도

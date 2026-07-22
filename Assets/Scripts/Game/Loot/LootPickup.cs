@@ -19,7 +19,12 @@ namespace Scavenger.Loot
         /// <summary>줍기 가능 조각 (범위 안 + 착지 완료). HUD 키 프롬프트 참조.</summary>
         public static LootPickup PromptTarget { get; private set; }
 
+        /// <summary>원본 정의 (공유 참조 - 조각용 런타임 SO를 만들지 않는다).</summary>
         public LootDefinition Definition { get; private set; }
+
+        /// <summary>이 조각의 가치/무게 지분. 합계 = 원본 (LootSpot이 분배).</summary>
+        public int PieceValue { get; private set; }
+        public float PieceWeight { get; private set; }
 
         /// <summary>착지 완료 여부. 착지 전에는 줍을 수 없다.</summary>
         public bool IsResting { get; private set; }
@@ -36,15 +41,17 @@ namespace Scavenger.Loot
         int bouncesLeft = 1;
         Vector3 tumbleAxis = Vector3.right;
         float tumbleSpeed;
+        Material visualMaterial;
 
         static PlayerController player;
 
         /// <summary>
         /// 발사 초기화. velocity로 날아가 floorY(발사 지점의 바닥 높이)에 착지한다.
+        /// pieceValue/pieceWeight = 이 조각의 지분 (원본 정의는 공유 참조).
         /// </summary>
         public static LootPickup Launch(
-            Transform parent, LootDefinition definition, Vector3 worldOrigin,
-            Vector3 velocity, float floorY, System.Random rng)
+            Transform parent, LootDefinition definition, int pieceValue, float pieceWeight,
+            Vector3 worldOrigin, Vector3 velocity, float floorY, System.Random rng)
         {
             GameObject pickupObject = new GameObject($"LootPickup_{definition.id}");
             pickupObject.transform.SetParent(parent, true);
@@ -52,6 +59,8 @@ namespace Scavenger.Loot
 
             LootPickup pickup = pickupObject.AddComponent<LootPickup>();
             pickup.Definition = definition;
+            pickup.PieceValue = pieceValue;
+            pickup.PieceWeight = pieceWeight;
             pickup.velocity = velocity;
             pickup.floorY = floorY;
 
@@ -79,6 +88,13 @@ namespace Scavenger.Loot
 
             if (PromptTarget == this)
                 PromptTarget = null;
+        }
+
+        void OnDestroy()
+        {
+            // 비주얼용 인스턴스 머티리얼 해제 (누수 방지 - Codex 교차 검토)
+            if (visualMaterial != null)
+                Destroy(visualMaterial);
         }
 
         void Update()
@@ -167,10 +183,10 @@ namespace Scavenger.Loot
         void Collect()
         {
             RunManager run = RunManager.Instance;
-            run.Inventory.Add(Definition);
+            run.Inventory.Add(Definition, PieceValue, PieceWeight);
 
             UnityEngine.Debug.Log(
-                $"[Loot] 줍기 {Definition.displayName} +{Definition.value} (total {run.Inventory.TotalValue})");
+                $"[Loot] 줍기 {Definition.displayName} +{PieceValue} (total {run.Inventory.TotalValue})");
 
             LootBurst.Spawn(transform.position, 3, LootDefinition.TierColor(Definition.tier));
             Destroy(gameObject);
@@ -203,9 +219,9 @@ namespace Scavenger.Loot
 
             if (cubeRenderer != null)
             {
-                Material material = new Material(cubeRenderer.sharedMaterial);
-                material.color = LootDefinition.TierColor(tier);
-                cubeRenderer.sharedMaterial = material;
+                visualMaterial = new Material(cubeRenderer.sharedMaterial);
+                visualMaterial.color = LootDefinition.TierColor(tier);
+                cubeRenderer.sharedMaterial = visualMaterial;
             }
         }
     }

@@ -30,6 +30,11 @@ namespace Scavenger.UI
         PlayerController player;
         bool dragging;
 
+        // 드래그 소스 추적 (멀티터치 - Codex 교차 검토): 왼손이 조이스틱을 잡은 동안
+        // 다른 손가락 입력이 조이스틱을 뺏지 않도록 시작한 touchId를 고정한다.
+        // -1 = 마우스
+        int dragTouchId = -1;
+
         Texture2D circleTexture;
         Sprite circleSprite;
 
@@ -75,25 +80,25 @@ namespace Scavenger.UI
                 return;
             }
 
-            Vector2 pointer;
-
-            if (!ReadPointerPressed(out pointer))
-            {
-                ReleaseDrag();
-                return;
-            }
-
             // 오버레이 캔버스에서 RectTransform.position = 스크린 픽셀 좌표
             Vector2 center = baseRect.position;
             float radiusPixels = baseRect.rect.width * 0.5f * baseRect.lossyScale.x;
 
-            // 드래그 시작은 베이스 원 안에서만 - 화면 아무데나 누르면 반응하지 않게
+            Vector2 pointer;
+
+            // 드래그 시작은 베이스 원 안에서만 - 화면 아무데나 누르면 반응하지 않게.
+            // 시작한 포인터(touchId/마우스)를 고정 추적한다 (멀티터치 대응)
             if (!dragging)
             {
-                if ((pointer - center).sqrMagnitude > radiusPixels * radiusPixels)
+                if (!TryBeginDrag(center, radiusPixels, out pointer))
                     return;
 
                 dragging = true;
+            }
+            else if (!TryReadDragPointer(out pointer))
+            {
+                ReleaseDrag();
+                return;
             }
 
             Vector2 raw = Vector2.ClampMagnitude((pointer - center) / radiusPixels, 1f);
@@ -133,6 +138,7 @@ namespace Scavenger.UI
                 return;
 
             dragging = false;
+            dragTouchId = -1;
             Value = Vector2.zero;
 
             if (knobRect != null)
@@ -142,24 +148,73 @@ namespace Scavenger.UI
                 player.SetExternalMoveInput(Vector2.zero);
         }
 
-        void ApplySprite(RectTransform target)
+        // 베이스 원 안에서 눌린 포인터를 찾아 드래그 소스로 고정한다
+        bool TryBeginDrag(Vector2 center, float radiusPixels, out Vector2 position)
         {
-            Image image = target.GetComponent<Image>();
+            float radiusSqr = radiusPixels * radiusPixels;
 
-            if (image == null)
-                return;
-
-            image.sprite = circleSprite;
-        }
-
-        static bool ReadPointerPressed(out Vector2 position)
-        {
             Touchscreen touch = Touchscreen.current;
 
-            if (touch != null && touch.primaryTouch.press.isPressed)
+            if (touch != null)
             {
-                position = touch.primaryTouch.position.ReadValue();
-                return true;
+                foreach (UnityEngine.InputSystem.Controls.TouchControl control in touch.touches)
+                {
+                    if (!control.press.isPressed)
+                        continue;
+
+                    Vector2 touchPosition = control.position.ReadValue();
+
+                    if ((touchPosition - center).sqrMagnitude > radiusSqr)
+                        continue;
+
+                    dragTouchId = control.touchId.ReadValue();
+                    position = touchPosition;
+                    return true;
+                }
+            }
+
+            Mouse mouse = Mouse.current;
+
+            if (mouse != null && mouse.leftButton.isPressed)
+            {
+                Vector2 mousePosition = mouse.position.ReadValue();
+
+                if ((mousePosition - center).sqrMagnitude <= radiusSqr)
+                {
+                    dragTouchId = -1;
+                    position = mousePosition;
+                    return true;
+                }
+            }
+
+            position = Vector2.zero;
+            return false;
+        }
+
+        // 드래그를 시작한 포인터의 현재 위치. 끝났으면 false
+        bool TryReadDragPointer(out Vector2 position)
+        {
+            if (dragTouchId >= 0)
+            {
+                Touchscreen touch = Touchscreen.current;
+
+                if (touch != null)
+                {
+                    foreach (UnityEngine.InputSystem.Controls.TouchControl control in touch.touches)
+                    {
+                        if (!control.press.isPressed)
+                            continue;
+
+                        if (control.touchId.ReadValue() != dragTouchId)
+                            continue;
+
+                        position = control.position.ReadValue();
+                        return true;
+                    }
+                }
+
+                position = Vector2.zero;
+                return false;
             }
 
             Mouse mouse = Mouse.current;
@@ -172,6 +227,16 @@ namespace Scavenger.UI
 
             position = Vector2.zero;
             return false;
+        }
+
+        void ApplySprite(RectTransform target)
+        {
+            Image image = target.GetComponent<Image>();
+
+            if (image == null)
+                return;
+
+            image.sprite = circleSprite;
         }
 
         static Texture2D CreateCircleTexture(int size)

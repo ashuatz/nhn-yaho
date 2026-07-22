@@ -120,6 +120,8 @@ namespace Scavenger.Player
 
         // 화면 하단 에지 뷰포트 지점의 시선이 지면(y=0)과 만나는 z가 후퇴 한계.
         // 발이 그 지점에 있으면 상체는 여전히 화면에 걸린다 (사용자 지시 - 아슬아슬).
+        // 대각 카메라에서는 에지 교점 z가 화면 x에 따라 달라지므로 플레이어의
+        // 현재 뷰포트 x에서 샘플한다 (Codex 교차 검토).
         // 포즈 확정(ApplyPose) 후에 호출할 것 - 이번 프레임 카메라 위치 기준
         float ComputeBackLimitZ()
         {
@@ -129,8 +131,14 @@ namespace Scavenger.Player
             if (viewCamera == null)
                 return smoothedZ - backLimitMargin;
 
+            float sampleX = 0.5f;
+            Vector3 targetViewport = viewCamera.WorldToViewportPoint(target.position);
+
+            if (targetViewport.z > 0f)
+                sampleX = Mathf.Clamp(targetViewport.x, 0.05f, 0.95f);
+
             Ray edgeRay = viewCamera.ViewportPointToRay(
-                new Vector3(0.5f, backEdgeViewportY, 0f));
+                new Vector3(sampleX, backEdgeViewportY, 0f));
 
             // 시선이 지면을 향하지 않으면 (수평 이상) 폴백
             if (edgeRay.direction.y >= -0.0001f)

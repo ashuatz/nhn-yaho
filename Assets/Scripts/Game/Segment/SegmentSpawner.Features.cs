@@ -227,6 +227,13 @@ namespace Scavenger.Segment
             LootSpot spot = spotObject.AddComponent<LootSpot>();
             spot.Initialize(definition, LootInteractRadius);
 
+            // 조각 산포는 게임 결과 (동선/손실 가치) - 배치 스트림에서 시드 배정
+            // (시드 재현성 규약, Codex 교차 검토)
+            RunManager run = RunManager.Instance;
+
+            if (run != null && run.Rng != null)
+                spot.scatterSeed = run.Rng.Next(1, int.MaxValue);
+
             BuildLootVisual(spotObject.transform, definition.tier);
             return spot;
         }
@@ -436,6 +443,11 @@ namespace Scavenger.Segment
                 zone.triggerDistance = rockfallTriggerDistance;
                 zone.warnSeconds = rockfallWarnSeconds;
                 zone.impactRadius = rockfallImpactRadius;
+
+                // 착탄 산포는 사망/발판 파괴를 결정하는 게임 결과 - 배치 스트림에서
+                // 시드 배정 (시드 재현성 규약). 안전 레인 폭은 땅 꺼짐과 공유
+                zone.scatterSeed = run.Rng.Next(1, int.MaxValue);
+                zone.safeLaneWidth = sinkTrapSafeLaneWidth;
 
                 placedZ.Add(z);
             }

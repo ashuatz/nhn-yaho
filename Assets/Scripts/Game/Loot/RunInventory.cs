@@ -31,8 +31,20 @@ namespace Scavenger.Loot
             if (definition == null)
                 return;
 
-            TotalValue += definition.value;
-            TotalWeight += definition.weight;
+            Add(definition, definition.value, definition.weight);
+        }
+
+        /// <summary>
+        /// 조각 획득용 (LootPickup): 정의는 공유 참조 그대로 두고 가치/무게만
+        /// 지분으로 반영한다 - 조각마다 런타임 SO를 만들지 않는다 (Codex 교차 검토).
+        /// </summary>
+        public void Add(LootDefinition definition, int value, float weight)
+        {
+            if (definition == null)
+                return;
+
+            TotalValue += value;
+            TotalWeight += weight;
 
             Entry existing = FindEntry(definition.id);
 

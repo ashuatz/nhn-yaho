@@ -89,24 +89,31 @@ namespace Scavenger.EditorTools
                 return;
 
             GameObject contents = PrefabUtility.LoadPrefabContents(GameFlowPrefabPath);
-            int removedCount = 0;
 
-            foreach (Transform child in contents.GetComponentsInChildren<Transform>(true))
-                removedCount += GameObjectUtility.RemoveMonoBehavioursWithMissingScript(child.gameObject);
-
-            foreach (VirtualJoystick joystick in contents.GetComponentsInChildren<VirtualJoystick>(true))
+            // 예외가 나도 반드시 언로드 - 프리팹 스테이지 잔존 방지 (Codex 교차 검토)
+            try
             {
-                Object.DestroyImmediate(joystick, true);
-                removedCount += 1;
-            }
+                int removedCount = 0;
 
-            if (removedCount > 0)
+                foreach (Transform child in contents.GetComponentsInChildren<Transform>(true))
+                    removedCount += GameObjectUtility.RemoveMonoBehavioursWithMissingScript(child.gameObject);
+
+                foreach (VirtualJoystick joystick in contents.GetComponentsInChildren<VirtualJoystick>(true))
+                {
+                    Object.DestroyImmediate(joystick, true);
+                    removedCount += 1;
+                }
+
+                if (removedCount > 0)
+                {
+                    PrefabUtility.SaveAsPrefabAsset(contents, GameFlowPrefabPath);
+                    UnityEngine.Debug.Log($"[Setup] GameFlow 프리팹에서 구 IMGUI 컴포넌트 {removedCount}개 제거");
+                }
+            }
+            finally
             {
-                PrefabUtility.SaveAsPrefabAsset(contents, GameFlowPrefabPath);
-                UnityEngine.Debug.Log($"[Setup] GameFlow 프리팹에서 구 IMGUI 컴포넌트 {removedCount}개 제거");
+                PrefabUtility.UnloadPrefabContents(contents);
             }
-
-            PrefabUtility.UnloadPrefabContents(contents);
         }
 
         static void EnsurePrefab(string path, System.Func<GameObject> buildTemplate)

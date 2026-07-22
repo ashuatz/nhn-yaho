@@ -12,8 +12,12 @@ namespace Scavenger.UI
     /// uGUI HUD 컨트롤러 (M5-1, IMGUI HudOverlay 대체). HudCanvas 프리팹 루트에 상주.
     /// 패널 참조는 에디터 템플릿(HudCanvasTemplate)이 배선한다 - 런타임 생성 없음.
     /// 상호작용 프롬프트 박스는 모바일 홀드 버튼을 겸한다 (E 키와 OR 합성).
+    /// 선택지 패널의 전진/탈출 영역은 터치 버튼 - 키보드 없는 환경 소프트락 방지.
+    /// 실행 순서 -150: PlayerController(-100)보다 먼저 홀드 상태를 공급해
+    /// 1프레임 입력 지연을 없앤다 (Codex 교차 검토).
     /// 주의: 숨김 정보(타이머 실수치, 실거리)는 여기 노출 금지 - 대시보드 전용.
     /// </summary>
+    [DefaultExecutionOrder(-150)]
     public sealed class HudController : MonoBehaviour
     {
         [Header("가치/무게 (좌하단)")]
@@ -29,9 +33,11 @@ namespace Scavenger.UI
         public RectTransform gaugeFill;
         public Text gaugeLabel;
 
-        [Header("선택지 프롬프트")]
+        [Header("선택지 프롬프트 (전진/탈출 = 터치 버튼)")]
         public GameObject choiceRoot;
         public Text choiceText;
+        public RectTransform choiceAdvanceButton;
+        public RectTransform choiceExtractButton;
 
         [Header("신호 배너")]
         public GameObject signalRoot;
@@ -143,7 +149,7 @@ namespace Scavenger.UI
             LootPickup pickup = LootPickup.PromptTarget;
 
             if (pickup != null && pickup.Definition != null)
-                return $"E 눌러 줍기\n{pickup.Definition.displayName} (+{pickup.Definition.value})";
+                return $"E 눌러 줍기\n{pickup.Definition.displayName} (+{pickup.PieceValue})";
 
             return null;
         }
@@ -181,8 +187,21 @@ namespace Scavenger.UI
 
             SetActive(choiceRoot, active != null);
 
-            if (active != null && choiceText != null)
-                choiceText.text = "선택하라\nW: 더 깊이 전진 (고가치/고위험)  E: 탈출 (확정)";
+            if (active == null)
+                return;
+
+            if (choiceText != null)
+                choiceText.text = "선택하라";
+
+            // 터치 선택 (키보드 없는 환경 소프트락 방지). 키보드 W/E는 ChoiceNode가 처리
+            if (choiceAdvanceButton != null && AnyPointerPressedInside(choiceAdvanceButton))
+            {
+                active.ChooseAdvance();
+                return;
+            }
+
+            if (choiceExtractButton != null && AnyPointerPressedInside(choiceExtractButton))
+                active.ChooseExtract();
         }
 
         void UpdateSignal()
@@ -232,8 +251,9 @@ namespace Scavenger.UI
             resultText.text = "사망. 획득물 전량 손실\n클릭: 계속";
         }
 
-        // 프롬프트 박스 = 모바일 홀드 버튼 (M5-1). EventSystem 없이 포인터 직접 판독 -
-        // 조이스틱과 동일 방식. 누르는 동안 매 프레임 공급한다
+        // 프롬프트 박스 = 모바일 홀드 버튼 (M5-1). EventSystem 없이 포인터 직접 판독.
+        // 전체 터치를 순회 - 왼손이 조이스틱을 잡고 있어도 오른손 홀드가 동작한다
+        // (primaryTouch 한정 금지, Codex 교차 검토). 누르는 동안 매 프레임 공급
         void UpdateInteractHold()
         {
             if (!TryResolvePlayer())
@@ -241,9 +261,7 @@ namespace Scavenger.UI
 
             bool held = interactRoot != null
                 && interactRoot.activeSelf
-                && ReadPointerPressed(out Vector2 pointer)
-                && RectTransformUtility.RectangleContainsScreenPoint(
-                    (RectTransform)interactRoot.transform, pointer, null);
+                && AnyPointerHeldInside((RectTransform)interactRoot.transform);
 
             player.SetExternalInteractHeld(held);
         }
@@ -257,25 +275,57 @@ namespace Scavenger.UI
             return player != null;
         }
 
-        static bool ReadPointerPressed(out Vector2 position)
+        // 누르고 있는 포인터(전체 터치 + 마우스) 중 rect 안에 있는 것이 있는가
+        static bool AnyPointerHeldInside(RectTransform rect)
         {
             Touchscreen touch = Touchscreen.current;
 
-            if (touch != null && touch.primaryTouch.press.isPressed)
+            if (touch != null)
             {
-                position = touch.primaryTouch.position.ReadValue();
-                return true;
+                foreach (UnityEngine.InputSystem.Controls.TouchControl control in touch.touches)
+                {
+                    if (!control.press.isPressed)
+                        continue;
+
+                    if (RectTransformUtility.RectangleContainsScreenPoint(
+                            rect, control.position.ReadValue(), null))
+                        return true;
+                }
             }
 
             Mouse mouse = Mouse.current;
 
             if (mouse != null && mouse.leftButton.isPressed)
+                return RectTransformUtility.RectangleContainsScreenPoint(
+                    rect, mouse.position.ReadValue(), null);
+
+            return false;
+        }
+
+        // 이번 프레임 시작된 포인터 프레스가 rect 안에 있는가 (탭 버튼용)
+        static bool AnyPointerPressedInside(RectTransform rect)
+        {
+            Touchscreen touch = Touchscreen.current;
+
+            if (touch != null)
             {
-                position = mouse.position.ReadValue();
-                return true;
+                foreach (UnityEngine.InputSystem.Controls.TouchControl control in touch.touches)
+                {
+                    if (!control.press.wasPressedThisFrame)
+                        continue;
+
+                    if (RectTransformUtility.RectangleContainsScreenPoint(
+                            rect, control.position.ReadValue(), null))
+                        return true;
+                }
             }
 
-            position = Vector2.zero;
+            Mouse mouse = Mouse.current;
+
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+                return RectTransformUtility.RectangleContainsScreenPoint(
+                    rect, mouse.position.ReadValue(), null);
+
             return false;
         }
 

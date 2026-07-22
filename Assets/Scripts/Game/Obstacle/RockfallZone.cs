@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Scavenger.Loot;
 using Scavenger.Player;
 using Scavenger.Run;
@@ -26,6 +27,16 @@ namespace Scavenger.Obstacle
         public float warnSeconds = 0.95f;
         public float impactRadius = 1.6f;
 
+        /// <summary>착탄 시 남길 우회로 폭 (전폭 함몰 = 봉쇄 금지, 땅 꺼짐과 동일 규칙).</summary>
+        public float safeLaneWidth = 2.6f;
+
+        /// <summary>
+        /// 착탄 산포 시드. 착탄점은 사망/발판 파괴를 결정하는 게임 결과이므로
+        /// 스포너가 배치 시 RunManager.Rng에서 배정 (시드 재현성 - Codex 교차 검토).
+        /// 0이면 인스턴스 id 폴백.
+        /// </summary>
+        public int scatterSeed;
+
         const float SpawnHeight = 13f;
         const float FallGravityScale = 2.2f;
         const float DirectHitHeightTolerance = 1.6f;
@@ -39,14 +50,10 @@ namespace Scavenger.Obstacle
         Vector3 target;
         Transform rock;
         float fallSpeed;
+        Material rockMaterial;
 
         PlayerController player;
         System.Random rng;
-
-        void Awake()
-        {
-            rng = new System.Random(GetInstanceID());
-        }
 
         void Update()
         {
@@ -75,6 +82,13 @@ namespace Scavenger.Obstacle
         void OnDisable()
         {
             HideDanger();
+        }
+
+        void OnDestroy()
+        {
+            // 돌 인스턴스 머티리얼 해제 (누수 방지 - Codex 교차 검토)
+            if (rockMaterial != null)
+                Destroy(rockMaterial);
         }
 
         void TickArmed()
@@ -148,9 +162,9 @@ namespace Scavenger.Obstacle
 
             if (rockRenderer != null)
             {
-                Material material = new Material(rockRenderer.sharedMaterial);
-                material.color = new Color(0.27f, 0.25f, 0.27f);
-                rockRenderer.sharedMaterial = material;
+                rockMaterial = new Material(rockRenderer.sharedMaterial);
+                rockMaterial.color = new Color(0.27f, 0.25f, 0.27f);
+                rockRenderer.sharedMaterial = rockMaterial;
             }
 
             rock = rockObject.transform;
@@ -215,7 +229,6 @@ namespace Scavenger.Obstacle
         }
 
         // 착탄 지점의 바닥 스트립을 깨뜨린다 (사용자 지시: 떨어지면 발판이 깨진다).
-        // 단차 위 착탄이면 단차 전체가 가라앉는다 (FloorStrip 단위 = 기존 붕괴 규칙).
         // RaycastAll: 착탄점 위에 플레이어/잡동사니 콜라이더가 겹쳐 있어도 바닥을 찾는다
         void BreakFloorAtImpact()
         {
@@ -229,9 +242,82 @@ namespace Scavenger.Obstacle
                 if (strip == null || strip.IsSinking)
                     continue;
 
+                SinkWithSafeLane(strip);
+                return;
+            }
+        }
+
+        // 전폭 함몰 = 점프 없는 플레이어에게 우회 불가 봉쇄가 된다 (Codex 교차 검토).
+        // 땅 꺼짐 트랩과 동일 규칙: 스트립을 분할해 착탄 쪽만 침몰시키고
+        // 반대쪽에 안전 레인을 남긴다. 좁은 조각/단차 루트는 통째로 침몰
+        void SinkWithSafeLane(FloorStrip strip)
+        {
+            Transform stripTransform = strip.transform;
+            float fullWidth = stripTransform.localScale.x;
+
+            if (fullWidth < safeLaneWidth * 2f)
+            {
                 strip.Sink();
                 return;
             }
+
+            float laneWidth = Mathf.Clamp(safeLaneWidth, 1f, fullWidth - 1f);
+            float sinkWidth = fullWidth - laneWidth;
+            float sinkSide = target.x >= stripTransform.position.x ? 1f : -1f;
+
+            Vector3 scale = stripTransform.localScale;
+            Vector3 localPosition = stripTransform.localPosition;
+
+            // 부착물(루트/폭탄 등)은 부모 리스케일 왜곡을 피해 잠시 떼어둔다
+            List<Transform> attachments = new List<Transform>();
+
+            for (int i = stripTransform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = stripTransform.GetChild(i);
+                child.SetParent(stripTransform.parent, true);
+                attachments.Add(child);
+            }
+
+            // 침몰 조각 (착탄 쪽 가장자리, 신규)
+            float sinkCenterX = sinkSide * (fullWidth * 0.5f - sinkWidth * 0.5f);
+
+            GameObject sinkObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            sinkObject.name = "FloorStrip (Rockfall)";
+            sinkObject.transform.SetParent(stripTransform.parent, false);
+            sinkObject.transform.localScale = new Vector3(sinkWidth, scale.y, scale.z);
+            sinkObject.transform.localPosition = new Vector3(
+                localPosition.x + sinkCenterX, localPosition.y, localPosition.z);
+
+            FloorStrip sinkStrip = sinkObject.AddComponent<FloorStrip>();
+            sinkStrip.depthMeters = strip.depthMeters;
+            SegmentEnvironment.TintGameObject(sinkObject, new Color(0.3f, 0.31f, 0.33f));
+
+            // 원본 = 안전 레인 (반대쪽 가장자리로 축소)
+            float laneCenterX = -sinkSide * (fullWidth * 0.5f - laneWidth * 0.5f);
+            stripTransform.localScale = new Vector3(laneWidth, scale.y, scale.z);
+            stripTransform.localPosition = new Vector3(
+                localPosition.x + laneCenterX, localPosition.y, localPosition.z);
+
+            // 부착물 재부착: 착탄 조각 위 = 함께 침몰, 안전 레인 위 = 유지
+            float splitX = stripTransform.parent != null
+                ? stripTransform.parent.TransformPoint(new Vector3(
+                    localPosition.x + sinkCenterX - sinkSide * sinkWidth * 0.5f, 0f, 0f)).x
+                : localPosition.x + sinkCenterX - sinkSide * sinkWidth * 0.5f;
+
+            foreach (Transform attachment in attachments)
+            {
+                bool onSinkSide = sinkSide > 0f
+                    ? attachment.position.x >= splitX
+                    : attachment.position.x <= splitX;
+
+                attachment.SetParent(onSinkSide ? sinkStrip.transform : stripTransform, true);
+            }
+
+            // 붕괴 전선이 나중에 지나갈 때 함께 처리되도록 등록
+            if (CollapseFront.Instance != null)
+                CollapseFront.Instance.RegisterStrips(new List<FloorStrip> { sinkStrip });
+
+            sinkStrip.Sink();
         }
 
         void Cancel()
@@ -272,8 +358,13 @@ namespace Scavenger.Obstacle
             return player != null;
         }
 
+        // 지연 초기화: AddComponent 직후 Awake에서 만들면 스포너의 시드 주입보다
+        // 먼저 실행된다 - 첫 사용 시점에 생성해야 배정된 시드가 반영된다
         float NextRange(float min, float max)
         {
+            if (rng == null)
+                rng = new System.Random(scatterSeed != 0 ? scatterSeed : GetInstanceID());
+
             return Mathf.Lerp(min, max, (float)rng.NextDouble());
         }
     }

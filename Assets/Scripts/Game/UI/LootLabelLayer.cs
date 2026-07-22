@@ -137,7 +137,7 @@ namespace Scavenger.UI
                 candidates.Add(new Candidate
                 {
                     WorldPosition = pickup.transform.position + Vector3.up * pickupLabelHeight,
-                    Label = $"{pickup.Definition.displayName} 조각 +{pickup.Definition.value}",
+                    Label = $"{pickup.Definition.displayName} 조각 +{pickup.PieceValue}",
                     SqrDistance = sqr,
                 });
             }

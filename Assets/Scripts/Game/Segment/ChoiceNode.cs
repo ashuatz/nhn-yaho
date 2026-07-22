@@ -72,8 +72,13 @@ namespace Scavenger.Segment
                 ChooseExtract();
         }
 
-        void ChooseAdvance()
+        // 터치 UI(HudController 선택 버튼)도 호출하는 외부 진입점 (M5-1) -
+        // 키보드 없는 환경의 선택지 소프트락 방지 (Codex 교차 검토)
+        public void ChooseAdvance()
         {
+            if (consumed)
+                return;
+
             consumed = true;
             Active = null;
 
@@ -81,8 +86,11 @@ namespace Scavenger.Segment
             onAdvance?.Invoke(this);
         }
 
-        void ChooseExtract()
+        public void ChooseExtract()
         {
+            if (consumed)
+                return;
+
             consumed = true;
             Active = null;
 

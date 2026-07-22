@@ -82,12 +82,31 @@ namespace Scavenger.EditorTools
                 new Vector2(0f, 4f), new Vector2(340f, 24f));
             gaugeLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.8f);
 
-            // -- 선택지 프롬프트 ---------------------------------------------
+            // -- 선택지 프롬프트 (전진/탈출 = 터치 버튼, 키보드 W/E 병행) ----------
             RectTransform choiceBox = CreatePanel(
                 root.transform, "ChoicePrompt",
                 new Vector2(0.5f, 0.7f), new Vector2(0.5f, 0.7f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(430f, 72f));
-            Text choiceText = CreateText(choiceBox, "Text", 22, TextAnchor.MiddleCenter);
+                Vector2.zero, new Vector2(460f, 110f));
+
+            Text choiceText = CreateText(choiceBox, "Title", 22, TextAnchor.UpperCenter);
+            choiceText.rectTransform.offsetMin = new Vector2(4f, 62f);
+            choiceText.rectTransform.offsetMax = new Vector2(-4f, -6f);
+
+            RectTransform choiceAdvance = CreateImageRect(
+                choiceBox, "AdvanceButton",
+                new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f),
+                new Vector2(10f, 10f), new Vector2(215f, 50f),
+                new Color(1f, 1f, 1f, 0.12f));
+            Text advanceText = CreateText(choiceAdvance, "Text", 20, TextAnchor.MiddleCenter);
+            advanceText.text = "W: 더 깊이 전진\n(고가치/고위험)";
+
+            RectTransform choiceExtract = CreateImageRect(
+                choiceBox, "ExtractButton",
+                new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f),
+                new Vector2(-10f, 10f), new Vector2(215f, 50f),
+                new Color(1f, 1f, 1f, 0.12f));
+            Text extractText = CreateText(choiceExtract, "Text", 20, TextAnchor.MiddleCenter);
+            extractText.text = "E: 탈출\n(확정)";
 
             // -- 신호 배너 (상단) --------------------------------------------
             RectTransform signalBox = CreatePanel(
@@ -123,6 +142,8 @@ namespace Scavenger.EditorTools
             hud.gaugeLabel = gaugeLabel;
             hud.choiceRoot = choiceBox.gameObject;
             hud.choiceText = choiceText;
+            hud.choiceAdvanceButton = choiceAdvance;
+            hud.choiceExtractButton = choiceExtract;
             hud.signalRoot = signalBox.gameObject;
             hud.signalText = signalText;
             hud.collapseRoot = collapseBox.gameObject;
