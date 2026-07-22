@@ -98,7 +98,11 @@ namespace Scavenger.Segment
 
         // -- 셀 계산 (순수 함수, EditMode 테스트 대상) ------------------------
 
-        /// <summary>셀 중심이 반경 안에 드는 월드 정렬 셀 목록.</summary>
+        // 겹침 판정은 보수적으로 - 일부라도 위험 범위에 걸친 셀은 표시한다.
+        // 셀 중심 기준 판정은 경계 셀을 안전해 보이게 만든다 (Codex 검토 반영)
+        const float OverlapEpsilon = 0.0001f;
+
+        /// <summary>반경과 일부라도 겹치는 월드 정렬 셀 목록 (최근접점 거리 판정).</summary>
         public static List<Vector2Int> CellsInCircle(Vector2 center, float radius, float cellSize)
         {
             List<Vector2Int> cells = new List<Vector2Int>();
@@ -117,9 +121,13 @@ namespace Scavenger.Segment
             {
                 for (int x = minX; x <= maxX; x++)
                 {
-                    Vector2 cellCenter = new Vector2((x + 0.5f) * cellSize, (y + 0.5f) * cellSize);
+                    // 셀 사각형에서 원 중심에 가장 가까운 점과의 거리로 판정
+                    float nearestX = Mathf.Clamp(center.x, x * cellSize, (x + 1) * cellSize);
+                    float nearestY = Mathf.Clamp(center.y, y * cellSize, (y + 1) * cellSize);
 
-                    if ((cellCenter - center).sqrMagnitude <= sqrRadius)
+                    Vector2 nearest = new Vector2(nearestX, nearestY);
+
+                    if ((nearest - center).sqrMagnitude < sqrRadius - OverlapEpsilon)
                         cells.Add(new Vector2Int(x, y));
                 }
             }
@@ -127,7 +135,7 @@ namespace Scavenger.Segment
             return cells;
         }
 
-        /// <summary>셀 중심이 사각 범위 안에 드는 월드 정렬 셀 목록.</summary>
+        /// <summary>사각 범위와 실면적이 겹치는 월드 정렬 셀 목록.</summary>
         public static List<Vector2Int> CellsInRect(Vector2 center, Vector2 size, float cellSize)
         {
             List<Vector2Int> cells = new List<Vector2Int>();
@@ -146,12 +154,12 @@ namespace Scavenger.Segment
             {
                 for (int x = minX; x <= maxX; x++)
                 {
-                    Vector2 cellCenter = new Vector2((x + 0.5f) * cellSize, (y + 0.5f) * cellSize);
+                    bool overlapsX = x * cellSize < center.x + half.x - OverlapEpsilon
+                        && (x + 1) * cellSize > center.x - half.x + OverlapEpsilon;
+                    bool overlapsY = y * cellSize < center.y + half.y - OverlapEpsilon
+                        && (y + 1) * cellSize > center.y - half.y + OverlapEpsilon;
 
-                    bool insideX = Mathf.Abs(cellCenter.x - center.x) <= half.x;
-                    bool insideY = Mathf.Abs(cellCenter.y - center.y) <= half.y;
-
-                    if (insideX && insideY)
+                    if (overlapsX && overlapsY)
                         cells.Add(new Vector2Int(x, y));
                 }
             }

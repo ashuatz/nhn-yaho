@@ -20,6 +20,9 @@ namespace Scavenger.Obstacle
         PlayerController trackedPlayer;
         Renderer visualRenderer;
 
+        // 인스턴스 머티리얼 - 파괴 시 함께 해제 (누수 방지, Codex 검토 반영)
+        Material visualMaterial;
+
         // 위험 그리드 핸들 (M3-1). 0 = 미표시
         int dangerHandle;
 
@@ -78,7 +81,7 @@ namespace Scavenger.Obstacle
 
         void UpdateBlink()
         {
-            if (visualRenderer == null)
+            if (visualMaterial == null)
                 return;
 
             // 기폭이 가까울수록 빠르게 점멸
@@ -86,7 +89,7 @@ namespace Scavenger.Obstacle
             float frequency = Mathf.Lerp(14f, 3f, remaining01);
             float pulse = Mathf.PingPong(Time.time * frequency, 1f);
 
-            visualRenderer.material.color = Color.Lerp(IdleColor, WarnColor, pulse);
+            visualMaterial.color = Color.Lerp(IdleColor, WarnColor, pulse);
         }
 
         void Explode()
@@ -120,6 +123,9 @@ namespace Scavenger.Obstacle
         // 구간 정리/침몰 파괴 등 어떤 경로로 사라져도 위험 표시를 남기지 않는다
         void OnDestroy()
         {
+            if (visualMaterial != null)
+                Destroy(visualMaterial);
+
             if (dangerHandle == 0)
                 return;
 
@@ -144,7 +150,12 @@ namespace Scavenger.Obstacle
             Renderer blastRenderer = blast.GetComponent<Renderer>();
 
             if (blastRenderer != null)
-                blastRenderer.material.color = new Color(1f, 0.45f, 0.1f);
+            {
+                // 인스턴스 머티리얼은 GO 파괴로 해제되지 않는다 - 함께 지연 파괴
+                Material blastMaterial = blastRenderer.material;
+                blastMaterial.color = new Color(1f, 0.45f, 0.1f);
+                Destroy(blastMaterial, 0.3f);
+            }
 
             Destroy(blast, 0.25f);
         }
@@ -165,7 +176,10 @@ namespace Scavenger.Obstacle
             visualRenderer = cube.GetComponent<Renderer>();
 
             if (visualRenderer != null)
-                visualRenderer.material.color = IdleColor;
+            {
+                visualMaterial = visualRenderer.material;
+                visualMaterial.color = IdleColor;
+            }
         }
     }
 }

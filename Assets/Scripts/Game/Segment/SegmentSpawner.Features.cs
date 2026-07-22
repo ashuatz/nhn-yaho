@@ -407,6 +407,11 @@ namespace Scavenger.Segment
             if (run == null || run.Rng == null)
                 return;
 
+            // 사전 배치 커버 구간(부착 대상 스트립 없음)에는 배치하지 않는다 -
+            // 바닥이 가라앉은 뒤 공중에 떠서 계속 발동하는 트랩 방지 (Codex 검토)
+            if (currentStrips.Count == 0)
+                return;
+
             int trapCount = Curve.EvaluatePushTrapCount(depth);
 
             if (trapCount <= 0)

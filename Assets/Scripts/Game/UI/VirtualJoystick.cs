@@ -9,7 +9,10 @@ namespace Scavenger.UI
     /// 좌하단 가상 조이스틱 (ADR-0007, 토글 D-패드 대체).
     /// 베이스 원 안에서 드래그 = 2D 벡터 입력. 화면 x = 좌우, 화면 y = 전후.
     /// 마우스/터치 공용. 그레이박스 단계라 IMGUI 렌더 (uGUI 전환은 M5-1).
+    /// 실행 순서 -200: PlayerController(-100)가 읽기 전에 벡터를 갱신해
+    /// 1프레임 입력 지연을 없앤다 (Codex 검토 반영).
     /// </summary>
+    [DefaultExecutionOrder(-200)]
     public sealed class VirtualJoystick : MonoBehaviour
     {
         [Header("레이아웃 (좌하단 기준, 픽셀)")]

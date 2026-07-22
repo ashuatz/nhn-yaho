@@ -28,6 +28,7 @@ namespace Scavenger.Segment
         Color baseAmbientSky;
         Color baseAmbientEquator;
         Color baseAmbientGround;
+        float baseAmbientIntensity;
         float baseLightIntensity;
         bool baseCaptured;
 
@@ -35,18 +36,23 @@ namespace Scavenger.Segment
         float targetDarkness01;
         RunManager subscribedRun;
 
-        void Start()
+        void OnEnable()
         {
             TrySubscribe();
         }
 
-        void OnDestroy()
+        // 비활성화 시 전역 상태(RenderSettings/라이트)를 원복하고 구독 해제
+        // (Codex 검토 반영: 컴포넌트를 꺼도 마지막 어둠이 남지 않게)
+        void OnDisable()
         {
-            if (subscribedRun == null)
+            Unsubscribe();
+
+            if (!baseCaptured)
                 return;
 
-            subscribedRun.RunStarted -= OnRunStarted;
-            subscribedRun.DepthChanged -= OnDepthChanged;
+            currentDarkness01 = 0f;
+            targetDarkness01 = 0f;
+            ApplyDarkness(0f);
         }
 
         void Update()
@@ -69,6 +75,9 @@ namespace Scavenger.Segment
 
         void TrySubscribe()
         {
+            if (subscribedRun != null)
+                return;
+
             RunManager run = RunManager.Instance;
 
             if (run == null)
@@ -77,6 +86,20 @@ namespace Scavenger.Segment
             subscribedRun = run;
             run.RunStarted += OnRunStarted;
             run.DepthChanged += OnDepthChanged;
+
+            // Start 순서 경합으로 RunStarted를 놓친 경우 동기화 (Codex 검토 반영)
+            if (run.StateMachine != null && run.StateMachine.Current == RunState.Running)
+                OnRunStarted();
+        }
+
+        void Unsubscribe()
+        {
+            if (subscribedRun == null)
+                return;
+
+            subscribedRun.RunStarted -= OnRunStarted;
+            subscribedRun.DepthChanged -= OnDepthChanged;
+            subscribedRun = null;
         }
 
         void OnRunStarted()
@@ -109,6 +132,7 @@ namespace Scavenger.Segment
             baseAmbientSky = RenderSettings.ambientSkyColor;
             baseAmbientEquator = RenderSettings.ambientEquatorColor;
             baseAmbientGround = RenderSettings.ambientGroundColor;
+            baseAmbientIntensity = RenderSettings.ambientIntensity;
 
             if (directionalLight == null)
                 directionalLight = FindDirectionalLight();
@@ -127,6 +151,10 @@ namespace Scavenger.Segment
             RenderSettings.ambientSkyColor = baseAmbientSky * ambientFactor;
             RenderSettings.ambientEquatorColor = baseAmbientEquator * ambientFactor;
             RenderSettings.ambientGroundColor = baseAmbientGround * ambientFactor;
+
+            // Skybox 앰비언트 모드에서는 3색이 아니라 강도가 조도를 결정한다
+            // (Greybox 씬이 Skybox 모드 - Codex 검토 반영, 양쪽 모두 커버)
+            RenderSettings.ambientIntensity = baseAmbientIntensity * ambientFactor;
 
             if (directionalLight != null)
                 directionalLight.intensity = baseLightIntensity * lightFactor;

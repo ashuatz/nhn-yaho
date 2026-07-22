@@ -27,6 +27,14 @@ namespace Scavenger.Obstacle
         float cooldownRemaining;
         bool telegraphing;
 
+        // 발밑 스트립 - 침몰 시작 후에는 발동하지 않는다 (Codex 검토 반영)
+        Segment.FloorStrip supportStrip;
+        bool supportSearched;
+
+        // 인스턴스 머티리얼 - 파괴 시 함께 해제 (누수 방지, Codex 검토 반영)
+        Material bodyMaterial;
+        Material knobMaterial;
+
         public void Initialize(float detectionRadius, float telegraphSeconds, float pushSpeed, float cooldownSeconds)
         {
             this.detectionRadius = detectionRadius;
@@ -37,12 +45,29 @@ namespace Scavenger.Obstacle
             BuildVisual();
         }
 
+        void OnDestroy()
+        {
+            if (bodyMaterial != null)
+                Destroy(bodyMaterial);
+
+            if (knobMaterial != null)
+                Destroy(knobMaterial);
+        }
+
         void Update()
         {
             RunManager run = RunManager.Instance;
 
             if (run == null || run.StateMachine.Current != RunState.Running)
                 return;
+
+            // 발밑이 무너지기 시작하면 무장 해제 - 떨어지는 트랩이 밀지 않게
+            if (IsSupportSinking())
+            {
+                telegraphing = false;
+                SetVisualColor(IdleColor);
+                return;
+            }
 
             if (cooldownRemaining > 0f)
             {
@@ -110,12 +135,27 @@ namespace Scavenger.Obstacle
             return player != null;
         }
 
+        // 스포너가 생성 직후 스트립에 부착하므로 첫 프레임에 한 번만 조회
+        bool IsSupportSinking()
+        {
+            if (!supportSearched)
+            {
+                supportStrip = GetComponentInParent<Segment.FloorStrip>();
+                supportSearched = true;
+            }
+
+            if (supportStrip == null)
+                return false;
+
+            return supportStrip.IsSinking;
+        }
+
         void SetVisualColor(Color color)
         {
-            if (visualRenderer == null)
+            if (bodyMaterial == null)
                 return;
 
-            visualRenderer.material.color = color;
+            bodyMaterial.color = color;
         }
 
         void BuildVisual()
@@ -133,6 +173,10 @@ namespace Scavenger.Obstacle
                 Destroy(bodyCollider);
 
             visualRenderer = body.GetComponent<Renderer>();
+
+            if (visualRenderer != null)
+                bodyMaterial = visualRenderer.material;
+
             SetVisualColor(IdleColor);
 
             GameObject knob = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -149,7 +193,10 @@ namespace Scavenger.Obstacle
             Renderer knobRenderer = knob.GetComponent<Renderer>();
 
             if (knobRenderer != null)
-                knobRenderer.material.color = new Color(0.9f, 0.9f, 0.95f);
+            {
+                knobMaterial = knobRenderer.material;
+                knobMaterial.color = new Color(0.9f, 0.9f, 0.95f);
+            }
         }
     }
 }

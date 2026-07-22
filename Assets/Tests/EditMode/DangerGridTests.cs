@@ -9,7 +9,7 @@ namespace Scavenger.Tests
     public sealed class DangerGridTests
     {
         [Test]
-        public void CellsInCircle_AllCellCentersWithinRadius()
+        public void CellsInCircle_AllCellsOverlapRadius()
         {
             Vector2 center = new Vector2(3.2f, -1.7f);
             float radius = 2.4f;
@@ -20,9 +20,23 @@ namespace Scavenger.Tests
 
             foreach (Vector2Int cell in cells)
             {
-                Vector2 cellCenter = new Vector2(cell.x + 0.5f, cell.y + 0.5f);
-                Assert.LessOrEqual((cellCenter - center).magnitude, radius + 0.0001f);
+                // 셀 사각형의 최근접점이 반경 안이어야 실제로 겹친 것이다
+                float nearestX = Mathf.Clamp(center.x, cell.x, cell.x + 1f);
+                float nearestY = Mathf.Clamp(center.y, cell.y, cell.y + 1f);
+
+                Vector2 nearest = new Vector2(nearestX, nearestY);
+                Assert.Less((nearest - center).magnitude, radius);
             }
+        }
+
+        [Test]
+        public void CellsInCircle_IncludesPartiallyOverlappedEdgeCell()
+        {
+            // 셀 (1,1)의 중심 (1.5,1.5)은 반경 1.7 밖이지만 최근접 모서리 (1,1)은
+            // 반경 안 - 중심 판정이면 위험한데 안전해 보이는 셀 (Codex 검토 사례)
+            List<Vector2Int> cells = DangerGrid.CellsInCircle(Vector2.zero, 1.7f, 1f);
+
+            Assert.Contains(new Vector2Int(1, 1), cells);
         }
 
         [Test]
