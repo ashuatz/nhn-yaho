@@ -52,6 +52,33 @@ namespace Scavenger.Tests
         }
 
         [Test]
+        public void TrapCounts_CappedAndNeverNegative()
+        {
+            DepthCurve curve = DepthCurve.CreateDefault();
+
+            for (int depth = 1; depth <= 50; depth++)
+            {
+                int sinkCount = curve.EvaluateSinkTrapCount(depth);
+                int pushCount = curve.EvaluatePushTrapCount(depth);
+
+                Assert.GreaterOrEqual(sinkCount, 0, $"depth {depth}");
+                Assert.LessOrEqual(sinkCount, curve.sinkTrapMaxCount, $"depth {depth}");
+                Assert.GreaterOrEqual(pushCount, 0, $"depth {depth}");
+                Assert.LessOrEqual(pushCount, curve.pushTrapMaxCount, $"depth {depth}");
+            }
+        }
+
+        [Test]
+        public void PushTraps_AbsentAtDepthOne_ByDefault()
+        {
+            DepthCurve curve = DepthCurve.CreateDefault();
+
+            // 기본 튜닝: 첫 구간은 밀기 트랩 없이 학습 구간으로 남긴다
+            Assert.AreEqual(0, curve.EvaluatePushTrapCount(1));
+            Assert.GreaterOrEqual(curve.EvaluatePushTrapCount(2), 1);
+        }
+
+        [Test]
         public void DeeperDepth_ShiftsWeightTowardHighTier()
         {
             DepthCurve curve = DepthCurve.CreateDefault();

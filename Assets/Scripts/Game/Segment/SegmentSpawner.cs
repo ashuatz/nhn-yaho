@@ -15,6 +15,17 @@ namespace Scavenger.Segment
     /// </summary>
     public sealed class SegmentSpawner : MonoBehaviour
     {
+        [Header("땅 꺼짐 트랩 (M3-2, 프리팹 튜닝 지점)")]
+        public float sinkTrapTriggerDistance = 5.5f;
+        public float sinkTrapWarnSeconds = 1.1f;
+        [Range(0f, 1f)] public float sinkTrapTremorMax = 0.4f;
+
+        [Header("밀기 트랩 (M3-3, 프리팹 튜닝 지점)")]
+        public float pushTrapDetectionRadius = 2.2f;
+        public float pushTrapTelegraphSeconds = 0.45f;
+        public float pushTrapSpeed = 7.5f;
+        public float pushTrapCooldownSeconds = 3.5f;
+
         public SegmentDefinition Definition { get; private set; }
         public DepthCurve Curve { get; private set; }
 
@@ -131,6 +142,8 @@ namespace Scavenger.Segment
             PopulateLedges(root.transform, depth);
             PopulateLoot(root.transform, depth);
             PopulateBombs(root.transform, depth);
+            PopulateSinkTraps(depth);
+            PopulatePushTraps(root.transform, depth);
             BuildChoiceNode(root.transform, depth);
             BuildSignalEmitters(root.transform);
 
@@ -660,6 +673,102 @@ namespace Scavenger.Segment
             }
 
             return true;
+        }
+
+        // -- 땅 꺼짐 트랩 배치 (M3-2) ------------------------------------------
+
+        void PopulateSinkTraps(int depth)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null || currentStrips.Count == 0)
+                return;
+
+            int trapCount = Curve.EvaluateSinkTrapCount(depth);
+
+            if (trapCount <= 0)
+                return;
+
+            float length = Definition.lengthMeters;
+            int placed = 0;
+            int attempts = 0;
+
+            while (placed < trapCount && attempts < trapCount * 10)
+            {
+                attempts += 1;
+
+                FloorStrip strip = currentStrips[run.Rng.Next(0, currentStrips.Count)];
+                float localZ = strip.transform.localPosition.z;
+
+                // 초입(진입 직후 낙사 방지)과 선택지 앞은 비운다
+                if (localZ < 12f || localZ > length - 8f)
+                    continue;
+
+                // 단차 진입로를 무너뜨리면 보상 동선이 사실상 봉쇄된다 - 제외
+                if (IsInLedgeZRange(localZ, margin: 1f))
+                    continue;
+
+                if (strip.GetComponent<SinkTrap>() != null)
+                    continue;
+
+                SinkTrap trap = strip.gameObject.AddComponent<SinkTrap>();
+                trap.triggerDistance = sinkTrapTriggerDistance;
+                trap.warnSeconds = sinkTrapWarnSeconds;
+                trap.warnTremorMax = sinkTrapTremorMax;
+
+                placed += 1;
+            }
+        }
+
+        // -- 밀기 트랩 배치 (M3-3) ---------------------------------------------
+
+        void PopulatePushTraps(Transform parent, int depth)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            int trapCount = Curve.EvaluatePushTrapCount(depth);
+
+            if (trapCount <= 0)
+                return;
+
+            float length = Definition.lengthMeters;
+            float halfWidth = Definition.corridorHalfWidth;
+
+            List<float> placedZ = new List<float>();
+            int attempts = 0;
+
+            while (placedZ.Count < trapCount && attempts < trapCount * 10)
+            {
+                attempts += 1;
+
+                float z = Mathf.Lerp(16f, length - 10f, (float)run.Rng.NextDouble());
+
+                // 트랩끼리 겹치면 연속 밀림으로 즉사 콤보가 되므로 간격 강제
+                if (!IsZGapValid(placedZ, z, minZGap: 10f))
+                    continue;
+
+                if (IsInLedgeZRange(z, margin: 1f))
+                    continue;
+
+                float x = Mathf.Lerp(-halfWidth + 0.8f, halfWidth - 0.8f, (float)run.Rng.NextDouble());
+
+                GameObject trapObject = new GameObject("PushTrap");
+                trapObject.transform.SetParent(parent, false);
+                trapObject.transform.localPosition = new Vector3(x, 0f, z);
+
+                PushTrap trap = trapObject.AddComponent<PushTrap>();
+                trap.Initialize(
+                    pushTrapDetectionRadius, pushTrapTelegraphSeconds,
+                    pushTrapSpeed, pushTrapCooldownSeconds);
+
+                // 바닥과 함께 침몰 (루트/폭탄과 동일 규칙)
+                AttachToSupportingStrip(trapObject.transform);
+
+                placedZ.Add(z);
+            }
         }
 
         static GameObject SpawnBomb(Transform parent, Vector3 localPosition, float fuseSeconds, float blastRadius)

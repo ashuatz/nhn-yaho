@@ -26,6 +26,10 @@
   Hide(핸들). 셀 풀링 + 공통 점멸 (런타임 머티리얼). 폭탄 기폭 시작 시 폭발 반경 표시,
   땅 꺼짐 등 후속 위협 공용. CellsInCircle/CellsInRect = 순수 함수 (EditMode 테스트).
   cellSize/색/점멸 = 프리팹 튜닝 지점. static Instance
+- SinkTrap.cs: 땅 꺼짐 트랩 (M3-2). FloorStrip과 동일 오브젝트. 플레이어 z 근접 시
+  예고 (DangerGrid 사각 점멸 + 근접 비례 CameraShake 트레머) 후 FloorStrip.Sink.
+  붕괴 전선이 먼저 침몰시키면 무효. 수치는 SegmentSpawner 필드가 주입.
+  배치는 PopulateSinkTraps (초입 12m/선택지 앞 8m/단차 z구간 제외, DepthCurve 수량)
 - CollapseFront.cs: 시간 압박의 단일 소스 (ADR-0006). 붕괴 전선이 뒤에서 전진하며
   지나간 스트립을 가라앉히고 플레이어 z를 전선 앞으로 클램프 (후퇴 불가 겸용).
   startDelay/baseSpeed/speedPerDepth/maxSpeed = 프리팹 튜닝 지점. static Instance

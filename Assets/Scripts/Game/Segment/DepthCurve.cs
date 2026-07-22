@@ -34,6 +34,16 @@ namespace Scavenger.Segment
         public float blastPerDepth = 0.08f;
         public float blastMaxRadius = 2.4f;
 
+        [Header("땅 꺼짐 트랩 수 (M3-2)")]
+        public float sinkTrapBaseCount = 1f;
+        public float sinkTrapPerDepth = 0.5f;
+        public int sinkTrapMaxCount = 3;
+
+        [Header("밀기 트랩 수 (M3-3). 기본값은 depth 2부터 등장")]
+        public float pushTrapBaseCount = 0.5f;
+        public float pushTrapPerDepth = 0.5f;
+        public int pushTrapMaxCount = 2;
+
         /// <summary>tier 1..3 가중치 배열 (합 1)을 돌려준다.</summary>
         public float[] EvaluateTierWeights(int depth)
         {
@@ -62,6 +72,18 @@ namespace Scavenger.Segment
         {
             float radius = blastBaseRadius + blastPerDepth * (depth - 1);
             return Mathf.Min(radius, blastMaxRadius);
+        }
+
+        public int EvaluateSinkTrapCount(int depth)
+        {
+            int count = Mathf.FloorToInt(sinkTrapBaseCount + sinkTrapPerDepth * (depth - 1));
+            return Mathf.Clamp(count, 0, sinkTrapMaxCount);
+        }
+
+        public int EvaluatePushTrapCount(int depth)
+        {
+            int count = Mathf.FloorToInt(pushTrapBaseCount + pushTrapPerDepth * (depth - 1));
+            return Mathf.Clamp(count, 0, pushTrapMaxCount);
         }
 
         public static DepthCurve CreateDefault()

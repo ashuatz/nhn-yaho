@@ -37,12 +37,25 @@ namespace Scavenger.Player
             get { return controller != null && controller.isGrounded; }
         }
 
+        [Header("외부 임펄스 감쇠 (m/s^2) - 밀기 트랩 등")]
+        public float impulseDamping = 10f;
+
         CharacterController controller;
         float fallVelocity;
+        Vector3 externalVelocity;
 
         void Awake()
         {
             controller = GetComponent<CharacterController>();
+        }
+
+        /// <summary>
+        /// 외부 충격 속도 (밀기 트랩 등, M3-3). 감쇠하며 사라진다.
+        /// 이동 입력과 합산 후 복도/붕괴 클램프를 그대로 받는다.
+        /// </summary>
+        public void AddImpulse(Vector3 velocity)
+        {
+            externalVelocity += velocity;
         }
 
         /// <summary>이동 입력 설정. 크기 1 초과는 클램프 (대각 가속 방지).</summary>
@@ -71,10 +84,17 @@ namespace Scavenger.Player
             // 정지 = 발밑 붕괴 = 낙사가 압박의 본질)
             float backwardLimit = Mathf.Min(MinZ, transform.position.z);
 
+            // 입력 속도 + 외부 임펄스 합산 후 축별 경계 클램프
+            float desiredX = MoveInput.x * moveSpeed * SpeedScale + externalVelocity.x;
+            float desiredZ = MoveInput.y * moveSpeed * SpeedScale + externalVelocity.z;
+
             velocity.x = ComputeAxisSpeed(
-                transform.position.x, MoveInput.x, -corridorHalfWidth, corridorHalfWidth, deltaTime);
+                transform.position.x, desiredX, -corridorHalfWidth, corridorHalfWidth, deltaTime);
             velocity.z = ComputeAxisSpeed(
-                transform.position.z, MoveInput.y, backwardLimit, float.PositiveInfinity, deltaTime);
+                transform.position.z, desiredZ, backwardLimit, float.PositiveInfinity, deltaTime);
+
+            externalVelocity = Vector3.MoveTowards(
+                externalVelocity, Vector3.zero, impulseDamping * deltaTime);
 
             // 낙사용 누적 중력 (접지 시 소폭 유지로 접지 판정 안정화)
             if (controller.isGrounded)
@@ -87,17 +107,18 @@ namespace Scavenger.Player
             controller.Move(velocity * deltaTime);
         }
 
-        /// <summary>런 재시작 등에서 낙하 속도 초기화.</summary>
+        /// <summary>런 재시작 등에서 낙하 속도/잔존 임펄스 초기화.</summary>
         public void ResetVertical()
         {
             fallVelocity = 0f;
+            externalVelocity = Vector3.zero;
         }
 
         // CharacterController는 transform 직접 설정을 무시할 수 있으므로
         // 경계를 넘지 않도록 이동 전에 축 속도를 미리 깎는다
-        float ComputeAxisSpeed(float current, float axisInput, float min, float max, float deltaTime)
+        float ComputeAxisSpeed(float current, float desiredSpeed, float min, float max, float deltaTime)
         {
-            float target = current + axisInput * moveSpeed * SpeedScale * deltaTime;
+            float target = current + desiredSpeed * deltaTime;
             target = Mathf.Clamp(target, min, max);
 
             return (target - current) / deltaTime;

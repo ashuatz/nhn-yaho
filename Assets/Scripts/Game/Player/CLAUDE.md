@@ -11,6 +11,8 @@
 - PlayerMotor.cs: CharacterController 이동. 2D 벡터 홀드 (ADR-0007):
   SetMoveInput(Vector2) = 입력이 있는 동안 이동, 아날로그 크기 비례. moveSpeed = 튜닝 지점.
   SpeedScale = 외부 시스템(CarryLoad)이 설정하는 이동속도 배율 (1 = 정상).
+  AddImpulse(Vector3) = 외부 충격 속도 (밀기 트랩, M3-3). impulseDamping으로 감쇠,
+  입력과 합산 후 동일 클램프 적용. ResetVertical이 잔존 임펄스도 초기화.
   x는 복도 반폭, z는 MinZ(붕괴 전선)로 이동 전 사전 클램프. 누적 중력 = 낙사 지원
 - CarryLoad.cs: 무게 -> 이동속도 배율 (M2-1). RunInventory.TotalWeight를 읽어
   3단계(일반/과적/초과적) 판정 후 Motor.SpeedScale 반영. 임계(overloadedAt/
