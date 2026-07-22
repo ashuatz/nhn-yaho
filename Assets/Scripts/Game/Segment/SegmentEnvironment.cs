@@ -141,6 +141,19 @@ namespace Scavenger.Segment
             return blocks;
         }
 
+        /// <summary>
+        /// 카메라가 있는 쪽 (+1 = +x). 카메라측은 지형이 발판을 가리면 안 되므로
+        /// 위로 쌓지 않고 단차로 내려간다 (사용자 지시). 클리어런스가 비활성이면
+        /// 리그 기본값(+x, Main Camera 프리팹 positionOffsetWorld.x = 9.5) 가정.
+        /// </summary>
+        public static int CameraSide(SightClearance clearance)
+        {
+            if (!clearance.Enabled)
+                return 1;
+
+            return clearance.NearPoint.x >= 0f ? 1 : -1;
+        }
+
         // 보행 바닥 스트립 생성은 길 카테고리로 이동 - SegmentPath.BuildWalkFloorStrips (M4-1)
 
         // -- 측면 럽블 매스 ---------------------------------------------------
@@ -150,9 +163,17 @@ namespace Scavenger.Segment
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
+            int cameraSide = CameraSide(clearance);
 
             for (int side = -1; side <= 1; side += 2)
             {
+                // 카메라측은 위로 쌓으면 발판이 가려진다 - 내려가는 단차 지형으로 대체
+                if (side == cameraSide)
+                {
+                    AddTerracedDescent(blocks, rng, clearance, side, halfWidth, length);
+                    continue;
+                }
+
                 // 높이를 이전 슬라이스와 보간해 들쭉날쭉하되 연속적인 능선을 만든다
                 float previousHeight = NextRange(rng, 1.2f, 2.8f);
 
@@ -177,6 +198,45 @@ namespace Scavenger.Segment
                         float pillarHeight = NextRange(rng, 4.5f, 7f);
                         AddRubbleBlock(blocks, rng, clearance, side, halfWidth, z, pillarHeight, rowOffset: 1f);
                     }
+                }
+            }
+        }
+
+        // 카메라측 지형: 복도에서 멀어질수록 계단식으로 내려간다 (사용자 지시).
+        // 상판(top)이 항상 보행면(y=0) 아래라 발판/플레이어를 절대 가리지 않는다
+        static void AddTerracedDescent(
+            List<EnvironmentBlock> blocks, System.Random rng, SightClearance clearance,
+            int side, float halfWidth, float length)
+        {
+            const int TerraceRows = 3;
+            const float RowSpacing = 2.3f;
+
+            for (int row = 0; row < TerraceRows; row++)
+            {
+                // 열마다 한 단씩 낮아진다. 첫 열은 보행면 바로 아래
+                float baseTop = -0.15f - row * NextRange(rng, 0.9f, 1.4f);
+                float previousTop = baseTop;
+
+                for (float z = 0f; z < length; z += RubbleSliceDepth)
+                {
+                    float targetTop = baseTop + NextRange(rng, -0.35f, 0.15f);
+                    float top = Mathf.Lerp(previousTop, targetTop, 0.55f);
+                    previousTop = top;
+
+                    float width = NextRange(rng, 1.6f, 2.6f);
+                    float depth = RubbleSliceDepth * NextRange(rng, 0.85f, 1.05f);
+                    float height = NextRange(rng, 2.5f, 4f);
+                    float x = side * (halfWidth + width * 0.5f + 0.15f + row * RowSpacing);
+
+                    AddBlock(
+                        blocks,
+                        clearance,
+                        new Vector3(x, top - height * 0.5f, z + RubbleSliceDepth * 0.5f),
+                        Quaternion.identity,
+                        new Vector3(width, height, depth),
+                        rng.Next(0, 3),
+                        RubbleWave,
+                        NextPhase(rng));
                 }
             }
         }
@@ -207,10 +267,15 @@ namespace Scavenger.Segment
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
+            int cameraSide = CameraSide(clearance);
 
-            // 측면 상부 플랫폼: 복도 안쪽으로 오버행 - 2층 발코니/통로 느낌
+            // 측면 상부 플랫폼: 복도 안쪽으로 오버행 - 2층 발코니/통로 느낌.
+            // 카메라측은 상부 구조물이 발판을 가리므로 제외 (단차 하강 지형만)
             for (int side = -1; side <= 1; side += 2)
             {
+                if (side == cameraSide)
+                    continue;
+
                 float z = NextRange(rng, 4f, 10f);
 
                 while (z < length - 9f)
@@ -222,7 +287,7 @@ namespace Scavenger.Segment
                 }
             }
 
-            // 브릿지: 상부 통로. 카메라 시야 라인을 넘지 않게 카메라 반대편(-x)에서
+            // 브릿지: 상부 통로. 카메라 시야 라인을 넘지 않게 카메라 반대편에서
             // 복도 중앙 부근까지만 걸친다 (시야 클리어런스와의 양립)
             float bridgeZ = NextRange(rng, 15f, 30f);
 
@@ -233,7 +298,7 @@ namespace Scavenger.Segment
                     float height = NextRange(rng, 3.4f, 4f);
                     float depth = NextRange(rng, 2.2f, 3.2f);
                     float bridgeWidth = halfWidth + 4f;
-                    float bridgeCenterX = -(halfWidth * 0.5f + 0.5f);
+                    float bridgeCenterX = -cameraSide * (halfWidth * 0.5f + 0.5f);
 
                     AddBlock(
                         blocks,
@@ -301,28 +366,39 @@ namespace Scavenger.Segment
 
         // -- 중경/원경 레이어 --------------------------------------------------
 
+        // 중경 (팔레트 6): 시야 반대편 = 위로 솟는 매스 (협곡 너머 잔해 지대),
+        // 카메라측 = 보행면 아래로 가라앉은 매스 - 내려간 단차 아래의 잔해 지대.
+        // 카메라측 상판은 항상 y<0 이라 발판을 가리지 않는다 (사용자 지시)
         static void AddMidground(
             List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
+            int cameraSide = CameraSide(clearance);
 
             for (int side = -1; side <= 1; side += 2)
             {
+                bool sunken = side == cameraSide;
+
                 for (float z = 0f; z < length; z += 4.5f)
                 {
-                    if (rng.NextDouble() >= 0.7)
+                    if (rng.NextDouble() >= (sunken ? 0.5 : 0.75))
                         continue;
 
-                    float width = NextRange(rng, 3f, 6f);
-                    float height = NextRange(rng, 3f, 8f);
+                    float width = NextRange(rng, 3f, 6.5f);
+                    float height = NextRange(rng, 4f, 10f);
                     float depth = NextRange(rng, 3.5f, 5.5f);
                     float x = side * (halfWidth + 5f + NextRange(rng, 0f, 6f));
+
+                    // 카메라측은 상판이 단차 아래 - 아래로 뻗는 매스
+                    float y = sunken
+                        ? NextRange(rng, -2.6f, -1f) - height * 0.5f
+                        : height * 0.5f - 0.1f;
 
                     AddBlock(
                         blocks,
                         clearance,
-                        new Vector3(x, height * 0.5f - 0.1f, z + depth * 0.5f),
+                        new Vector3(x, y, z + depth * 0.5f),
                         Quaternion.identity,
                         new Vector3(width, height, depth),
                         6,
@@ -332,28 +408,37 @@ namespace Scavenger.Segment
             }
         }
 
+        // 원경 (팔레트 7): 시야 반대편 = 높은 스카이라인 실루엣,
+        // 카메라측 = 더 내려간 저지대 - 복도가 능선 위에 있다는 인상을 만든다
         static void AddFarground(
             List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
+            int cameraSide = CameraSide(clearance);
 
             for (int side = -1; side <= 1; side += 2)
             {
+                bool sunken = side == cameraSide;
+
                 for (float z = 0f; z < length; z += 7f)
                 {
-                    if (rng.NextDouble() >= 0.8)
+                    if (rng.NextDouble() >= (sunken ? 0.55 : 0.85))
                         continue;
 
                     float width = NextRange(rng, 5f, 10f);
-                    float height = NextRange(rng, 6f, 16f);
+                    float height = NextRange(rng, 8f, 20f);
                     float depth = NextRange(rng, 5f, 8f);
                     float x = side * (halfWidth + 13f + NextRange(rng, 0f, 14f));
+
+                    float y = sunken
+                        ? NextRange(rng, -4.5f, -2f) - height * 0.5f
+                        : height * 0.5f - 0.1f;
 
                     AddBlock(
                         blocks,
                         clearance,
-                        new Vector3(x, height * 0.5f - 0.1f, z + depth * 0.5f),
+                        new Vector3(x, y, z + depth * 0.5f),
                         Quaternion.identity,
                         new Vector3(width, height, depth),
                         7,
