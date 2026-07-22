@@ -49,6 +49,16 @@ namespace Scavenger.Segment
         public float rockfallPerDepth = 0.5f;
         public int rockfallMaxCount = 3;
 
+        [Header("돌진 적 존 수 (앞에서 뒤로 질주)")]
+        public float chargerBaseCount = 1f;
+        public float chargerPerDepth = 0.5f;
+        public int chargerMaxCount = 3;
+
+        [Header("기둥 붕괴 존 수 (쓰러지며 발판 파괴)")]
+        public float toppleColumnBaseCount = 1f;
+        public float toppleColumnPerDepth = 0.34f;
+        public int toppleColumnMaxCount = 2;
+
         /// <summary>tier 1..3 가중치 배열 (합 1)을 돌려준다.</summary>
         public float[] EvaluateTierWeights(int depth)
         {
@@ -95,6 +105,18 @@ namespace Scavenger.Segment
         {
             int count = Mathf.FloorToInt(rockfallBaseCount + rockfallPerDepth * (depth - 1));
             return Mathf.Clamp(count, 0, rockfallMaxCount);
+        }
+
+        public int EvaluateChargerCount(int depth)
+        {
+            int count = Mathf.FloorToInt(chargerBaseCount + chargerPerDepth * (depth - 1));
+            return Mathf.Clamp(count, 0, chargerMaxCount);
+        }
+
+        public int EvaluateToppleColumnCount(int depth)
+        {
+            int count = Mathf.FloorToInt(toppleColumnBaseCount + toppleColumnPerDepth * (depth - 1));
+            return Mathf.Clamp(count, 0, toppleColumnMaxCount);
         }
 
         public static DepthCurve CreateDefault()

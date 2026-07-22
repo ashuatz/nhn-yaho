@@ -32,6 +32,20 @@ namespace Scavenger.Segment
         public float rockfallWarnSeconds = 0.95f;
         public float rockfallImpactRadius = 1.6f;
 
+        [Header("돌진 적 (앞에서 뒤로 질주, 프리팹 튜닝 지점)")]
+        public float chargerTriggerDistance = 10f;
+        public float chargerTelegraphSeconds = 0.8f;
+        public float chargerSpeed = 8.5f;
+        public float chargerSpawnAheadDistance = 16f;
+
+        [Header("기둥 붕괴 (쓰러지며 발판 파괴, 프리팹 튜닝 지점)")]
+        public float toppleTriggerDistance = 8f;
+        public float toppleWarnSeconds = 1.1f;
+
+        [Header("체크포인트 안전지대 (구간 끝, 프리팹 튜닝 지점)")]
+        public float checkpointLength = 9f;
+        public float checkpointSideExtension = 2.5f;
+
         const int LootSpotsPerSegment = 8;
         const float LootInteractRadius = 1.4f;
         const float BombDetectionRadius = 3.5f;
@@ -171,7 +185,10 @@ namespace Scavenger.Segment
                 float edgeMin = halfWidth * 0.45f;
                 float edgeMax = halfWidth - 0.6f;
                 float x = side * Mathf.Lerp(edgeMin, edgeMax, (float)run.Rng.NextDouble());
-                float z = Mathf.Lerp(8f, length - 8f, (float)run.Rng.NextDouble());
+
+                // 체크포인트(구간 끝 안전지대)에는 파밍 요소를 두지 않는다
+                float z = Mathf.Lerp(
+                    8f, length - checkpointLength - 1f, (float)run.Rng.NextDouble());
 
                 // 단차 내부(바닥 레벨)에 묻히는 배치 방지 - 단차 위 루트는 BuildLedge가 배치
                 if (IsInsideLedge(x, z, margin: 0.5f))
@@ -293,8 +310,9 @@ namespace Scavenger.Segment
             {
                 attempts += 1;
 
-                // 초입은 비워서 스폰/진입 직후 즉사 방지
-                float z = Mathf.Lerp(14f, length - 6f, (float)run.Rng.NextDouble());
+                // 초입은 비워서 스폰/진입 직후 즉사 방지. 체크포인트도 제외 (안전지대)
+                float z = Mathf.Lerp(
+                    14f, length - checkpointLength - 2f, (float)run.Rng.NextDouble());
 
                 if (!IsZGapValid(placedZ, z, minZGap))
                     continue;
@@ -363,8 +381,8 @@ namespace Scavenger.Segment
                 FloorStrip strip = currentStrips[run.Rng.Next(0, currentStrips.Count)];
                 float localZ = strip.transform.localPosition.z;
 
-                // 초입(진입 직후 낙사 방지)과 선택지 앞은 비운다
-                if (localZ < 12f || localZ > length - 8f)
+                // 초입(진입 직후 낙사 방지)과 체크포인트(안전지대)는 비운다
+                if (localZ < 12f || localZ > length - checkpointLength - 1f)
                     continue;
 
                 // 단차 진입로를 무너뜨리면 보상 동선이 사실상 봉쇄된다 - 제외
@@ -424,8 +442,9 @@ namespace Scavenger.Segment
             {
                 attempts += 1;
 
-                // 초입/선택지 앞은 비운다 (다른 위협과 동일 규칙)
-                float z = Mathf.Lerp(16f, length - 10f, (float)run.Rng.NextDouble());
+                // 초입/체크포인트는 비운다 (다른 위협과 동일 규칙)
+                float z = Mathf.Lerp(
+                    16f, length - checkpointLength - 2f, (float)run.Rng.NextDouble());
 
                 // 연속 낙하 콤보 방지 간격
                 if (!IsZGapValid(placedZ, z, minZGap: 9f))
@@ -451,6 +470,166 @@ namespace Scavenger.Segment
 
                 placedZ.Add(z);
             }
+        }
+
+        // -- 돌진 적 배치 (사용자 지시: 앞에서 뒤로 달려오는 적) -------------------
+
+        void PopulateChargers(Transform parent, int depth)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            int zoneCount = Curve.EvaluateChargerCount(depth);
+
+            if (zoneCount <= 0)
+                return;
+
+            float length = Definition.lengthMeters;
+            List<float> placedZ = new List<float>();
+            int attempts = 0;
+
+            while (placedZ.Count < zoneCount && attempts < zoneCount * 10)
+            {
+                attempts += 1;
+
+                float z = Mathf.Lerp(
+                    18f, length - checkpointLength - 3f, (float)run.Rng.NextDouble());
+
+                // 연속 돌진 = 회피 불가 콤보 방지 간격
+                if (!IsZGapValid(placedZ, z, minZGap: 12f))
+                    continue;
+
+                if (IsInLedgeZRange(z, margin: 1f))
+                    continue;
+
+                GameObject zoneObject = new GameObject("ChargerZone");
+                zoneObject.transform.SetParent(parent, false);
+                zoneObject.transform.localPosition = new Vector3(0f, 0f, z);
+
+                ChargingEnemy zone = zoneObject.AddComponent<ChargingEnemy>();
+                zone.triggerDistance = chargerTriggerDistance;
+                zone.telegraphSeconds = chargerTelegraphSeconds;
+                zone.chargeSpeed = chargerSpeed;
+                zone.spawnAheadDistance = chargerSpawnAheadDistance;
+                zone.scatterSeed = run.Rng.Next(1, int.MaxValue);
+
+                placedZ.Add(z);
+            }
+        }
+
+        // -- 기둥 붕괴 배치 (사용자 지시: 기둥에 의해 무너지는 바닥) ----------------
+
+        void PopulateToppleColumns(Transform parent, int depth)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            int zoneCount = Curve.EvaluateToppleColumnCount(depth);
+
+            if (zoneCount <= 0)
+                return;
+
+            float length = Definition.lengthMeters;
+            float halfWidth = Definition.corridorHalfWidth;
+
+            // 세워진 기둥(7m+)이 카메라측에 있으면 발판을 가린다 - 항상 반대편에만
+            // 배치하고 카메라 쪽으로 쓰러지게 한다 (배경 단차 하강과 동일 근거)
+            float side = -SegmentEnvironment.CameraSide(BuildSightClearance(viewCamera, Definition));
+
+            List<float> placedZ = new List<float>();
+            int attempts = 0;
+
+            while (placedZ.Count < zoneCount && attempts < zoneCount * 10)
+            {
+                attempts += 1;
+
+                float z = Mathf.Lerp(
+                    16f, length - checkpointLength - 4f, (float)run.Rng.NextDouble());
+
+                if (!IsZGapValid(placedZ, z, minZGap: 12f))
+                    continue;
+
+                if (IsInLedgeZRange(z, margin: 1.5f))
+                    continue;
+
+                GameObject zoneObject = new GameObject("ToppleColumn");
+                zoneObject.transform.SetParent(parent, false);
+                zoneObject.transform.localPosition = new Vector3(side * (halfWidth + 0.8f), 0f, z);
+
+                ToppleColumn zone = zoneObject.AddComponent<ToppleColumn>();
+                zone.triggerDistance = toppleTriggerDistance;
+                zone.warnSeconds = toppleWarnSeconds;
+                zone.safeLaneWidth = sinkTrapSafeLaneWidth;
+                zone.side = side;
+
+                // 쓰러진 길이 = 복도 폭 - 안전 레인 (건너편 우회 보장)
+                zone.pillarLength = Mathf.Max(3f, halfWidth * 2f - sinkTrapSafeLaneWidth - 0.5f);
+
+                placedZ.Add(z);
+            }
+        }
+
+        // -- 체크포인트 안전지대 (사용자 지시: 넓은 휴식 공간 + 이탈 시 분해) --------
+
+        void BuildCheckpoint(Transform parent)
+        {
+            // 사전 배치 커버 구간은 런타임 스트립이 없다 - 체크포인트 생략 (손 편집 존중)
+            if (currentStrips.Count == 0)
+                return;
+
+            float length = Definition.lengthMeters;
+            float halfWidth = Definition.corridorHalfWidth;
+            float zoneStartLocalZ = length - checkpointLength;
+
+            List<FloorStrip> platform = new List<FloorStrip>();
+
+            // 본선 스트립 중 체크포인트 범위 = 플랫폼 소속 (안전 색으로 구분)
+            foreach (FloorStrip strip in currentStrips)
+            {
+                if (strip.transform.localPosition.z < zoneStartLocalZ)
+                    continue;
+
+                SegmentEnvironment.TintGameObject(strip.gameObject, new Color(0.33f, 0.38f, 0.33f));
+                platform.Add(strip);
+            }
+
+            // 좌우 확장 슬랩 - 복도보다 넓은 공간 (걸을 수 있게 콜라이더 유지)
+            for (int side = -1; side <= 1; side += 2)
+            {
+                GameObject slab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                slab.name = "CheckpointSlab";
+                slab.transform.SetParent(parent, false);
+                slab.transform.localScale = new Vector3(checkpointSideExtension, 0.2f, checkpointLength);
+                slab.transform.localPosition = new Vector3(
+                    side * (halfWidth + 0.5f + checkpointSideExtension * 0.5f),
+                    -0.1f,
+                    zoneStartLocalZ + checkpointLength * 0.5f);
+
+                FloorStrip slabStrip = slab.AddComponent<FloorStrip>();
+                slabStrip.depthMeters = checkpointLength;
+
+                SegmentEnvironment.TintGameObject(slab, new Color(0.33f, 0.38f, 0.33f));
+                platform.Add(slabStrip);
+            }
+
+            // 플레이어가 도달하지 못하고 죽어도 전선이 정리할 수 있게 등록
+            EnsureCollapseFront().RegisterStrips(platform);
+
+            GameObject zoneObject = new GameObject("CheckpointZone");
+            zoneObject.transform.SetParent(parent, false);
+            zoneObject.transform.localPosition = new Vector3(0f, 0f, zoneStartLocalZ);
+
+            CheckpointZone zone = zoneObject.AddComponent<CheckpointZone>();
+            zone.Initialize(
+                platform,
+                parent.position.z + zoneStartLocalZ,
+                parent.position.z + length,
+                halfWidth + checkpointSideExtension,
+                halfWidth);
         }
 
         // -- 밀기 트랩 배치 (M3-3) ---------------------------------------------
@@ -482,7 +661,8 @@ namespace Scavenger.Segment
             {
                 attempts += 1;
 
-                float z = Mathf.Lerp(16f, length - 10f, (float)run.Rng.NextDouble());
+                float z = Mathf.Lerp(
+                    16f, length - checkpointLength - 2f, (float)run.Rng.NextDouble());
 
                 // 트랩끼리 겹치면 연속 밀림으로 즉사 콤보가 되므로 간격 강제
                 if (!IsZGapValid(placedZ, z, minZGap: 10f))

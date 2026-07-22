@@ -107,6 +107,9 @@ namespace Scavenger.Segment
             PopulateSinkTraps(depth);
             PopulatePushTraps(root.transform, depth);
             PopulateRockfalls(root.transform, depth);
+            PopulateChargers(root.transform, depth);
+            PopulateToppleColumns(root.transform, depth);
+            BuildCheckpoint(root.transform);
             BuildChoiceNode(root.transform, depth);
             BuildSignalEmitters(root.transform);
 

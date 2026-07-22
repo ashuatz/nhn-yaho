@@ -11,7 +11,10 @@ namespace Scavenger.Segment
     {
         [Header("구간 형태")]
         public float lengthMeters = 80f;
-        public float corridorHalfWidth = 3.5f;
+
+        // 3.5 -> 5.25: 플레이 영역 1.5배 확장 (사용자 지시, 2026-07-22)
+        public float corridorHalfWidth = 5.25f;
+
         public float wallHeight = 2f;
 
         public static SegmentDefinition CreateDefault()

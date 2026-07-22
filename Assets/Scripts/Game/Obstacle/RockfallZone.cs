@@ -96,6 +96,10 @@ namespace Scavenger.Obstacle
             if (!TryResolvePlayer())
                 return;
 
+            // 체크포인트는 안전지대 - 발동 보류 (사용자 지시)
+            if (CheckpointZone.PlayerInside)
+                return;
+
             float playerZ = player.transform.position.z;
 
             // 접근 중에만 발동 - 지나간 뒤 등 뒤로 떨어지는 억울함 방지
@@ -225,99 +229,25 @@ namespace Scavenger.Obstacle
             if (Mathf.Abs(playerPosition.y - target.y) > DirectHitHeightTolerance)
                 return;
 
-            player.Kill("rockfall");
+            // 체력 도입 (사용자 지시): 직격 = 큰 피해. 컴포넌트 없으면 즉사 폴백
+            PlayerHealth health = player.GetComponent<PlayerHealth>();
+
+            if (health != null)
+                health.Damage(2, "rockfall");
+            else
+                player.Kill("rockfall");
         }
 
         // 착탄 지점의 바닥 스트립을 깨뜨린다 (사용자 지시: 떨어지면 발판이 깨진다).
-        // RaycastAll: 착탄점 위에 플레이어/잡동사니 콜라이더가 겹쳐 있어도 바닥을 찾는다
+        // 분할 침몰 + 안전 레인은 FloorBreaker 공용 유틸 (기둥 붕괴와 공유)
         void BreakFloorAtImpact()
         {
-            Ray probe = new Ray(target + Vector3.up * 1f, Vector3.down);
-            RaycastHit[] hits = Physics.RaycastAll(probe, 4f);
+            FloorStrip strip = FloorBreaker.FindStripBelow(target);
 
-            foreach (RaycastHit hit in hits)
-            {
-                FloorStrip strip = hit.collider.GetComponentInParent<FloorStrip>();
-
-                if (strip == null || strip.IsSinking)
-                    continue;
-
-                SinkWithSafeLane(strip);
+            if (strip == null)
                 return;
-            }
-        }
 
-        // 전폭 함몰 = 점프 없는 플레이어에게 우회 불가 봉쇄가 된다 (Codex 교차 검토).
-        // 땅 꺼짐 트랩과 동일 규칙: 스트립을 분할해 착탄 쪽만 침몰시키고
-        // 반대쪽에 안전 레인을 남긴다. 좁은 조각/단차 루트는 통째로 침몰
-        void SinkWithSafeLane(FloorStrip strip)
-        {
-            Transform stripTransform = strip.transform;
-            float fullWidth = stripTransform.localScale.x;
-
-            if (fullWidth < safeLaneWidth * 2f)
-            {
-                strip.Sink();
-                return;
-            }
-
-            float laneWidth = Mathf.Clamp(safeLaneWidth, 1f, fullWidth - 1f);
-            float sinkWidth = fullWidth - laneWidth;
-            float sinkSide = target.x >= stripTransform.position.x ? 1f : -1f;
-
-            Vector3 scale = stripTransform.localScale;
-            Vector3 localPosition = stripTransform.localPosition;
-
-            // 부착물(루트/폭탄 등)은 부모 리스케일 왜곡을 피해 잠시 떼어둔다
-            List<Transform> attachments = new List<Transform>();
-
-            for (int i = stripTransform.childCount - 1; i >= 0; i--)
-            {
-                Transform child = stripTransform.GetChild(i);
-                child.SetParent(stripTransform.parent, true);
-                attachments.Add(child);
-            }
-
-            // 침몰 조각 (착탄 쪽 가장자리, 신규)
-            float sinkCenterX = sinkSide * (fullWidth * 0.5f - sinkWidth * 0.5f);
-
-            GameObject sinkObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            sinkObject.name = "FloorStrip (Rockfall)";
-            sinkObject.transform.SetParent(stripTransform.parent, false);
-            sinkObject.transform.localScale = new Vector3(sinkWidth, scale.y, scale.z);
-            sinkObject.transform.localPosition = new Vector3(
-                localPosition.x + sinkCenterX, localPosition.y, localPosition.z);
-
-            FloorStrip sinkStrip = sinkObject.AddComponent<FloorStrip>();
-            sinkStrip.depthMeters = strip.depthMeters;
-            SegmentEnvironment.TintGameObject(sinkObject, new Color(0.3f, 0.31f, 0.33f));
-
-            // 원본 = 안전 레인 (반대쪽 가장자리로 축소)
-            float laneCenterX = -sinkSide * (fullWidth * 0.5f - laneWidth * 0.5f);
-            stripTransform.localScale = new Vector3(laneWidth, scale.y, scale.z);
-            stripTransform.localPosition = new Vector3(
-                localPosition.x + laneCenterX, localPosition.y, localPosition.z);
-
-            // 부착물 재부착: 착탄 조각 위 = 함께 침몰, 안전 레인 위 = 유지
-            float splitX = stripTransform.parent != null
-                ? stripTransform.parent.TransformPoint(new Vector3(
-                    localPosition.x + sinkCenterX - sinkSide * sinkWidth * 0.5f, 0f, 0f)).x
-                : localPosition.x + sinkCenterX - sinkSide * sinkWidth * 0.5f;
-
-            foreach (Transform attachment in attachments)
-            {
-                bool onSinkSide = sinkSide > 0f
-                    ? attachment.position.x >= splitX
-                    : attachment.position.x <= splitX;
-
-                attachment.SetParent(onSinkSide ? sinkStrip.transform : stripTransform, true);
-            }
-
-            // 붕괴 전선이 나중에 지나갈 때 함께 처리되도록 등록
-            if (CollapseFront.Instance != null)
-                CollapseFront.Instance.RegisterStrips(new List<FloorStrip> { sinkStrip });
-
-            sinkStrip.Sink();
+            FloorBreaker.SinkWithSafeLane(strip, target.x, safeLaneWidth);
         }
 
         void Cancel()
