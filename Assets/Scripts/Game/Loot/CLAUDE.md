@@ -22,7 +22,8 @@
   scatterSeed(배치 시 RunManager.Rng에서 배정 - 산포는 게임 결과라 재현성 대상,
   Codex 교차 검토). 모두 스포너가 주입
 - LootPickup.cs: 완료 시 튀어나오는 아이템 조각. Definition은 공유 참조 +
-  PieceValue/PieceWeight 지분. 포물선 낙하(1회 바운스) 후 착지 - E 홀드
+  PieceValue/PieceWeight 지분. 포물선 낙하(1회 바운스, 비행 중 tier색 트레일 +
+  비주얼 자식만 자기 중심 회전 - 루트 회전은 궤도 왜곡) 후 착지 - E 홀드
   (상호작용 공용 키)로 줍기, 줍는 시점에 RunInventory.Add(def, value, weight).
   방치 = 두고 간 가치. 반경 내 일괄 수거/루팅 중 수거는 의도된 UX.
   지지 스트립의 자식 - 바닥과 함께 침몰, y<-8 자체 정리. 비주얼 머티리얼은

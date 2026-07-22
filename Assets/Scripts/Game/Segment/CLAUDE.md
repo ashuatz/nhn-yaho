@@ -5,6 +5,7 @@
 ## 파일 목차
 
 - SegmentDefinition.cs: ScriptableObject (길이, 복도 반폭, 벽 높이).
+  corridorHalfWidth 5.25 (2026-07-22 사용자 지시로 1.5배 확장).
   라운드 템포(2-3분)는 길이 x 전진 속도로 결정 - 템포 튜닝은 여기서
 - SegmentSpawner.cs: 생성/제거 단일 경계 (풀링 교체 대비). 요소 4분리 (M4-1)로
   partial 3파일: 본 파일 = 코어 조율 (BuildSegment/BuildInitialChain/DespawnAll/
@@ -13,9 +14,11 @@
   (RegisterPreplacedStrips), 단차(PopulateLedges/BuildLedge), 발밑 부착
   (AttachToSupportingStrip), currentStrips/currentLedges
 - SegmentSpawner.Features.cs: 기능 카테고리. 루트(tier 가중치)/폭탄(z 간격 검증)/
-  땅꺼짐·밀기 트랩/낙하물 존(RockfallZone, 초입·선택지 앞·단차 제외, z 간격 9m)/
-  ChoiceNode/거리 신호 배치 + 트랩 튜닝 필드. 루트 조각 산포/낙하물 착탄 시드는
-  배치 시 RunManager.Rng에서 배정 (게임 결과 난수 = 재현성 대상).
+  땅꺼짐·밀기 트랩/낙하물 존/돌진 적 존/기둥 붕괴 존(카메라 반대편 고정)/
+  체크포인트(BuildCheckpoint - 구간 끝 checkpointLength, 좌우 확장 슬랩)/
+  ChoiceNode/거리 신호 배치 + 튜닝 필드. 발동 산포 시드는 배치 시
+  RunManager.Rng에서 배정 (게임 결과 난수 = 재현성 대상).
+  모든 위협 z 배치는 초입과 체크포인트 범위를 제외.
   전진 콜백에서 다음 구간 생성과 뒤쪽 정리 수행 (동시 생존 최대 2구간)
 - SegmentPath.cs: 길 공용 지오메트리 (정적). BuildWalkFloorStrips - 런타임과
   사전 배치 윈도우 공용 (SegmentEnvironment에서 이동)
@@ -49,7 +52,16 @@
   함몰 봉쇄 금지 (사용자 지시)
 - CollapseFront.cs: 시간 압박의 단일 소스 (ADR-0006). 붕괴 전선이 뒤에서 전진하며
   지나간 스트립을 가라앉히고 플레이어 z를 전선 앞으로 클램프 (후퇴 불가 겸용).
+  RequestHold() = 이번 프레임 전진 보류 (체크포인트가 매 프레임 요청).
   startDelay/baseSpeed/speedPerDepth/maxSpeed = 프리팹 튜닝 지점. static Instance
+- CheckpointZone.cs: 구간 끝 안전지대 (사용자 지시). 머무는 동안 위협 발동 보류
+  (static PlayerInside - 위협 존들이 확인), 붕괴 전선 정지(RequestHold),
+  이동 클램프를 체크포인트 폭으로 확장 (복도보다 넓음 - 좌우 확장 슬랩).
+  앞으로 벗어나면 플랫폼(본선 스트립 + 슬랩) 통째 분해 낙하 + 붕괴 재개.
+  뒤로 이탈/사망/런 종료는 해제만. 생성은 SegmentSpawner.BuildCheckpoint
+- FloorBreaker.cs: 충격 지점 바닥 파괴 공용 유틸 (낙하물/기둥 공용).
+  FindStripBelow(RaycastAll) + SinkWithSafeLane(분할 침몰, 반대쪽 안전 레인,
+  부착물은 소속 조각으로 재부착, CollapseFront 등록)
 - SegmentEnvironment.cs: 공간감 PCG 데이터 생성기 (ADR-0003/0004/0005).
   GenerateBlocks = 인스턴스 블록(행렬+팔레트 8색+웨이브/위상) 생성.
   좌우 비대칭 (사용자 지시: 카메라측 지형이 발판을 가리면 안 됨):
