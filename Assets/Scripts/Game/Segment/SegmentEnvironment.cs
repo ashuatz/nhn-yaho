@@ -42,9 +42,15 @@ namespace Scavenger.Segment
             if (!Enabled)
                 return false;
 
-            // 카메라 반대편 블록은 카메라-복도 사이에 놓일 수 없다 - 검사 제외
-            // (반대편까지 검사하면 낮은 지형 요소가 부당하게 거부됨 - 검증 반영)
-            if (NearPoint.x * position.x < 0f)
+            // 카메라 반대편에 완전히 있는 블록만 검사 제외 - 중심만 반대편이고
+            // 폭이 시야 밴드를 가로지르는 블록은 통과시키면 안 된다 (Codex 교차 검토).
+            // (반대편까지 전부 검사하면 낮은 지형 요소가 부당하게 거부됨 - 기존 검증 반영)
+            float halfX = scale.x * 0.5f;
+
+            if (NearPoint.x > 0f && position.x + halfX < 0f)
+                return false;
+
+            if (NearPoint.x < 0f && position.x - halfX > 0f)
                 return false;
 
             float blockMinX = position.x - scale.x * 0.5f;

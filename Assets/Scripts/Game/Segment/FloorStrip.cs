@@ -30,8 +30,23 @@ namespace Scavenger.Segment
 
         public bool IsSinking { get; private set; }
 
+        /// <summary>
+        /// 사전 배치(손 편집) 스트립용: 침몰 후 파괴하지 않고 비활성 보존한다.
+        /// 파괴하면 다음 런에서 커버 범위 판정은 통과하는데 바닥이 없어
+        /// 재시작 즉시 낙사 루프가 된다 (Codex 교차 검토 P1).
+        /// </summary>
+        public bool preserveOnSink;
+
         const float SinkSpeed = 4.5f;
         const float DestroyDepth = -8f;
+
+        Vector3 initialLocalPosition;
+        bool initialCaptured;
+
+        void Awake()
+        {
+            CaptureInitial();
+        }
 
         public void Sink()
         {
@@ -47,6 +62,22 @@ namespace Scavenger.Segment
                 featureCollider.enabled = false;
         }
 
+        /// <summary>런 재시작 시 보존된 스트립을 원위치로 복구한다 (사전 배치 전용).</summary>
+        public void Restore()
+        {
+            CaptureInitial();
+
+            IsSinking = false;
+            transform.localPosition = initialLocalPosition;
+
+            Collider[] colliders = GetComponentsInChildren<Collider>(true);
+
+            foreach (Collider featureCollider in colliders)
+                featureCollider.enabled = true;
+
+            gameObject.SetActive(true);
+        }
+
         void Update()
         {
             if (!IsSinking)
@@ -56,8 +87,25 @@ namespace Scavenger.Segment
             position.y -= SinkSpeed * Time.deltaTime;
             transform.position = position;
 
-            if (position.y < DestroyDepth)
-                Destroy(gameObject);
+            if (position.y >= DestroyDepth)
+                return;
+
+            if (preserveOnSink)
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+
+            Destroy(gameObject);
+        }
+
+        void CaptureInitial()
+        {
+            if (initialCaptured)
+                return;
+
+            initialLocalPosition = transform.localPosition;
+            initialCaptured = true;
         }
     }
 }

@@ -72,11 +72,16 @@ namespace Scavenger.Segment
             if (preplacedEnvironment == null)
                 return;
 
-            FloorStrip[] allStrips = preplacedEnvironment.GetComponentsInChildren<FloorStrip>();
+            // 비활성(침몰 보존) 스트립 포함 - 지난 런에서 가라앉은 바닥을 복구해야
+            // 재시작 지점에 바닥이 존재한다 (Codex 교차 검토 P1: 낙사 루프 방지)
+            FloorStrip[] allStrips = preplacedEnvironment.GetComponentsInChildren<FloorStrip>(true);
             List<FloorStrip> inRange = new List<FloorStrip>();
 
             foreach (FloorStrip strip in allStrips)
             {
+                strip.preserveOnSink = true;
+                strip.Restore();
+
                 if (strip.EndZ > startZ - 0.1f && strip.EndZ <= endZ + 0.1f)
                     inRange.Add(strip);
             }
@@ -223,6 +228,11 @@ namespace Scavenger.Segment
         // 현재 빌드 중인 구간의 단차 점유 영역 (루트/폭탄 배치 제외용)
         readonly List<LedgeRecord> currentLedges = new List<LedgeRecord>();
 
+        // 현재 빌드 중인 구간의 런타임 바닥 스트립 (루트/폭탄 부착용).
+        // 사전 배치 커버 구간은 비어 있다 - 복구형 스트립에 부착하면
+        // 획득된 루트까지 다음 런에 되살아나므로 제외 (문서화된 한계)
+        readonly List<FloorStrip> currentStrips = new List<FloorStrip>();
+
         const float LedgeRampSlopeRatio = 2.6f;
 
         void PopulateLedges(Transform parent, int depth)
@@ -255,22 +265,36 @@ namespace Scavenger.Segment
                 float centerX = side * (halfWidth - ledgeWidth * 0.5f - 0.2f);
                 float startZ = Lerp(rng, 12f + rampLength, length - 14f - ledgeLength);
 
-                Vector3 boxCenter = new Vector3(centerX, ledgeHeight * 0.5f, startZ + ledgeLength * 0.5f);
-                Vector3 boxScale = new Vector3(ledgeWidth, ledgeHeight, ledgeLength);
+                // 카메라 쪽이 시야 밴드에 막히면 반대편으로 재시도 - 시드에 따라
+                // 단차가 0개가 되는 것을 방지 (Codex 교차 검토, rng 추가 소비 없음)
+                if (LedgeRejectedByClearance(clearance, centerX, startZ, ledgeWidth, ledgeLength, ledgeHeight))
+                {
+                    centerX = -centerX;
 
-                // 카메라 시야 라인과 겹치면 생성 거부 (배경과 동일 규칙).
-                // 상판 위 보상 루트(약 1m 비주얼)까지 포함해 검사 (검증 반영)
-                Vector3 lootProbeCenter = new Vector3(centerX, ledgeHeight + 0.5f, boxCenter.z);
-                Vector3 lootProbeScale = new Vector3(1f, 1f, 1f);
-
-                if (clearance.Rejects(boxCenter, boxScale) || clearance.Rejects(lootProbeCenter, lootProbeScale))
-                    continue;
+                    if (LedgeRejectedByClearance(clearance, centerX, startZ, ledgeWidth, ledgeLength, ledgeHeight))
+                        continue;
+                }
 
                 if (OverlapsExistingLedgeZ(startZ - rampLength, startZ + ledgeLength, gap: 4f))
                     continue;
 
                 BuildLedge(parent, rng, centerX, startZ, ledgeWidth, ledgeLength, ledgeHeight, rampLength);
             }
+        }
+
+        // 카메라 시야 라인과 겹치면 생성 거부 (배경과 동일 규칙).
+        // 상판 위 보상 루트(약 1m 비주얼)까지 포함해 검사 (검증 반영)
+        static bool LedgeRejectedByClearance(
+            SightClearance clearance, float centerX, float startZ,
+            float width, float length, float height)
+        {
+            Vector3 boxCenter = new Vector3(centerX, height * 0.5f, startZ + length * 0.5f);
+            Vector3 boxScale = new Vector3(width, height, length);
+
+            Vector3 lootProbeCenter = new Vector3(centerX, height + 0.5f, boxCenter.z);
+            Vector3 lootProbeScale = new Vector3(1f, 1f, 1f);
+
+            return clearance.Rejects(boxCenter, boxScale) || clearance.Rejects(lootProbeCenter, lootProbeScale);
         }
 
         bool OverlapsExistingLedgeZ(float minZ, float maxZ, float gap)
@@ -489,7 +513,12 @@ namespace Scavenger.Segment
                     continue;
 
                 LootDefinition definition = PickLoot(run.Rng, tierWeights);
-                SpawnLootSpot(parent, definition, new Vector3(x, 0f, z));
+                LootSpot spot = SpawnLootSpot(parent, definition, new Vector3(x, 0f, z));
+
+                // 바닥이 가라앉으면 위 요소도 함께 - 공중에 뜬 루트가 인접 스트립에서
+                // 상호작용 가능해지는 것 방지 (Codex 교차 검토)
+                AttachToSupportingStrip(spot.transform);
+
                 spawned += 1;
             }
         }
@@ -613,7 +642,11 @@ namespace Scavenger.Segment
                 if (IsInLedgeZRange(z, margin: 0.8f))
                     continue;
 
-                SpawnBomb(parent, new Vector3(x, 0f, z), fuseSeconds, blastRadius);
+                GameObject bombObject = SpawnBomb(parent, new Vector3(x, 0f, z), fuseSeconds, blastRadius);
+
+                // 루트와 동일 규칙 - 바닥 침몰 시 폭탄도 함께 사라진다 (Codex 교차 검토)
+                AttachToSupportingStrip(bombObject.transform);
+
                 placedZ.Add(z);
             }
         }
@@ -629,7 +662,7 @@ namespace Scavenger.Segment
             return true;
         }
 
-        static void SpawnBomb(Transform parent, Vector3 localPosition, float fuseSeconds, float blastRadius)
+        static GameObject SpawnBomb(Transform parent, Vector3 localPosition, float fuseSeconds, float blastRadius)
         {
             GameObject bombObject = new GameObject("Bomb");
             bombObject.transform.SetParent(parent, false);
@@ -637,6 +670,28 @@ namespace Scavenger.Segment
 
             Bomb bomb = bombObject.AddComponent<Bomb>();
             bomb.Initialize(BombDetectionRadius, fuseSeconds, blastRadius);
+
+            return bombObject;
+        }
+
+        // 발밑 스트립의 자식으로 붙인다 - Sink가 자식 콜라이더를 함께 꺼서
+        // 침몰한 바닥 위 요소의 상호작용이 남지 않는다. 월드 위치는 유지.
+        // 사전 배치 커버 구간(currentStrips 비어 있음)은 부착하지 않는다
+        void AttachToSupportingStrip(Transform feature)
+        {
+            float z = feature.position.z;
+
+            foreach (FloorStrip strip in currentStrips)
+            {
+                float endZ = strip.EndZ;
+                float startZ = endZ - strip.depthMeters;
+
+                if (z < startZ || z > endZ)
+                    continue;
+
+                feature.SetParent(strip.transform, true);
+                return;
+            }
         }
 
         // -- 그레이박스 셸 -------------------------------------------------
@@ -655,6 +710,8 @@ namespace Scavenger.Segment
             float startZ = parent.position.z;
             float endZ = startZ + Definition.lengthMeters;
 
+            currentStrips.Clear();
+
             if (preplacedEnvironment != null && preplacedEnvironment.Covers(startZ, endZ))
             {
                 // 사전 배치 바닥도 붕괴 대상이다 - 범위 내 스트립을 등록 (검증 반영,
@@ -670,6 +727,7 @@ namespace Scavenger.Segment
             // 바닥은 붕괴 단위 스트립으로 분할하고 CollapseFront에 등록 (ADR-0006)
             List<FloorStrip> strips = SegmentEnvironment.BuildWalkFloorStrips(parent, Definition);
             EnsureCollapseFront().RegisterStrips(strips);
+            currentStrips.AddRange(strips);
 
             if (environmentRenderer == null)
             {

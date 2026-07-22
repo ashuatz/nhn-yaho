@@ -34,7 +34,11 @@ namespace Scavenger.Loot
 
         const float CancelLateralThreshold = 0.1f;
 
+        // 트리거 반경 + CC 반경/접촉 여유. 진행 중 이탈 재검증에 사용
+        const float RangeRevalidateSlack = 0.7f;
+
         float holdElapsed;
+        float interactRadius;
         bool looted;
         PlayerController playerInRange;
         PlayerController lootingPlayer;
@@ -42,6 +46,7 @@ namespace Scavenger.Loot
         public void Initialize(LootDefinition definition, float interactRadius)
         {
             Definition = definition;
+            this.interactRadius = interactRadius;
 
             SphereCollider trigger = gameObject.AddComponent<SphereCollider>();
             trigger.isTrigger = true;
@@ -148,6 +153,17 @@ namespace Scavenger.Loot
             RunManager run = RunManager.Instance;
 
             if (run == null || run.StateMachine.Current != RunState.Running)
+                return false;
+
+            // 시작 조건은 진행 중에도 유지되어야 한다 (Codex 교차 검토):
+            // 단차 침몰로 스팟이 내려가거나 플레이어가 떨어지면 즉시 취소
+            if (lootingPlayer.transform.position.y < requiredMinPlayerY)
+                return false;
+
+            float maxDistance = interactRadius + RangeRevalidateSlack;
+            Vector3 delta = lootingPlayer.transform.position - transform.position;
+
+            if (delta.sqrMagnitude > maxDistance * maxDistance)
                 return false;
 
             return true;
