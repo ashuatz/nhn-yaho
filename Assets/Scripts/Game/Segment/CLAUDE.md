@@ -53,6 +53,10 @@
   셀 출렁임 (brg-shooter 차용): Wave>0 블록만 동적 그룹으로 분리해 매 프레임
   사인파 y 오프셋으로 행렬 갱신. animate/waveSpeed/waveAmplitude = 인스펙터 튜닝 지점.
   동적 블록 수천 개 이상으로 늘리면 Job/버텍스 셰이더 전환 검토
+- DepthLighting.cs: 깊이별 조도 변화 (M4-2, 라이팅 카테고리). RunStarted/DepthChanged
+  구독, 씬 베이스 라이팅 캡처 후 배율만 적용 (앰비언트 3색 + 주광 강도).
+  minAmbientFactor/minLightFactor = 시인성 가드 하한. depthForDarkest/전환 시간 =
+  프리팹 튜닝 지점. 위험/신호 이펙트 표시는 DangerGrid로 일원화됨
 - EnvironmentAuthoring.cs: 사전 배치 배경 마커. 커버 z 범위 내 런타임 배경 생성 스킵.
   생성은 에디터 윈도우 Scavenger > Environment Authoring - 이 경로만 GameObject 백엔드
   (손 편집 가능해야 하므로 인스턴싱 비대상)

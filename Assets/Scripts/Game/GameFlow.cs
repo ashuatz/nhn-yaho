@@ -80,6 +80,10 @@ namespace Scavenger
             if (segmentSpawner.GetComponent<DangerGrid>() == null)
                 segmentSpawner.gameObject.AddComponent<DangerGrid>();
 
+            // 깊이별 조도 (M4-2) - 기존 스포너 프리팹에는 폴백으로 보강
+            if (segmentSpawner.GetComponent<DepthLighting>() == null)
+                segmentSpawner.gameObject.AddComponent<DepthLighting>();
+
             runManager.RunStarted += OnRunStarted;
         }
 

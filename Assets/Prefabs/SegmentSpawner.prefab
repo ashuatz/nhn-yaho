@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 311237074474989542}
   - component: {fileID: 3159705702597226750}
   - component: {fileID: 6791973087130451334}
+  - component: {fileID: 24225057996158754}
   m_Layer: 0
   m_Name: SegmentSpawner
   m_TagString: Untagged
@@ -83,6 +84,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58d434ab79497f24a935ccce0667b20b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Segment.SegmentSpawner
+  sinkTrapTriggerDistance: 5.5
+  sinkTrapWarnSeconds: 1.1
+  sinkTrapTremorMax: 0.4
+  pushTrapDetectionRadius: 2.2
+  pushTrapTelegraphSeconds: 0.45
+  pushTrapSpeed: 7.5
+  pushTrapCooldownSeconds: 3.5
 --- !u!114 &6791973087130451334
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -102,3 +110,20 @@ MonoBehaviour:
   pulseFrequency: 2.2
   pulseAlphaMin: 0.18
   pulseAlphaMax: 0.55
+--- !u!114 &24225057996158754
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 928084745666333280}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e01d44d1a9225954cbf2cf57e03fec3c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Scavenger.Game::Scavenger.Segment.DepthLighting
+  directionalLight: {fileID: 0}
+  depthForDarkest: 8
+  minAmbientFactor: 0.55
+  minLightFactor: 0.65
+  transitionSeconds: 1.5

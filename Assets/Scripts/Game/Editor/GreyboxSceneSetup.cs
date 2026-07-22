@@ -177,6 +177,9 @@ namespace Scavenger.EditorTools
             // 위험 범위 셀 표시 (M3-1). 수치는 프리팹에서 튜닝
             spawnerObject.AddComponent<DangerGrid>();
 
+            // 깊이별 조도 (M4-2). 수치는 프리팹에서 튜닝
+            spawnerObject.AddComponent<DepthLighting>();
+
             return spawnerObject;
         }
 
