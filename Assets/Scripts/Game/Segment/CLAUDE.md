@@ -22,6 +22,10 @@
 - 단차 (M1-1, SegmentSpawner.PopulateLedges): 구간당 1-2개, 측면 상판(0.7-1.1m) +
   진입 경사로(-z, 약 21도). 상판에 tier 2-3 고가치 루트. 시야 클리어런스 적용,
   바닥 루트/폭탄은 단차 영역 제외, 붕괴 전선에 등록되어 함께 가라앉음
+- DangerGrid.cs: 위험 범위 셀 표시 (M3-1, 큐비트 방식). ShowCircle/ShowRect -> 핸들,
+  Hide(핸들). 셀 풀링 + 공통 점멸 (런타임 머티리얼). 폭탄 기폭 시작 시 폭발 반경 표시,
+  땅 꺼짐 등 후속 위협 공용. CellsInCircle/CellsInRect = 순수 함수 (EditMode 테스트).
+  cellSize/색/점멸 = 프리팹 튜닝 지점. static Instance
 - CollapseFront.cs: 시간 압박의 단일 소스 (ADR-0006). 붕괴 전선이 뒤에서 전진하며
   지나간 스트립을 가라앉히고 플레이어 z를 전선 앞으로 클램프 (후퇴 불가 겸용).
   startDelay/baseSpeed/speedPerDepth/maxSpeed = 프리팹 튜닝 지점. static Instance

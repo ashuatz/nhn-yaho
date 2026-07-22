@@ -20,6 +20,9 @@ namespace Scavenger.Obstacle
         PlayerController trackedPlayer;
         Renderer visualRenderer;
 
+        // 위험 그리드 핸들 (M3-1). 0 = 미표시
+        int dangerHandle;
+
         static readonly Color IdleColor = new Color(0.4f, 0.1f, 0.1f);
         static readonly Color WarnColor = new Color(1f, 0.2f, 0.1f);
 
@@ -49,6 +52,13 @@ namespace Scavenger.Obstacle
             armed = true;
             fuseElapsed = 0f;
             trackedPlayer = player;
+
+            // 폭발 범위를 바닥 셀로 표시 (M3-1) - 기폭 시작과 동시에 노출
+            if (Scavenger.Segment.DangerGrid.Instance != null)
+            {
+                dangerHandle = Scavenger.Segment.DangerGrid.Instance.ShowCircle(
+                    transform.position, explosionRadius);
+            }
         }
 
         void Update()
@@ -105,6 +115,18 @@ namespace Scavenger.Obstacle
 
             SpawnExplosionVisual();
             Destroy(gameObject);
+        }
+
+        // 구간 정리/침몰 파괴 등 어떤 경로로 사라져도 위험 표시를 남기지 않는다
+        void OnDestroy()
+        {
+            if (dangerHandle == 0)
+                return;
+
+            if (Scavenger.Segment.DangerGrid.Instance != null)
+                Scavenger.Segment.DangerGrid.Instance.Hide(dangerHandle);
+
+            dangerHandle = 0;
         }
 
         void SpawnExplosionVisual()

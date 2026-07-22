@@ -76,6 +76,10 @@ namespace Scavenger
             if (followCamera.GetComponent<CameraShake>() == null)
                 followCamera.gameObject.AddComponent<CameraShake>();
 
+            // 위험 그리드 (M3-1) - 기존 스포너 프리팹에는 폴백으로 보강
+            if (segmentSpawner.GetComponent<DangerGrid>() == null)
+                segmentSpawner.gameObject.AddComponent<DangerGrid>();
+
             runManager.RunStarted += OnRunStarted;
         }
 

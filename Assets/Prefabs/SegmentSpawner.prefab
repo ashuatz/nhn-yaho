@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5004057953792351094}
   - component: {fileID: 311237074474989542}
   - component: {fileID: 3159705702597226750}
+  - component: {fileID: 6791973087130451334}
   m_Layer: 0
   m_Name: SegmentSpawner
   m_TagString: Untagged
@@ -82,3 +83,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58d434ab79497f24a935ccce0667b20b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Segment.SegmentSpawner
+--- !u!114 &6791973087130451334
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 928084745666333280}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9458669126c810d47811fabb3d36accc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Scavenger.Game::Scavenger.Segment.DangerGrid
+  cellSize: 1
+  cellVisualScale: 0.92
+  cellY: 0.03
+  baseColor: {r: 0.9, g: 0.15, b: 0.1, a: 0.35}
+  pulseFrequency: 2.2
+  pulseAlphaMin: 0.18
+  pulseAlphaMax: 0.55
