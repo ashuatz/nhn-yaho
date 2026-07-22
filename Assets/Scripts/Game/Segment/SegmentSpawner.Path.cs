@@ -282,6 +282,10 @@ namespace Scavenger.Segment
 
                 // 올라와야 딴다 - 바닥 옆에서 트리거만 겹쳐도 루팅 불가 (검증 반영)
                 rewardSpot.requiredMinPlayerY = height - 0.3f;
+
+                // 조각이 상판 밖으로 떨어지지 않게 좁게 흩뿌린다
+                rewardSpot.scatterRadiusMin = 0.25f;
+                rewardSpot.scatterRadiusMax = Mathf.Min(width, length) * 0.3f;
             }
 
             // 붕괴 연계: 전선이 지나가면 단차도 가라앉는다 (낙사)

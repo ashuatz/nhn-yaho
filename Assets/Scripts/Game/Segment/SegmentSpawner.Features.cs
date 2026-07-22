@@ -27,6 +27,11 @@ namespace Scavenger.Segment
         public float pushTrapSpeed = 7.5f;
         public float pushTrapCooldownSeconds = 3.5f;
 
+        [Header("낙하물 존 (돌 낙하 + 발판 파괴, 프리팹 튜닝 지점)")]
+        public float rockfallTriggerDistance = 7f;
+        public float rockfallWarnSeconds = 0.95f;
+        public float rockfallImpactRadius = 1.6f;
+
         const int LootSpotsPerSegment = 8;
         const float LootInteractRadius = 1.4f;
         const float BombDetectionRadius = 3.5f;
@@ -175,6 +180,9 @@ namespace Scavenger.Segment
                 LootDefinition definition = PickLoot(run.Rng, tierWeights);
                 LootSpot spot = SpawnLootSpot(parent, definition, new Vector3(x, 0f, z));
 
+                // 완료 시 조각이 복도 밖(허공)에 떨어지지 않게 착지 x 클램프
+                spot.scatterClampHalfWidth = halfWidth - 0.4f;
+
                 // 바닥이 가라앉으면 위 요소도 함께 - 공중에 뜬 루트가 인접 스트립에서
                 // 상호작용 가능해지는 것 방지 (Codex 교차 검토)
                 AttachToSupportingStrip(spot.transform);
@@ -237,18 +245,7 @@ namespace Scavenger.Segment
             if (cubeCollider != null)
                 Destroy(cubeCollider);
 
-            Tint(cube, TierColor(tier));
-        }
-
-        static Color TierColor(int tier)
-        {
-            if (tier >= 3)
-                return new Color(0.95f, 0.8f, 0.2f);
-
-            if (tier == 2)
-                return new Color(0.6f, 0.7f, 0.85f);
-
-            return new Color(0.7f, 0.55f, 0.3f);
+            Tint(cube, LootDefinition.TierColor(tier));
         }
 
         // -- 폭탄 배치 -------------------------------------------------------
@@ -395,6 +392,52 @@ namespace Scavenger.Segment
                 trap.warnTremorMax = sinkTrapTremorMax;
 
                 placed += 1;
+            }
+        }
+
+        // -- 낙하물 존 배치 (사용자 지시: 떨어지는 돌 + 착탄 지점 발판 파괴) -------
+
+        void PopulateRockfalls(Transform parent, int depth)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            int zoneCount = Curve.EvaluateRockfallCount(depth);
+
+            if (zoneCount <= 0)
+                return;
+
+            float length = Definition.lengthMeters;
+            List<float> placedZ = new List<float>();
+            int attempts = 0;
+
+            while (placedZ.Count < zoneCount && attempts < zoneCount * 10)
+            {
+                attempts += 1;
+
+                // 초입/선택지 앞은 비운다 (다른 위협과 동일 규칙)
+                float z = Mathf.Lerp(16f, length - 10f, (float)run.Rng.NextDouble());
+
+                // 연속 낙하 콤보 방지 간격
+                if (!IsZGapValid(placedZ, z, minZGap: 9f))
+                    continue;
+
+                // 단차 진입로 파괴 = 보상 동선 봉쇄 - 제외
+                if (IsInLedgeZRange(z, margin: 1f))
+                    continue;
+
+                GameObject zoneObject = new GameObject("RockfallZone");
+                zoneObject.transform.SetParent(parent, false);
+                zoneObject.transform.localPosition = new Vector3(0f, 0f, z);
+
+                RockfallZone zone = zoneObject.AddComponent<RockfallZone>();
+                zone.triggerDistance = rockfallTriggerDistance;
+                zone.warnSeconds = rockfallWarnSeconds;
+                zone.impactRadius = rockfallImpactRadius;
+
+                placedZ.Add(z);
             }
         }
 

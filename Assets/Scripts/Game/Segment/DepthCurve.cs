@@ -44,6 +44,11 @@ namespace Scavenger.Segment
         public float pushTrapPerDepth = 0.5f;
         public int pushTrapMaxCount = 2;
 
+        [Header("낙하물 존 수 (돌 낙하 + 발판 파괴)")]
+        public float rockfallBaseCount = 1f;
+        public float rockfallPerDepth = 0.5f;
+        public int rockfallMaxCount = 3;
+
         /// <summary>tier 1..3 가중치 배열 (합 1)을 돌려준다.</summary>
         public float[] EvaluateTierWeights(int depth)
         {
@@ -84,6 +89,12 @@ namespace Scavenger.Segment
         {
             int count = Mathf.FloorToInt(pushTrapBaseCount + pushTrapPerDepth * (depth - 1));
             return Mathf.Clamp(count, 0, pushTrapMaxCount);
+        }
+
+        public int EvaluateRockfallCount(int depth)
+        {
+            int count = Mathf.FloorToInt(rockfallBaseCount + rockfallPerDepth * (depth - 1));
+            return Mathf.Clamp(count, 0, rockfallMaxCount);
         }
 
         public static DepthCurve CreateDefault()
