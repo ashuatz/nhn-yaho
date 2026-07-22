@@ -6,10 +6,17 @@
 
 - SegmentDefinition.cs: ScriptableObject (길이, 복도 반폭, 벽 높이).
   라운드 템포(2-3분)는 길이 x 전진 속도로 결정 - 템포 튜닝은 여기서
-- SegmentSpawner.cs: 생성/제거 단일 경계 (풀링 교체 대비).
-  BuildSegment(depth, startZ) / DespawnAll / DespawnBehind(z).
-  셸 + 루트(tier 가중치) + 폭탄(z 간격 검증) + ChoiceNode 배치.
+- SegmentSpawner.cs: 생성/제거 단일 경계 (풀링 교체 대비). 요소 4분리 (M4-1)로
+  partial 3파일: 본 파일 = 코어 조율 (BuildSegment/BuildInitialChain/DespawnAll/
+  DespawnBehind, 공유 유틸, 시야 클리어런스)
+- SegmentSpawner.Path.cs: 길 카테고리. BuildShell(바닥/배경 위임), 사전 배치 복구
+  (RegisterPreplacedStrips), 단차(PopulateLedges/BuildLedge), 발밑 부착
+  (AttachToSupportingStrip), currentStrips/currentLedges
+- SegmentSpawner.Features.cs: 기능 카테고리. 루트(tier 가중치)/폭탄(z 간격 검증)/
+  땅꺼짐·밀기 트랩/ChoiceNode/거리 신호 배치 + 트랩 튜닝 필드.
   전진 콜백에서 다음 구간 생성과 뒤쪽 정리 수행 (동시 생존 최대 2구간)
+- SegmentPath.cs: 길 공용 지오메트리 (정적). BuildWalkFloorStrips - 런타임과
+  사전 배치 윈도우 공용 (SegmentEnvironment에서 이동)
 - DepthCurve.cs: 깊이 스케일링 단일 소스. tier 가중치 / 폭탄 수 / 기폭 시간 / 폭발 반경.
   모든 값 클램프 - 통과 불가 배치 방지 (blastMaxRadius x 2 < 복도 폭 유지 필수)
 - ChoiceNode.cs: 구간 끝 선택지. W = 전진, E = 탈출. static Active = HUD 프롬프트 참조.

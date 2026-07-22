@@ -141,38 +141,7 @@ namespace Scavenger.Segment
             return blocks;
         }
 
-        const float FloorStripDepth = 2f;
-
-        /// <summary>
-        /// 보행로 바닥. 콜라이더가 필요해 GameObject로 만들되, 붕괴 단위인
-        /// z 스트립으로 분할한다 (ADR-0006). 스트립 목록을 돌려준다.
-        /// </summary>
-        public static List<FloorStrip> BuildWalkFloorStrips(Transform parent, SegmentDefinition definition)
-        {
-            float length = definition.lengthMeters;
-            float halfWidth = definition.corridorHalfWidth;
-
-            List<FloorStrip> strips = new List<FloorStrip>(Mathf.CeilToInt(length / FloorStripDepth));
-
-            for (float z = 0f; z < length; z += FloorStripDepth)
-            {
-                float depth = Mathf.Min(FloorStripDepth, length - z);
-
-                GameObject stripObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                stripObject.name = "FloorStrip";
-                stripObject.transform.SetParent(parent, false);
-                stripObject.transform.localScale = new Vector3(halfWidth * 2f + 1f, 0.2f, depth);
-                stripObject.transform.localPosition = new Vector3(0f, -0.1f, z + depth * 0.5f);
-
-                FloorStrip strip = stripObject.AddComponent<FloorStrip>();
-                strip.depthMeters = depth;
-
-                TintGameObject(stripObject, new Color(0.3f, 0.31f, 0.33f));
-                strips.Add(strip);
-            }
-
-            return strips;
-        }
+        // 보행 바닥 스트립 생성은 길 카테고리로 이동 - SegmentPath.BuildWalkFloorStrips (M4-1)
 
         // -- 측면 럽블 매스 ---------------------------------------------------
 
@@ -432,7 +401,7 @@ namespace Scavenger.Segment
         public static void BuildGameObjects(
             Transform parent, SegmentDefinition definition, System.Random rng, SightClearance clearance)
         {
-            BuildWalkFloorStrips(parent, definition);
+            SegmentPath.BuildWalkFloorStrips(parent, definition);
 
             List<EnvironmentBlock> blocks = GenerateBlocks(definition, rng, clearance);
 
@@ -511,7 +480,8 @@ namespace Scavenger.Segment
             Object.DestroyImmediate(target);
         }
 
-        static void TintGameObject(GameObject block, Color color)
+        // SegmentPath(길)도 사용 - 에디트 모드 머티리얼 규칙을 한 곳에 유지
+        internal static void TintGameObject(GameObject block, Color color)
         {
             Renderer blockRenderer = block.GetComponent<Renderer>();
 
