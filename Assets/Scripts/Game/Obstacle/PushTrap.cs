@@ -85,6 +85,10 @@ namespace Scavenger.Obstacle
                 return;
             }
 
+            // 체크포인트는 안전지대 - 신규 발동 보류 (사용자 지시, 교차 검토)
+            if (Segment.CheckpointZone.PlayerInside)
+                return;
+
             float sqrDistance = (player.transform.position - transform.position).sqrMagnitude;
 
             if (sqrDistance > detectionRadius * detectionRadius)

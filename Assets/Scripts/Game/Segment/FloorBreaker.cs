@@ -19,6 +19,11 @@ namespace Scavenger.Segment
             Ray probe = new Ray(point + Vector3.up * 1f, Vector3.down);
             RaycastHit[] hits = Physics.RaycastAll(probe, probeDistance);
 
+            // RaycastAll은 순서를 보장하지 않는다 - 가장 가까운(가장 위) 바닥 선택
+            // (겹친 콜라이더에서 아래층 스트립이 깨지는 것 방지, 교차 검토)
+            FloorStrip nearest = null;
+            float nearestDistance = float.PositiveInfinity;
+
             foreach (RaycastHit hit in hits)
             {
                 FloorStrip strip = hit.collider.GetComponentInParent<FloorStrip>();
@@ -26,10 +31,14 @@ namespace Scavenger.Segment
                 if (strip == null || strip.IsSinking)
                     continue;
 
-                return strip;
+                if (hit.distance >= nearestDistance)
+                    continue;
+
+                nearestDistance = hit.distance;
+                nearest = strip;
             }
 
-            return null;
+            return nearest;
         }
 
         /// <summary>
@@ -44,11 +53,10 @@ namespace Scavenger.Segment
             Transform stripTransform = strip.transform;
             float fullWidth = stripTransform.localScale.x;
 
+            // 분할 불가한 좁은 조각 = 이미 남은 마지막 우회로일 수 있다.
+            // 통째로 침몰시키면 전폭 봉쇄가 되므로 파괴하지 않는다 (교차 검토)
             if (fullWidth < safeLaneWidth * 2f)
-            {
-                strip.Sink();
                 return;
-            }
 
             float laneWidth = Mathf.Clamp(safeLaneWidth, 1f, fullWidth - 1f);
             float sinkWidth = fullWidth - laneWidth;

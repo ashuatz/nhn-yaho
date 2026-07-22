@@ -236,13 +236,42 @@ namespace Scavenger.Loot
             trail.minVertexDistance = 0.05f;
             trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-            trailMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-            trailMaterial.color = LootDefinition.TierColor(tier);
+            trailMaterial = CreateTrailMaterial(LootDefinition.TierColor(tier));
             trail.sharedMaterial = trailMaterial;
 
             Color tierColor = LootDefinition.TierColor(tier);
             trail.startColor = tierColor;
             trail.endColor = new Color(tierColor.r, tierColor.g, tierColor.b, 0f);
+        }
+
+        // 끝 페이드(버텍스 알파)가 살도록 투명 서페이스로 설정. 셰이더 부재 폴백 포함
+        static Material CreateTrailMaterial(Color color)
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+
+            if (shader == null)
+                shader = Shader.Find("Universal Render Pipeline/Lit");
+
+            if (shader == null)
+                shader = Shader.Find("Sprites/Default");
+
+            Material material = new Material(shader);
+            material.color = color;
+
+            // URP 서페이스 타입 = Transparent (알파 블렌드)
+            if (material.HasProperty("_Surface"))
+            {
+                material.SetFloat("_Surface", 1f);
+                material.SetFloat("_Blend", 0f);
+                material.SetFloat("_ZWrite", 0f);
+                material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                material.SetOverrideTag("RenderType", "Transparent");
+                material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
+
+            return material;
         }
 
         void BuildVisual(int tier)

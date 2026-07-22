@@ -46,6 +46,11 @@ namespace Scavenger.Obstacle
             if (armed)
                 return;
 
+            // 체크포인트는 안전지대 - 안에서 감지 반경이 겹쳐도 무장하지 않는다
+            // (사용자 지시, 교차 검토). 밖에서 이미 무장된 기폭은 그대로 진행
+            if (Segment.CheckpointZone.PlayerInside)
+                return;
+
             PlayerController player = other.GetComponent<PlayerController>();
 
             if (player == null)

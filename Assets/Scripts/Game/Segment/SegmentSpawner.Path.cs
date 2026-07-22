@@ -44,6 +44,7 @@ namespace Scavenger.Segment
             float endZ = startZ + Definition.lengthMeters;
 
             currentStrips.Clear();
+            hazardZoneReservations.Clear();
 
             if (preplacedEnvironment != null && preplacedEnvironment.Covers(startZ, endZ))
             {

@@ -46,6 +46,20 @@ namespace Scavenger.Player
             Current = maxStamina;
         }
 
+        // 튜닝 실수 가드: 회복 임계가 최대치를 넘으면 탈진에서 영원히 못 벗어난다
+        void OnValidate()
+        {
+            maxStamina = Mathf.Max(1f, maxStamina);
+            recoverThreshold = Mathf.Clamp(recoverThreshold, 0f, maxStamina);
+        }
+
+        // 비활성/파괴 경로에서 탈진 감속이 모터에 남지 않게 복구
+        void OnDisable()
+        {
+            if (motor != null)
+                motor.StaminaScale = 1f;
+        }
+
         void Update()
         {
             RunManager run = RunManager.Instance;

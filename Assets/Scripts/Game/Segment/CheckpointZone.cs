@@ -66,8 +66,14 @@ namespace Scavenger.Segment
                 return;
             }
 
-            float playerZ = player.transform.position.z;
-            bool inside = !crumbled && playerZ >= StartZ && playerZ <= EndZ;
+            // z만으로 판정하면 옆으로 떨어진/밀린 플레이어도 안전지대로 잡힌다
+            // (교차 검토) - x 범위와 대략적 접지 높이를 함께 확인
+            Vector3 playerPosition = player.transform.position;
+
+            bool inside = !crumbled
+                && playerPosition.z >= StartZ && playerPosition.z <= EndZ
+                && Mathf.Abs(playerPosition.x) <= checkpointHalfWidth + 0.5f
+                && playerPosition.y > -1.5f;
 
             if (inside)
             {
@@ -85,7 +91,7 @@ namespace Scavenger.Segment
             if (activeZone == this)
                 activeZone = null;
 
-            if (playerZ > EndZ)
+            if (playerPosition.z > EndZ)
                 Crumble();
         }
 
@@ -95,20 +101,17 @@ namespace Scavenger.Segment
             LeaveWithoutCrumble();
         }
 
+        // 붕괴 전선 정지는 CollapseFront가 PlayerInside를 직접 조회한다
         void TickInside()
         {
-            if (!insideLastFrame)
-            {
-                insideLastFrame = true;
-                activeZone = this;
+            if (insideLastFrame)
+                return;
 
-                // 체크포인트는 복도보다 넓다 - 이동 클램프 확장
-                player.Motor.corridorHalfWidth = checkpointHalfWidth;
-            }
+            insideLastFrame = true;
+            activeZone = this;
 
-            // 붕괴 전선 정지 (매 프레임 요청 방식)
-            if (CollapseFront.Instance != null)
-                CollapseFront.Instance.RequestHold();
+            // 체크포인트는 복도보다 넓다 - 이동 클램프 확장
+            player.Motor.corridorHalfWidth = checkpointHalfWidth;
         }
 
         void LeaveWithoutCrumble()

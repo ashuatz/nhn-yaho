@@ -46,16 +46,6 @@ namespace Scavenger.Segment
         readonly List<FloorStrip> strips = new List<FloorStrip>();
         PlayerController trackedPlayer;
         float delayRemaining;
-        bool holdRequested;
-
-        /// <summary>
-        /// 이번 프레임 전진 보류 (체크포인트 안전지대 - 사용자 지시).
-        /// 머무는 동안 매 프레임 호출할 것 - 다음 Update 한 번만 멈춘다.
-        /// </summary>
-        public void RequestHold()
-        {
-            holdRequested = true;
-        }
 
         void OnEnable()
         {
@@ -107,11 +97,10 @@ namespace Scavenger.Segment
                 return;
             }
 
-            // 체크포인트 안전지대: 머무는 동안 전선 정지 (클램프는 유지)
-            if (holdRequested)
+            // 체크포인트 안전지대: 머무는 동안 전선 정지 (클램프는 유지).
+            // 직접 조회 - 요청 프로토콜의 실행 순서 1프레임 누수 방지 (교차 검토)
+            if (CheckpointZone.PlayerInside)
             {
-                holdRequested = false;
-
                 if (trackedPlayer != null)
                     trackedPlayer.Motor.MinZ = SafeMinZ;
 

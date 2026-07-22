@@ -125,11 +125,23 @@ namespace Scavenger.UI
             }
             else
             {
+                // 패널 밖 흘러넘침 방지 - 상위 N종 + 요약 (교차 검토)
+                const int MaxListedEntries = 6;
+                int listed = 0;
+
                 foreach (RunInventory.Entry entry in run.Inventory.Entries)
                 {
+                    if (listed >= MaxListedEntries)
+                    {
+                        bagBuilder.Append("\n외 ")
+                            .Append(run.Inventory.Entries.Count - listed).Append('종');
+                        break;
+                    }
+
                     bagBuilder.Append('\n')
                         .Append(entry.Definition.displayName)
                         .Append(" x").Append(entry.Count);
+                    listed += 1;
                 }
             }
 
@@ -200,7 +212,7 @@ namespace Scavenger.UI
             if (track == null)
                 return;
 
-            float maxWidth = track.rect.width - GaugeFillPadding;
+            float maxWidth = Mathf.Max(0f, track.rect.width - GaugeFillPadding);
             fill.sizeDelta = new Vector2(maxWidth * Mathf.Clamp01(ratio01), fill.sizeDelta.y);
         }
 

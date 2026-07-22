@@ -54,6 +54,10 @@ namespace Scavenger.Segment
 
             if (!warning)
             {
+                // 체크포인트는 안전지대 - 신규 발동 보류 (사용자 지시, 교차 검토)
+                if (CheckpointZone.PlayerInside)
+                    return;
+
                 if (distance > triggerDistance)
                     return;
 

@@ -50,6 +50,12 @@ namespace Scavenger.Segment
         const float LootInteractRadius = 1.4f;
         const float BombDetectionRadius = 3.5f;
 
+        // 발동형 존(낙하물/돌진/기둥) 공용 z 예약 - 타입이 달라도 같은 z대에
+        // 겹치면 회피 불가 콤보가 되므로 교차 간격을 강제한다 (교차 검토).
+        // 구간 빌드마다 초기화 (BuildShell)
+        readonly List<float> hazardZoneReservations = new List<float>();
+        const float CrossHazardMinZGap = 7f;
+
         // 전 레인 봉쇄 금지: 같은 z 구간에 폭탄이 겹치지 않도록 최소 간격 강제.
         // 폭발 반경 상한(DepthCurve.blastMaxRadius) x 2 < 복도 폭이라 단일 폭탄은
         // 전체를 막을 수 없고, z 간격을 두면 이중 봉쇄도 불가능하다.
@@ -66,9 +72,13 @@ namespace Scavenger.Segment
             nodeObject.transform.SetParent(parent, false);
             nodeObject.transform.localPosition = new Vector3(0f, 0f, length - 1.5f);
 
+            // 체크포인트 확장 슬랩까지 커버 - 넓어진 클램프로 옆을 지나
+            // 선택 노드를 우회하는 것 방지 (교차 검토)
+            float triggerHalfWidth = halfWidth + checkpointSideExtension;
+
             BoxCollider trigger = nodeObject.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
-            trigger.size = new Vector3(halfWidth * 2f, 3f, 1.5f);
+            trigger.size = new Vector3(triggerHalfWidth * 2f, 3f, 1.5f);
             trigger.center = new Vector3(0f, 1.5f, 0f);
 
             ChoiceNode node = nodeObject.AddComponent<ChoiceNode>();
@@ -446,8 +456,11 @@ namespace Scavenger.Segment
                 float z = Mathf.Lerp(
                     16f, length - checkpointLength - 2f, (float)run.Rng.NextDouble());
 
-                // 연속 낙하 콤보 방지 간격
+                // 연속 낙하 콤보 방지 간격 + 타입 교차 간격
                 if (!IsZGapValid(placedZ, z, minZGap: 9f))
+                    continue;
+
+                if (!IsZGapValid(hazardZoneReservations, z, CrossHazardMinZGap))
                     continue;
 
                 // 단차 진입로 파괴 = 보상 동선 봉쇄 - 제외
@@ -469,6 +482,7 @@ namespace Scavenger.Segment
                 zone.safeLaneWidth = sinkTrapSafeLaneWidth;
 
                 placedZ.Add(z);
+                hazardZoneReservations.Add(z);
             }
         }
 
@@ -497,8 +511,11 @@ namespace Scavenger.Segment
                 float z = Mathf.Lerp(
                     18f, length - checkpointLength - 3f, (float)run.Rng.NextDouble());
 
-                // 연속 돌진 = 회피 불가 콤보 방지 간격
+                // 연속 돌진 = 회피 불가 콤보 방지 간격 + 타입 교차 간격
                 if (!IsZGapValid(placedZ, z, minZGap: 12f))
+                    continue;
+
+                if (!IsZGapValid(hazardZoneReservations, z, CrossHazardMinZGap))
                     continue;
 
                 if (IsInLedgeZRange(z, margin: 1f))
@@ -516,6 +533,7 @@ namespace Scavenger.Segment
                 zone.scatterSeed = run.Rng.Next(1, int.MaxValue);
 
                 placedZ.Add(z);
+                hazardZoneReservations.Add(z);
             }
         }
 
@@ -553,6 +571,9 @@ namespace Scavenger.Segment
                 if (!IsZGapValid(placedZ, z, minZGap: 12f))
                     continue;
 
+                if (!IsZGapValid(hazardZoneReservations, z, CrossHazardMinZGap))
+                    continue;
+
                 if (IsInLedgeZRange(z, margin: 1.5f))
                     continue;
 
@@ -570,6 +591,7 @@ namespace Scavenger.Segment
                 zone.pillarLength = Mathf.Max(3f, halfWidth * 2f - sinkTrapSafeLaneWidth - 0.5f);
 
                 placedZ.Add(z);
+                hazardZoneReservations.Add(z);
             }
         }
 
