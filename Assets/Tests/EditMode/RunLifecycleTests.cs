@@ -16,6 +16,9 @@ namespace Scavenger.Tests
             host = new GameObject("RunManagerTest");
             manager = host.AddComponent<RunManager>();
 
+            // EditMode는 Awake를 자동 호출하지 않는다 - StateMachine/Timer 배선 수동 수행
+            EditModeLifecycle.InvokeAwake(manager);
+
             RunSettings settings = RunSettings.CreateDefault();
             settings.seedOverride = 42;
             manager.Configure(settings);
@@ -24,6 +27,9 @@ namespace Scavenger.Tests
         [TearDown]
         public void TearDown()
         {
+            // Instance 정리 - 다음 테스트의 Awake가 중복 판정에 걸리지 않게
+            EditModeLifecycle.InvokeOnDestroy(manager);
+
             Object.DestroyImmediate(host);
         }
 
