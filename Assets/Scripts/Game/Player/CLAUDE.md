@@ -10,7 +10,12 @@
   낙사 판정 (y < -4 -> Kill("fall"))
 - PlayerMotor.cs: CharacterController 이동. 4방향 토글 (ADR-0006):
   ToggleDirection = 같은 방향 재입력 시 정지, 다른 방향 시 전환. moveSpeed = 튜닝 지점.
+  SpeedScale = 외부 시스템(CarryLoad)이 설정하는 이동속도 배율 (1 = 정상).
   x는 복도 반폭, z는 MinZ(붕괴 전선)로 이동 전 사전 클램프. 누적 중력 = 낙사 지원
+- CarryLoad.cs: 무게 -> 이동속도 배율 (M2-1). RunInventory.TotalWeight를 읽어
+  3단계(일반/과적/초과적) 판정 후 Motor.SpeedScale 반영. 임계(overloadedAt/
+  severelyOverloadedAt)와 배율은 Player 프리팹 튜닝 지점.
+  EvaluateStage/ResolveSpeedScale/StageLabel = 정적 순수 함수 (EditMode 테스트 대상)
 - FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003). 리그 구성 순서:
   lookAtOffset(앵커 기준 월드축, 바라보는 지점) -> positionOffsetWorld(룩앳 기준
   월드축, 카메라 위치) -> positionOffsetLocal(시선 로컬축, 회전 확정 후 구도 시프트 -

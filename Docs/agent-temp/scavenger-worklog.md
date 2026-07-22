@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-07-22 (4) - M2-1 무게/가방 + EditMode 테스트 실기 첫 실행
+
+### 완료
+
+- M2-1 무게/가방:
+  - LootDefinition.weight (폴백 카탈로그: 폐지 1 / 고철 4 / 금고 9)
+  - RunInventory.TotalWeight 합산
+  - CarryLoad (Player/ 신규): 3단계 판정 (일반 < 8 <= 과적 < 16 <= 초과적,
+    임계·배율 프리팹 튜닝) -> PlayerMotor.SpeedScale (과적 0.7 / 초과적 0.45)
+  - HUD: 가치 합계 박스에 무게/단계 줄 추가, D-패드 겹침 회피로 x 204로 이동
+    (배치 정리는 M5-1)
+  - 프리팹: 템플릿에 CarryLoad 포함 + GameFlow 런타임 폴백 + 기존 Player.prefab에
+    MCP로 제자리 추가 완료
+- EditMode 테스트 실기 첫 실행 (Unity MCP): RunLifecycleTests 6건이 전부
+  NullReferenceException - EditMode는 AddComponent 시 Awake를 호출하지 않아
+  StateMachine/Timer 미배선. EditModeLifecycle(리플렉션 Awake/OnDestroy 헬퍼)로
+  수리. 현재 35/35 통과 (신규: 무게 합산 1 + CarryLoad 5)
+- dotnet 컴파일 검증 통과 (Scavenger.Game / EditModeTests)
+
+### 메모
+
+- 신규 .cs 추가 직후 dotnet 빌드는 실패한다 - Unity가 csproj를 재생성해야 함.
+  Unity MCP refresh_unity(force) 후 재시도하면 해결
+- Codex 교차 검토는 여전히 한도 문제로 보류 (M1 + M2-1 묶어서 리셋 후 1회)
+- 푸시 미해결: 이 환경은 비대화형이라 git 인증 프롬프트 불가. 사용자 터미널에서
+  git push 1회 필요 (로컬 커밋 10개)
+
+### 다음 작업
+
+즉시: M2-2 획득 피드 (최근 획득 HUD 피드, 파밍 가능 오브젝트 근접 하이라이트)
+이후: M3-1 위험 그리드 -> M4-1 요소 4분리 -> M2-3~6 ...
+보류 결정 대기: 스테미나 (이제 무게 체감 가능 - 플레이 확인 후 판단),
+세계관, 이동 토글 해석 확정
+
+---
+
 ## 2026-07-22 (3) - 마젠타 수정 / 가상 D-패드 / 랜딩 문서
 
 - 마젠타 원인: 에디터에서 new Material(...)을 프리팹/씬에 저장 - 디스크 에셋이
