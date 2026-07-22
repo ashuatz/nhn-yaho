@@ -23,6 +23,12 @@ namespace Scavenger.Player
         /// <summary>후퇴 한계 z (붕괴 전선 앞). CollapseFront가 매 프레임 갱신.</summary>
         public float MinZ { get; set; } = float.NegativeInfinity;
 
+        /// <summary>
+        /// 카메라 가시 영역 후방 한계 (벨트스크롤 규칙 - 사용자 지시).
+        /// FollowCamera가 매 프레임 갱신. 붕괴 한계와 max로 합성된다.
+        /// </summary>
+        public float CameraMinZ { get; set; } = float.NegativeInfinity;
+
         /// <summary>현재 이동 입력 벡터 (x = 좌우, y = 전후). 크기 0..1.</summary>
         public Vector2 MoveInput { get; private set; }
 
@@ -79,10 +85,10 @@ namespace Scavenger.Player
 
             Vector3 velocity = Vector3.zero;
 
-            // z 하한은 현재 위치보다 앞으로 당기지 않는다 - 붕괴 전선이 정지한
-            // 플레이어를 밀어주는 컨베이어가 되면 안 된다 (검증 반영, ADR-0006:
-            // 정지 = 발밑 붕괴 = 낙사가 압박의 본질)
-            float backwardLimit = Mathf.Min(MinZ, transform.position.z);
+            // z 하한 = 붕괴 전선과 카메라 후방 한계 중 앞선 것. 단, 현재 위치보다
+            // 앞으로 당기지 않는다 - 정지한 플레이어를 밀어주는 컨베이어 금지
+            // (검증 반영, ADR-0006: 정지 = 발밑 붕괴 = 낙사가 압박의 본질)
+            float backwardLimit = Mathf.Min(Mathf.Max(MinZ, CameraMinZ), transform.position.z);
 
             // 입력 속도 + 외부 임펄스 합산 후 축별 경계 클램프
             float desiredX = MoveInput.x * moveSpeed * SpeedScale + externalVelocity.x;

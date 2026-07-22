@@ -29,8 +29,22 @@ namespace Scavenger.Player
         [Header("따라가기 지연 (초). 0 = 즉시 추적")]
         public float followSmoothTime = 0.15f;
 
+        [Header("벨트스크롤: 카메라 후방 한계 여유 (앵커 기준 뒤 허용 거리)")]
+        public float backLimitMargin = 4f;
+
+        /// <summary>플레이어 후퇴 한계 z (벨트스크롤 - 카메라 영역 밖 이탈 금지).</summary>
+        public float BackLimitZ
+        {
+            get { return smoothedZ - backLimitMargin; }
+        }
+
         float smoothedZ;
         float zVelocity;
+
+        // 벨트스크롤 (사용자 지시): 카메라 앵커는 최대 도달 z만 따른다 - 후퇴 없음
+        float ratchetZ;
+
+        PlayerMotor targetMotor;
 
         void LateUpdate()
         {
@@ -39,6 +53,7 @@ namespace Scavenger.Player
 
             UpdateSmoothedZ();
             ApplyPose();
+            PushBackLimit();
         }
 
         /// <summary>런 시작/월드 재생성 시 지연 없이 즉시 위치 맞춤.</summary>
@@ -48,24 +63,49 @@ namespace Scavenger.Player
                 return;
 
             smoothedZ = target.position.z;
+            ratchetZ = smoothedZ;
             zVelocity = 0f;
 
             ApplyPose();
+            PushBackLimit();
         }
 
         void UpdateSmoothedZ()
         {
             float targetZ = target.position.z;
 
-            // 에디트 모드나 지연 0에서는 즉시 추적
+            // 에디트 모드나 지연 0에서는 즉시 추적 (에디트 모드는 래칫도 무시)
             if (!Application.isPlaying || followSmoothTime <= 0f)
             {
+                if (Application.isPlaying)
+                    targetZ = ratchetZ = Mathf.Max(ratchetZ, targetZ);
+
                 smoothedZ = targetZ;
                 zVelocity = 0f;
                 return;
             }
 
-            smoothedZ = Mathf.SmoothDamp(smoothedZ, targetZ, ref zVelocity, followSmoothTime);
+            // 전진 전용 래칫: 플레이어가 후퇴해도 카메라는 물러나지 않는다
+            ratchetZ = Mathf.Max(ratchetZ, targetZ);
+
+            smoothedZ = Mathf.SmoothDamp(smoothedZ, ratchetZ, ref zVelocity, followSmoothTime);
+        }
+
+        // 후퇴 한계를 모터에 공급 - 카메라 가시 영역 밖 이탈 금지 (벨트스크롤)
+        void PushBackLimit()
+        {
+            if (!Application.isPlaying)
+                return;
+
+            if (targetMotor == null)
+            {
+                targetMotor = target.GetComponent<PlayerMotor>();
+
+                if (targetMotor == null)
+                    return;
+            }
+
+            targetMotor.CameraMinZ = BackLimitZ;
         }
 
         void ApplyPose()

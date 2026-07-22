@@ -185,6 +185,8 @@ namespace Scavenger.Player
         {
             Vector2 screenInput = ReadKeyboardMove() + externalMoveInput;
 
+            // 후퇴 입력은 허용 - 대신 카메라 가시 영역 밖으로 나갈 수 없다
+            // (벨트스크롤 규칙, FollowCamera가 Motor.CameraMinZ로 한계 공급)
             motor.SetMoveInput(ScreenToWorldMove(screenInput));
         }
 
