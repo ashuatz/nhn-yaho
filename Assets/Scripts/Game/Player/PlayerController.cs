@@ -7,9 +7,9 @@ namespace Scavenger.Player
 {
     /// <summary>
     /// 플레이어 상태 소유자. 입력을 읽고 상태에 따라 PlayerMotor를 구동한다.
-    /// 조작 (ADR-0002): 클릭/스페이스 = 한 스텝 전진, A/D = 좌우, E 홀드 = 루팅.
-    /// 실행 순서 -100: 입력 스냅샷을 소비자(LootSpot 등)보다 먼저 갱신해
-    /// 프레임 지연 취소 문제를 막는다 (Codex 검토 반영).
+    /// 조작 (ADR-0006): WASD/화살표 = 4방향 토글 이동 (같은 키 = 정지, 다른 키 = 전환),
+    /// E 홀드 = 루팅. 점프 없음. 낙사 있음 (일정 깊이 이하 낙하 시 사망).
+    /// 실행 순서 -100: 입력 스냅샷을 소비자(LootSpot 등)보다 먼저 갱신.
     /// </summary>
     [DefaultExecutionOrder(-100)]
     [RequireComponent(typeof(PlayerMotor))]
@@ -17,13 +17,15 @@ namespace Scavenger.Player
     {
         public PlayerState State { get; private set; } = PlayerState.Advancing;
 
-        /// <summary>이번 프레임 좌우 입력 (-1..1). 루팅 취소 판정에도 사용.</summary>
+        /// <summary>이번 프레임 좌우 입력 (-1..1). 루팅 취소 판정에 사용.</summary>
         public float LateralInput { get; private set; }
 
         /// <summary>상호작용(E) 홀드 여부. LootSpot이 읽는다.</summary>
         public bool InteractHeld { get; private set; }
 
         public event Action<PlayerState, PlayerState> StateChanged;
+
+        const float FallDeathY = -4f;
 
         PlayerMotor motor;
 
@@ -39,7 +41,12 @@ namespace Scavenger.Player
 
         void Update()
         {
-            // 사망 후에는 입력 스냅샷도 갱신하지 않는다 - 루팅 등 소비자가 잔존 입력을 못 쓰게
+            // 사망 후에는 입력 스냅샷도 갱신하지 않는다
+            if (State == PlayerState.Dead)
+                return;
+
+            CheckFallDeath();
+
             if (State == PlayerState.Dead)
                 return;
 
@@ -50,14 +57,12 @@ namespace Scavenger.Player
 
             if (State == PlayerState.Looting)
             {
-                // 루팅 중 전진 비허용 (ADR-0001) - 클릭 무시, 이동 완전 정지
+                // 루팅 중 이동 비허용 (ADR-0001) - 토글 입력 무시, 이동 완전 정지
                 return;
             }
 
-            if (ReadStepPressed())
-                motor.RequestStep();
-
-            motor.Tick(LateralInput);
+            HandleDirectionInput();
+            motor.Tick();
         }
 
         // -- 외부 시스템 진입점 --------------------------------------------
@@ -68,8 +73,8 @@ namespace Scavenger.Player
             if (State != PlayerState.Advancing)
                 return false;
 
-            // 스텝 관성이 루팅 중에 이어지지 않게 정리
-            motor.CancelSteps();
+            // 루팅 = 정지. 이동 토글 해제
+            motor.ClearDirection();
 
             Transition(PlayerState.Looting);
             return true;
@@ -90,11 +95,11 @@ namespace Scavenger.Player
             if (State == PlayerState.Dead)
                 return;
 
-            motor.CancelSteps();
+            motor.ClearDirection();
             Transition(PlayerState.AtChoice);
         }
 
-        /// <summary>선택 후 전진 재개.</summary>
+        /// <summary>선택 후 이동 재개.</summary>
         public void ExitChoice()
         {
             if (State != PlayerState.AtChoice)
@@ -103,15 +108,15 @@ namespace Scavenger.Player
             Transition(PlayerState.Advancing);
         }
 
-        /// <summary>폭탄 등 즉사 요인이 호출.</summary>
+        /// <summary>폭탄/낙사/붕괴 등 즉사 요인이 호출.</summary>
         public void Kill(string cause)
         {
             if (State == PlayerState.Dead)
                 return;
 
-            motor.CancelSteps();
+            motor.ClearDirection();
 
-            // 잔존 입력 제거 - 사망 프레임에 루팅 완료/취소 판정이 이전 입력을 쓰지 못하게
+            // 잔존 입력 제거 - 사망 프레임에 루팅 판정이 이전 입력을 쓰지 못하게
             LateralInput = 0f;
             InteractHeld = false;
 
@@ -121,14 +126,23 @@ namespace Scavenger.Player
                 RunManager.Instance.KillRun(cause);
         }
 
-        /// <summary>런 재시작 시 부트스트랩이 호출.</summary>
+        /// <summary>런 재시작 시 GameFlow가 호출.</summary>
         public void ResetForNewRun()
         {
-            motor.CancelSteps();
+            motor.ClearDirection();
+            motor.ResetVertical();
             Transition(PlayerState.Advancing);
         }
 
         // -- 내부 --------------------------------------------------------
+
+        void CheckFallDeath()
+        {
+            if (transform.position.y > FallDeathY)
+                return;
+
+            Kill("fall");
+        }
 
         void ReadInput()
         {
@@ -149,19 +163,22 @@ namespace Scavenger.Player
             InteractHeld = keyboard.eKey.isPressed;
         }
 
-        static bool ReadStepPressed()
+        // 4방향 토글 (ADR-0006): 방향키 1회 = 그 방향 연속 이동, 같은 키 = 정지
+        void HandleDirectionInput()
         {
             Keyboard keyboard = Keyboard.current;
 
-            if (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
-                return true;
+            if (keyboard == null)
+                return;
 
-            Mouse mouse = Mouse.current;
-
-            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
-                return true;
-
-            return false;
+            if (keyboard.wKey.wasPressedThisFrame || keyboard.upArrowKey.wasPressedThisFrame)
+                motor.ToggleDirection(Vector2.up);
+            else if (keyboard.sKey.wasPressedThisFrame || keyboard.downArrowKey.wasPressedThisFrame)
+                motor.ToggleDirection(Vector2.down);
+            else if (keyboard.aKey.wasPressedThisFrame || keyboard.leftArrowKey.wasPressedThisFrame)
+                motor.ToggleDirection(Vector2.left);
+            else if (keyboard.dKey.wasPressedThisFrame || keyboard.rightArrowKey.wasPressedThisFrame)
+                motor.ToggleDirection(Vector2.right);
         }
 
         void Transition(PlayerState next)

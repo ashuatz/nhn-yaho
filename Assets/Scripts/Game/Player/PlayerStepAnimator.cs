@@ -3,9 +3,10 @@ using UnityEngine;
 namespace Scavenger.Player
 {
     /// <summary>
-    /// 하이퍼캐주얼풍 스텝 연출: 스텝(가상 그리드 1칸) 동안 홉(포물선) + 공중 스트레치,
-    /// 착지 시 스쿼시. 비주얼 자식만 조작하고 로직 루트/콜라이더는 건드리지 않는다.
-    /// 수치는 전부 인스펙터 튜닝 지점 (이동느낌 우선 검증).
+    /// 하이퍼캐주얼풍 이동 연출 (ADR-0006에서 연속 이동용 워크 밥으로 개편).
+    /// 이동 중: 통통 튀는 밥(짧은 홉 반복) + 공중 스트레치. 정지 순간: 착지 스쿼시.
+    /// 비주얼 자식만 조작하고 로직 루트/콜라이더는 건드리지 않는다.
+    /// 수치는 전부 인스펙터 튜닝 지점.
     /// </summary>
     [RequireComponent(typeof(PlayerMotor))]
     public sealed class PlayerStepAnimator : MonoBehaviour
@@ -13,16 +14,18 @@ namespace Scavenger.Player
         [Header("비주얼 루트 (비우면 자식 'Visual' 자동 탐색)")]
         [SerializeField] Transform visual;
 
-        [Header("홉 (스텝당 점프)")]
-        public float hopHeight = 0.35f;
+        [Header("워크 밥 (이동 중 반복 홉)")]
+        public float bobHeight = 0.22f;
+        public float bobFrequency = 5.5f;
 
         [Header("스쿼시/스트레치 (1 = 변형 없음)")]
-        public float airStretch = 1.15f;
-        public float landSquash = 0.82f;
+        public float airStretch = 1.12f;
+        public float landSquash = 0.85f;
         public float landRecoverSeconds = 0.12f;
 
         PlayerMotor motor;
-        bool wasStepping;
+        bool wasMoving;
+        float bobPhase;
         float squashRemaining;
 
         void Awake()
@@ -38,32 +41,38 @@ namespace Scavenger.Player
             if (visual == null)
                 return;
 
-            bool stepping = motor.IsStepping;
+            // 낙하 중에는 연출 정지 (낙사 가독성)
+            bool moving = motor.IsMoving && motor.IsGrounded;
 
-            // 착지 순간: 스쿼시 시작
-            if (wasStepping && !stepping)
-                squashRemaining = landRecoverSeconds;
-
-            wasStepping = stepping;
-
-            if (stepping)
+            // 정지 순간: 착지 스쿼시
+            if (wasMoving && !moving)
             {
-                ApplyAir(motor.StepProgress01);
+                squashRemaining = landRecoverSeconds;
+                bobPhase = 0f;
+            }
+
+            wasMoving = moving;
+
+            if (moving)
+            {
+                ApplyBob();
                 return;
             }
 
             ApplyGrounded();
         }
 
-        void ApplyAir(float progress01)
+        void ApplyBob()
         {
-            // 포물선 홉 + 정점에서 최대 스트레치
-            float arc = Mathf.Sin(progress01 * Mathf.PI);
+            bobPhase += Time.deltaTime * bobFrequency;
+
+            // |sin|으로 짧은 홉 반복 + 정점에서 최대 스트레치
+            float arc = Mathf.Abs(Mathf.Sin(bobPhase * Mathf.PI));
 
             float stretchY = Mathf.Lerp(1f, airStretch, arc);
             float compensateXz = 1f / Mathf.Sqrt(stretchY);
 
-            visual.localPosition = new Vector3(0f, arc * hopHeight, 0f);
+            visual.localPosition = new Vector3(0f, arc * bobHeight, 0f);
             visual.localScale = new Vector3(compensateXz, stretchY, compensateXz);
         }
 

@@ -4,70 +4,62 @@ namespace Scavenger.Player
 {
     /// <summary>
     /// CharacterController 기반 이동만 담당. 상태 판정은 PlayerController가 소유.
-    /// 클릭 스텝 전진 (ADR-0002): 기본 정지, RequestStep 1회 = 고정 거리 전진 트윈.
-    /// 스텝 중 요청 1회는 버퍼링되어 연타가 끊기지 않는다.
+    /// 4방향 토글 이동 (ADR-0006): 방향을 지정하면 그 방향으로 연속 이동한다.
+    /// 낙사 도입: 바닥이 없으면 중력으로 떨어진다 (사망 판정은 PlayerController).
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public sealed class PlayerMotor : MonoBehaviour
     {
-        [Header("스텝 전진 (이동느낌 튜닝 지점)")]
-        public float stepDistance = 2.4f;
-        public float stepDuration = 0.22f;
+        [Header("이동 (이동느낌 튜닝 지점)")]
+        public float moveSpeed = 4.2f;
 
-        public float lateralSpeed = 5f;
-
-        /// <summary>이동 가능한 복도 반폭. 구간 진입 시 SegmentSpawner가 갱신.</summary>
+        /// <summary>이동 가능한 복도 반폭. GameFlow가 구간 정의로 갱신.</summary>
         public float corridorHalfWidth = 3.5f;
 
-        public bool IsStepping
+        /// <summary>후퇴 한계 z (붕괴 전선 앞). CollapseFront가 매 프레임 갱신.</summary>
+        public float MinZ { get; set; } = float.NegativeInfinity;
+
+        /// <summary>현재 토글된 이동 방향 (카디널 단위 벡터 또는 zero).</summary>
+        public Vector2 Direction { get; private set; }
+
+        public bool IsMoving
         {
-            get { return stepRemaining > 0f; }
+            get { return Direction != Vector2.zero; }
         }
 
-        /// <summary>현재 스텝의 진행도 0..1. 스텝 애니메이터가 읽는다.</summary>
-        public float StepProgress01
+        /// <summary>접지 여부. 낙하 중 워크 밥을 끄는 데 사용.</summary>
+        public bool IsGrounded
         {
-            get
-            {
-                if (!IsStepping || stepDistance <= 0f)
-                    return 0f;
-
-                return 1f - stepRemaining / stepDistance;
-            }
+            get { return controller != null && controller.isGrounded; }
         }
 
         CharacterController controller;
-        float stepRemaining;
-        bool stepBuffered;
+        float fallVelocity;
 
         void Awake()
         {
             controller = GetComponent<CharacterController>();
         }
 
-        /// <summary>클릭 1회 = 스텝 1회. 스텝 중이면 1회까지 버퍼.</summary>
-        public void RequestStep()
+        /// <summary>방향 토글. 같은 방향이면 정지, 다른 방향이면 전환.</summary>
+        public void ToggleDirection(Vector2 cardinal)
         {
-            if (IsStepping)
+            if (Direction == cardinal)
             {
-                stepBuffered = true;
+                Direction = Vector2.zero;
                 return;
             }
 
-            stepRemaining = stepDistance;
+            Direction = cardinal;
         }
 
-        /// <summary>진행 중인 스텝과 버퍼를 모두 버린다 (사망, 선택지 진입 등).</summary>
-        public void CancelSteps()
+        public void ClearDirection()
         {
-            stepRemaining = 0f;
-            stepBuffered = false;
+            Direction = Vector2.zero;
         }
 
-        /// <summary>
-        /// 한 프레임 이동. lateral은 -1..1 입력. 스텝 진행은 내부 상태로 처리.
-        /// </summary>
-        public void Tick(float lateral)
+        /// <summary>한 프레임 이동. 상태가 이동을 허용할 때만 호출된다.</summary>
+        public void Tick()
         {
             float deltaTime = Time.deltaTime;
 
@@ -76,44 +68,36 @@ namespace Scavenger.Player
 
             Vector3 velocity = Vector3.zero;
 
-            velocity.z = ConsumeStepSpeed(deltaTime);
-            velocity.x = ComputeLateralSpeed(lateral, deltaTime);
+            velocity.x = ComputeAxisSpeed(
+                transform.position.x, Direction.x, -corridorHalfWidth, corridorHalfWidth, deltaTime);
+            velocity.z = ComputeAxisSpeed(
+                transform.position.z, Direction.y, MinZ, float.PositiveInfinity, deltaTime);
 
-            // 접지 유지용 간단 중력 (경사/단차 없음 전제의 그레이박스)
-            velocity.y = -9.81f;
+            // 낙사용 누적 중력 (접지 시 소폭 유지로 접지 판정 안정화)
+            if (controller.isGrounded)
+                fallVelocity = -2f;
+            else
+                fallVelocity -= 9.81f * deltaTime;
+
+            velocity.y = fallVelocity;
 
             controller.Move(velocity * deltaTime);
         }
 
-        float ConsumeStepSpeed(float deltaTime)
+        /// <summary>런 재시작 등에서 낙하 속도 초기화.</summary>
+        public void ResetVertical()
         {
-            if (!IsStepping)
-                return 0f;
-
-            float stepSpeed = stepDistance / Mathf.Max(stepDuration, 0.01f);
-            float advance = Mathf.Min(stepSpeed * deltaTime, stepRemaining);
-
-            stepRemaining -= advance;
-
-            // 스텝 종료 시 버퍼 소비 - 연타 유지
-            if (!IsStepping && stepBuffered)
-            {
-                stepBuffered = false;
-                stepRemaining = stepDistance;
-            }
-
-            return advance / deltaTime;
+            fallVelocity = 0f;
         }
 
-        float ComputeLateralSpeed(float lateral, float deltaTime)
+        // CharacterController는 transform 직접 설정을 무시할 수 있으므로
+        // 경계를 넘지 않도록 이동 전에 축 속도를 미리 깎는다
+        float ComputeAxisSpeed(float current, float axisInput, float min, float max, float deltaTime)
         {
-            // CharacterController는 transform.position 직접 설정을 무시할 수 있으므로
-            // 이동 전에 복도 경계를 넘지 않도록 좌우 속도를 미리 깎는다
-            float currentX = transform.position.x;
-            float targetX = currentX + lateral * lateralSpeed * deltaTime;
-            targetX = Mathf.Clamp(targetX, -corridorHalfWidth, corridorHalfWidth);
+            float target = current + axisInput * moveSpeed * deltaTime;
+            target = Mathf.Clamp(target, min, max);
 
-            return (targetX - currentX) / deltaTime;
+            return (target - current) / deltaTime;
         }
     }
 }
