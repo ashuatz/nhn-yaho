@@ -12,7 +12,13 @@ namespace Scavenger.Player
     public sealed class PlayerMotor : MonoBehaviour
     {
         [Header("이동 (이동느낌 튜닝 지점)")]
-        public float moveSpeed = 4.2f;
+        public float moveSpeed = 5f;
+
+        [Header("가속 반응 (지수 보간 계수. 클수록 빠릿, 웹 프로토타입 기본 10)")]
+        public float acceleration = 10f;
+
+        [Header("무게가 실릴수록 가속 반응 저하 (SpeedScale 비례 최소 반응 비율)")]
+        [Range(0f, 1f)] public float loadedAccelFloor = 0.55f;
 
         /// <summary>이동속도 배율. 과적(CarryLoad) 등 외부 시스템이 설정. 1 = 정상.</summary>
         public float SpeedScale { get; set; } = 1f;
@@ -49,6 +55,10 @@ namespace Scavenger.Player
         CharacterController controller;
         float fallVelocity;
         Vector3 externalVelocity;
+
+        // 지수 보간되는 수평 이동 속도 (관성). 입력이 사라져도 감쇠하며 멈춘다 -
+        // 임펄스(externalVelocity)는 별도 관리라 여기 포함하지 않는다 (타격감 유지)
+        Vector2 smoothedMove;
 
         void Awake()
         {
@@ -90,9 +100,22 @@ namespace Scavenger.Player
             // (검증 반영, ADR-0006: 정지 = 발밑 붕괴 = 낙사가 압박의 본질)
             float backwardLimit = Mathf.Min(Mathf.Max(MinZ, CameraMinZ), transform.position.z);
 
-            // 입력 속도 + 외부 임펄스 합산 후 축별 경계 클램프
-            float desiredX = MoveInput.x * moveSpeed * SpeedScale + externalVelocity.x;
-            float desiredZ = MoveInput.y * moveSpeed * SpeedScale + externalVelocity.z;
+            // 입력이 만드는 목표 이동 속도 (관성 보간의 목표점)
+            Vector2 targetMove = new Vector2(
+                MoveInput.x * moveSpeed * SpeedScale,
+                MoveInput.y * moveSpeed * SpeedScale);
+
+            // 지수 보간으로 목표 속도를 따라간다 (관성). 무게가 실릴수록(SpeedScale 낮을수록)
+            // 반응 계수를 loadedAccelFloor까지 낮춰 무거운 몸을 끌고 가는 감각을 만든다.
+            // 웹 프로토타입 이식: k = 1 - exp(-accel*dt*(floor + (1-floor)*load))
+            float loadFactor = Mathf.Lerp(loadedAccelFloor, 1f, Mathf.Clamp01(SpeedScale));
+            float k = 1f - Mathf.Exp(-acceleration * deltaTime * loadFactor);
+
+            smoothedMove += (targetMove - smoothedMove) * k;
+
+            // 보간된 이동 속도 + 외부 임펄스 합산 후 축별 경계 클램프
+            float desiredX = smoothedMove.x + externalVelocity.x;
+            float desiredZ = smoothedMove.y + externalVelocity.z;
 
             velocity.x = ComputeAxisSpeed(
                 transform.position.x, desiredX, -corridorHalfWidth, corridorHalfWidth, deltaTime);
@@ -113,11 +136,14 @@ namespace Scavenger.Player
             controller.Move(velocity * deltaTime);
         }
 
-        /// <summary>런 재시작 등에서 낙하 속도/잔존 임펄스 초기화.</summary>
+        /// <summary>런 재시작 등에서 낙하 속도/잔존 임펄스/관성 속도 초기화.</summary>
         public void ResetVertical()
         {
             fallVelocity = 0f;
             externalVelocity = Vector3.zero;
+
+            // 관성 잔재 제거 - 재시작 첫 프레임에 이전 런의 속도가 남지 않게
+            smoothedMove = Vector2.zero;
         }
 
         // CharacterController는 transform 직접 설정을 무시할 수 있으므로
