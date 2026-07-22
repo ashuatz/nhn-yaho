@@ -9,7 +9,7 @@
     "UnityMCP": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["mcp-for-unity"],
+      "args": ["--from", "mcpforunityserver==10.1.0", "mcp-for-unity"],
       "env": {}
     }
   }
