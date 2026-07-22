@@ -22,6 +22,7 @@ namespace Scavenger.UI
                 return;
 
             DrawInventoryValue(run);
+            DrawInteractPrompt(run);
             DrawLootGauge();
             DrawChoicePrompt();
             DrawSignalBanner();
@@ -46,6 +47,23 @@ namespace Scavenger.UI
                 return $"무게: {run.Inventory.TotalWeight:F1}";
 
             return $"무게: {run.Inventory.TotalWeight:F1} ({CarryLoad.StageLabel(carryLoad.Stage)})";
+        }
+
+        // 상호작용 키 프롬프트 (사용자 지시): 범위 안이면 우하단에 키 안내
+        static void DrawInteractPrompt(RunManager run)
+        {
+            if (run.StateMachine.Current != RunState.Running)
+                return;
+
+            LootSpot target = LootSpot.PromptTarget;
+
+            if (target == null || target.Definition == null || LootSpot.Active != null)
+                return;
+
+            float width = 280f;
+            Rect area = new Rect(Screen.width - width - 12f, Screen.height - 64f, width, 54f);
+
+            GUI.Box(area, $"E 꾹 눌러 루팅\n{target.Definition.displayName} (+{target.Definition.value})");
         }
 
         static void DrawLootGauge()

@@ -16,6 +16,12 @@ namespace Scavenger.Loot
         /// <summary>HUD 게이지가 참조하는 현재 루팅 중인 스팟.</summary>
         public static LootSpot Active { get; private set; }
 
+        /// <summary>
+        /// 상호작용 키 프롬프트 대상 (사용자 지시: 범위 안이면 우하단에 키 표시).
+        /// 시작 가능 조건(범위/높이/상태)을 충족한 스팟만 올라온다.
+        /// </summary>
+        public static LootSpot PromptTarget { get; private set; }
+
         public LootDefinition Definition { get; private set; }
 
         /// <summary>단차 위 스팟용: 이 높이 아래의 플레이어는 루팅 시작 불가 (옆에서 도둑질 방지).</summary>
@@ -85,6 +91,8 @@ namespace Scavenger.Loot
                 return;
             }
 
+            UpdatePromptEligibility();
+
             if (playerInRange == null)
                 return;
 
@@ -95,7 +103,28 @@ namespace Scavenger.Loot
         // (런 재시작/침몰 시 이전 상호작용 잔존 방지 - Codex 검토 반영)
         void OnDisable()
         {
+            if (PromptTarget == this)
+                PromptTarget = null;
+
             Release();
+        }
+
+        // 우하단 상호작용 프롬프트 대상 갱신 - 시작 가능 조건과 동일 기준
+        void UpdatePromptEligibility()
+        {
+            bool eligible = playerInRange != null
+                && Active == null
+                && playerInRange.State == PlayerState.Advancing
+                && playerInRange.transform.position.y >= requiredMinPlayerY;
+
+            if (eligible)
+            {
+                PromptTarget = this;
+                return;
+            }
+
+            if (PromptTarget == this)
+                PromptTarget = null;
         }
 
         void TryBegin()
