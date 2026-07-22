@@ -46,9 +46,8 @@
 
 ## 환경 제약 (2026-07-22 기준)
 
-- 조직 월간 사용 한도 도달: 서브에이전트 워크플로우/Codex 대량 호출 불가.
-  한도 리셋 후 M1 배치에 대한 Codex 교차 검토 1회 권장 (워크로그의 트리아지
-  기각 항목 재확인 포함)
+- Codex 한도 해소됨. M1 + M2-1 교차 검토 완료 (지적 전부 반영/보류 처리 -
+  워크로그 2026-07-22 (4) 참조)
 - Unity MCP: .mcp.json에 UnityMCP 등록됨. 세션 시작 시 신뢰 승인 +
   Unity 에디터에서 MCP 브릿지 Running이면 씬 조작/테스트를 에이전트가 직접 가능
 - 튜닝값은 프리팹에 있음: CollapseFront(SegmentSpawner 프리팹), PlayerMotor(Player),
