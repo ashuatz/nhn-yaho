@@ -30,6 +30,9 @@ namespace Scavenger.Player
 
         PlayerMotor motor;
 
+        // 체력 (HP). 데미지형 장애물이 Damage로 접근 (없을 수도 있음 - 폴백 GameFlow)
+        PlayerHealth health;
+
         // 가상 조이스틱 등 외부 UI가 공급하는 이동 벡터 (매 프레임 갱신 전제)
         Vector2 externalMoveInput;
 
@@ -45,9 +48,18 @@ namespace Scavenger.Player
             get { return motor; }
         }
 
+        /// <summary>체력 컴포넌트. 데미지형 장애물이 Damage 진입점으로 사용. 없으면 null.</summary>
+        public PlayerHealth Health
+        {
+            get { return health; }
+        }
+
         void Awake()
         {
             motor = GetComponent<PlayerMotor>();
+
+            // 선택 컴포넌트 - 프리팹에 없으면 GameFlow가 폴백 보강한다
+            health = GetComponent<PlayerHealth>();
         }
 
         void Update()
@@ -166,6 +178,14 @@ namespace Scavenger.Player
         {
             motor.ClearMoveInput();
             motor.ResetVertical();
+
+            // 폴백 보강이 Awake 이후일 수 있어 재조회 (GameFlow가 AddComponent)
+            if (health == null)
+                health = GetComponent<PlayerHealth>();
+
+            if (health != null)
+                health.ResetForNewRun();
+
             Transition(PlayerState.Advancing);
         }
 

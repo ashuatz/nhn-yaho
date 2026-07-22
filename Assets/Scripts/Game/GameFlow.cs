@@ -74,6 +74,10 @@ namespace Scavenger
             if (carryLoad == null)
                 carryLoad = player.gameObject.AddComponent<CarryLoad>();
 
+            // 체력 (HP, 데미지형 장애물의 전제) - 기존 Player 프리팹에는 폴백으로 보강
+            if (player.GetComponent<PlayerHealth>() == null)
+                player.gameObject.AddComponent<PlayerHealth>();
+
             // 카메라 쉐이크 (피격/위협 피드백) - 기존 카메라 프리팹에는 폴백으로 보강
             if (followCamera.GetComponent<CameraShake>() == null)
                 followCamera.gameObject.AddComponent<CameraShake>();
