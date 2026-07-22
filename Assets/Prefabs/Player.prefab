@@ -254,8 +254,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f332fd6735c113b4e9638893bbeef16d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Player.PlayerMotor
-  moveSpeed: 4.2
+  moveSpeed: 5.5
+  acceleration: 12
+  loadedAccelFloor: 0.55
   corridorHalfWidth: 3.5
+  impulseDamping: 10
 --- !u!114 &6897152063910251867
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -298,10 +301,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39c1e435106f68a47b18258a727f04d4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Player.CarryLoad
-  overloadedAt: 8
-  severelyOverloadedAt: 16
+  maxCarryWeight: 45
+  heavySpeedScale: 0.93
+  veryHeavySpeedScale: 0.87
+  severeSpeedScale: 0.77
   overloadedSpeedScale: 0.7
-  severelySpeedScale: 0.45
 --- !u!1 &9009512955216699747
 GameObject:
   m_ObjectHideFlags: 0

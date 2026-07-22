@@ -11,11 +11,11 @@ namespace Scavenger.Player
     [RequireComponent(typeof(CharacterController))]
     public sealed class PlayerMotor : MonoBehaviour
     {
-        [Header("이동 (이동느낌 튜닝 지점)")]
-        public float moveSpeed = 5f;
+        [Header("이동 (이동느낌 튜닝 지점). 웹 5.0 + 아이소 체감 보정")]
+        public float moveSpeed = 5.5f;
 
-        [Header("가속 반응 (지수 보간 계수. 클수록 빠릿, 웹 프로토타입 기본 10)")]
-        public float acceleration = 10f;
+        [Header("가속 반응 (지수 보간 계수. 클수록 빠릿, 웹 기본 10 + 반응성 보정)")]
+        public float acceleration = 12f;
 
         [Header("무게가 실릴수록 가속 반응 저하 (SpeedScale 비례 최소 반응 비율)")]
         [Range(0f, 1f)] public float loadedAccelFloor = 0.55f;
