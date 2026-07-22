@@ -9,16 +9,21 @@ EventSystem 불사용 - 조작 컴포넌트가 Input System 포인터를 직접 
 
 ## 파일 목차
 
-- HudController.cs: HUD 패널 갱신 단일 지점. 가치 합계 + 무게/적재 단계(M2-1),
+- HudController.cs: HUD 패널 갱신 단일 지점. 실행 순서 -150 (입력 공급이
+  PlayerController -100보다 먼저). 가치 합계 + 무게/적재 단계(M2-1),
   상호작용 프롬프트(우하단 - 루팅 시작/조각 줍기/루팅 중 안내), 루팅 게이지,
   선택지 프롬프트, 신호 배너, 붕괴 근접 경고(12m), 런 결과 패널.
   상호작용 프롬프트 박스 = 모바일 홀드 버튼 겸용: 포인터가 박스 위에서 눌린 동안
   PlayerController.SetExternalInteractHeld(true) 공급 (E 키와 OR 합성).
-  루팅 중에도 박스를 유지한다 - 사라지면 모바일 홀드가 끊겨 즉시 취소되므로
+  루팅 중에도 박스를 유지한다 - 사라지면 모바일 홀드가 끊겨 즉시 취소되므로.
+  선택지 패널 = 전진/탈출 터치 버튼 (ChoiceNode.ChooseAdvance/Extract 호출 -
+  키보드 없는 환경 소프트락 방지). 포인터 판정은 전체 터치 순회 + 마우스
+  (primaryTouch 한정 금지 - 멀티터치, Codex 교차 검토)
 - VirtualJoystick.cs: 좌하단 가상 조이스틱 (ADR-0007). uGUI RectTransform 리그
   (baseRect/knobRect)를 프리팹이 배선, 원형 스프라이트는 런타임 생성 (에셋 저장 없음).
   베이스 원 안 드래그 = 2D 벡터 -> PlayerController.SetExternalMoveInput.
-  마우스/터치 공용, 데드존(반경 비율). Running 상태에서만 표시/입력.
+  마우스/터치 공용, 시작한 touchId 고정 추적 (다른 손가락이 드래그를 뺏지 않게),
+  데드존(반경 비율). Running 상태에서만 표시/입력.
   실행 순서 -200 (PlayerController -100보다 먼저 - 1프레임 지연 방지)
 - LootLabelLayer.cs: 아이템 머리 위 간략 설명 라벨 (사용자 지시: 뭐가 뭔지 표시).
   LootSpot.All / LootPickup.All(착지 조각)을 순회해 플레이어 반경 maxDistance(14m) 내

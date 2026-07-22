@@ -37,4 +37,7 @@
 
 - 숨김 타이머 실수치는 Diagnostics 대시보드에만 노출. 플레이어 HUD 노출 금지.
 - 난수는 반드시 RunManager.Rng (시드 기반) 사용. UnityEngine.Random 금지 (재현성).
+  - 게임 결과에 닿는 지연 산포(조각 착지, 착탄점)는 배치 시 RunManager.Rng에서
+    시드를 배정받아 로컬 System.Random 사용 (런타임 직접 소비 금지 - 스트림 오염)
+  - 순수 비주얼(파편, 붕괴 조각)은 new System.Random(GetInstanceID()) 허용
 - 이모지/유니코드 특수문자 금지 (프로젝트 규약).

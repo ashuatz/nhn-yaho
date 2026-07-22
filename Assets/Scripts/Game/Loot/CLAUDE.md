@@ -9,20 +9,25 @@
 - LootCatalog.cs: 코드 폴백 카탈로그 3종 (폐지 t1 w1 / 고철 t2 w4 / 금고 t3 w9)
   + 한 줄 설명 (HUD 라벨용). 정식 에셋 승격은 트랙 B 이후
 - RunInventory.cs: 순수 클래스 (EditMode 테스트 대상). Add/Clear/TotalValue/TotalWeight, id 기준 스택.
+  Add(definition, value, weight) 오버로드 = 조각 지분 획득용 (LootPickup).
   TotalWeight는 CarryLoad(Player/)의 과적 판정 입력 (M2-1)
 - LootSpot.cs: 씬 배치물. E 홀드 루팅, 좌우 입력/홀드 해제 = 취소(진행도 리셋).
   static All = 라벨 순회용 레지스트리 / Active = 현재 루팅 중 스팟 (HUD 게이지 참조).
   static PromptTarget = 시작 가능 조건 충족 스팟 (HUD 우하단 키 프롬프트 참조).
   진행 중에도 시작 조건 재검증 (범위 이탈/requiredMinPlayerY 미달 시 취소 - 교차 검토).
   파밍 연출 (사용자 지시): 루팅 중 0.28초마다 LootBurst 파편, 완료 시 획득 대신
-  ScatterPickups - 조각 3개(DropPieces)를 포물선으로 흩뿌린다. 가치/무게는 조각에
-  분배 (합계 보존, 나머지는 앞 조각). scatterRadiusMin/Max(단차 위는 좁게),
-  scatterClampHalfWidth(복도 밖 착지 방지, 스포너가 주입). 산포/비주얼 난수는
-  인스턴스 시드 - RunManager.Rng 오염 금지
-- LootPickup.cs: 완료 시 튀어나오는 아이템 조각. 포물선 낙하(1회 바운스) 후 착지 -
-  E 홀드(상호작용 공용 키)로 줍기, 줍는 시점에 인벤토리 반영. 방치 = 두고 간 가치.
-  지지 스트립의 자식 - 바닥과 함께 침몰, y<-8 자체 정리.
-  static All(라벨용) / PromptTarget(HUD 프롬프트). 판정은 거리 기반 (콜라이더 없음)
+  ScatterPickups - 조각 3개(DropPieces)를 포물선으로 흩뿌린다. 가치/무게는 조각
+  지분으로 분배 (합계 보존, 나머지는 앞 조각 - 런타임 SO 생성 없음).
+  scatterRadiusMin/Max(단차 위는 좁게), scatterClampHalfWidth(복도 밖 착지 방지),
+  scatterSeed(배치 시 RunManager.Rng에서 배정 - 산포는 게임 결과라 재현성 대상,
+  Codex 교차 검토). 모두 스포너가 주입
+- LootPickup.cs: 완료 시 튀어나오는 아이템 조각. Definition은 공유 참조 +
+  PieceValue/PieceWeight 지분. 포물선 낙하(1회 바운스) 후 착지 - E 홀드
+  (상호작용 공용 키)로 줍기, 줍는 시점에 RunInventory.Add(def, value, weight).
+  방치 = 두고 간 가치. 반경 내 일괄 수거/루팅 중 수거는 의도된 UX.
+  지지 스트립의 자식 - 바닥과 함께 침몰, y<-8 자체 정리. 비주얼 머티리얼은
+  OnDestroy 해제. static All(라벨용) / PromptTarget(HUD 프롬프트).
+  판정은 거리 기반 (콜라이더 없음)
 - LootBurst.cs: 파밍/착탄 파편 연출 (큐브 칩, SinkDebris 계열). Spawn(origin, count, color).
   순수 비주얼 - 인스턴스 시드 난수, 공유 런타임 머티리얼, 자체 파괴
 - PlayerStash.cs: 아웃게임 창고. 안정 ID 목록 저장 (가치 합계 아님 - 확장 대비).

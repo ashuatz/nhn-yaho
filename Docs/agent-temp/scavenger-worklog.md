@@ -40,8 +40,35 @@
 
 ### 규약 메모
 
-- 비주얼/산포 전용 난수는 new System.Random(GetInstanceID()) - SinkDebris 선례.
-  RunManager.Rng(배치 스트림)는 런타임 이펙트가 소비하면 맵 재현성이 깨지므로 금지
+- 순수 비주얼 난수는 new System.Random(GetInstanceID()) - SinkDebris 선례.
+  단, 게임 결과에 닿는 산포(조각 착지/착탄점)는 배치 시 RunManager.Rng에서
+  시드를 배정받아 로컬 스트림 사용 (아래 교차 검토 반영).
+  RunManager.Rng를 런타임 이펙트가 직접 소비하면 맵 재현성이 깨지므로 금지
+
+### Codex 교차 검토 (gpt-5.5 xhigh, P1 4 / P2 5 / P3 3)
+
+반영 10건:
+- P1: 조각 산포/착탄점 시드를 GetInstanceID -> 배치 시 RunManager.Rng 배정
+  (게임 결과 난수는 재현성 규약 대상). AddComponent 직후 Awake가 시드 주입보다
+  먼저 돌므로 rng는 지연 초기화
+- P1: 낙하물 착탄이 전폭 스트립을 통째로 Sink -> 점프 없는 플레이어에게
+  우회 불가 봉쇄. 땅 꺼짐과 동일하게 분할 침몰 + 안전 레인 보존
+  (부착물은 소속 조각으로 재부착 - 리스케일 왜곡 방지)
+- P1: 선택지가 키보드 전용 -> 터치 소프트락. ChoiceNode.ChooseAdvance/Extract
+  공개 + HUD 선택 패널에 전진/탈출 터치 버튼 (프리팹 재생성)
+- P2: 조이스틱/홀드 버튼이 primaryTouch만 읽음 -> 전체 터치 순회 + 조이스틱은
+  시작 touchId 고정 추적 (멀티터치)
+- P2: 후퇴 한계를 하단 중앙 한 점으로만 계산 -> 플레이어 뷰포트 x에서 샘플
+- P2: 조각마다 런타임 LootDefinition SO 생성 (같은 id 다른 값 = 불변식 파괴)
+  -> 정의는 공유 참조, RunInventory.Add(definition, value, weight) 오버로드로
+  지분만 반영. LootPickup.PieceValue/PieceWeight
+- P2: 돌/조각 인스턴스 머티리얼 미해제 -> OnDestroy에서 Destroy
+- P3: HudController 실행 순서 -150 (홀드 1프레임 지연 제거),
+  LoadPrefabContents try/finally, (RaycastAll은 자체 발견 선반영)
+
+기각/보류 2건:
+- 반경 내 조각 일괄 수거 + Looting 중 줍기 허용: 의도된 UX (더미 줍기 편의)
+- LootBurst CreatePrimitive churn: 그레이박스 허용, 정식 VFX 교체 시 풀링
 
 ### 다음 작업
 

@@ -14,7 +14,8 @@
   (AttachToSupportingStrip), currentStrips/currentLedges
 - SegmentSpawner.Features.cs: 기능 카테고리. 루트(tier 가중치)/폭탄(z 간격 검증)/
   땅꺼짐·밀기 트랩/낙하물 존(RockfallZone, 초입·선택지 앞·단차 제외, z 간격 9m)/
-  ChoiceNode/거리 신호 배치 + 트랩 튜닝 필드.
+  ChoiceNode/거리 신호 배치 + 트랩 튜닝 필드. 루트 조각 산포/낙하물 착탄 시드는
+  배치 시 RunManager.Rng에서 배정 (게임 결과 난수 = 재현성 대상).
   전진 콜백에서 다음 구간 생성과 뒤쪽 정리 수행 (동시 생존 최대 2구간)
 - SegmentPath.cs: 길 공용 지오메트리 (정적). BuildWalkFloorStrips - 런타임과
   사전 배치 윈도우 공용 (SegmentEnvironment에서 이동)
