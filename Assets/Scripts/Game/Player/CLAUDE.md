@@ -11,23 +11,22 @@
   M5-1 - 키보드 E와 OR 합성). 낙사 판정 (y < -4 -> Kill("fall"))
 - PlayerMotor.cs: CharacterController 이동. 2D 벡터 홀드 (ADR-0007):
   SetMoveInput(Vector2) = 입력이 있는 동안 이동, 아날로그 크기 비례. moveSpeed = 튜닝 지점.
-  SpeedScale = CarryLoad가 설정하는 이동속도 배율 (1 = 정상).
-  StaminaScale = PlayerStamina가 설정하는 탈진 감속 배율 (곱 합성).
+  관성 (ADR-0008 이식): 지수 보간 가속 (k = 1 - exp(-acceleration*dt*load)),
+  무게 실릴수록(SpeedScale 낮을수록 loadedAccelFloor까지) 반응 저하. smoothedMove가
+  관성 속도 - 임펄스는 별도라 보간 제외(타격감 유지). acceleration/loadedAccelFloor 튜닝.
+  SpeedScale = 외부 시스템(CarryLoad)이 설정하는 이동속도 배율 (1 = 정상).
   AddImpulse(Vector3) = 외부 충격 속도 (밀기 트랩, M3-3). impulseDamping으로 감쇠,
-  입력과 합산 후 동일 클램프 적용. ResetVertical이 잔존 임펄스도 초기화.
+  입력과 합산 후 동일 클램프 적용. ResetVertical이 잔존 임펄스/관성도 초기화.
   x는 복도 반폭, z는 MinZ(붕괴 전선)로 이동 전 사전 클램프. 누적 중력 = 낙사 지원
-- CarryLoad.cs: 무게 -> 이동속도 배율 (M2-1). RunInventory.TotalWeight를 읽어
-  3단계(일반/과적/초과적) 판정 후 Motor.SpeedScale 반영. 임계(overloadedAt/
-  severelyOverloadedAt)와 배율은 Player 프리팹 튜닝 지점.
-  EvaluateStage/ResolveSpeedScale/StageLabel = 정적 순수 함수 (EditMode 테스트 대상)
-- PlayerHealth.cs: 체력 (사용자 지시, HUD 표시). maxHealth(기본 3히트),
-  Damage(양, 원인) = 무적 시간(invulnerableSeconds) 고려 후 감산, 0 = Kill.
-  폭탄/낙하물/기둥 = 2, 돌진 적 = 1, 낙사 = Kill 직행 (즉사 유지).
-  ResetFull = 런 재시작 (GameFlow 호출). 프리팹 튜닝 지점
-- PlayerStamina.cs: 스테미나 (사용자 지시, HUD 표시). 과적/초과적 상태로 이동 중
-  소모, 그 외 회복. 0 = 탈진 -> Motor.StaminaScale 감속, recoverThreshold까지
-  회복해야 해제 (히스테리시스). ResolveDrainRate = 정적 순수 함수.
-  스프린트 도입 시 소모 소스 추가 지점. 프리팹 튜닝 지점
+- PlayerHealth.cs: 체력 (HP, ADR-0008 A안 - 회복 없음). Damage(amount, cause) 진입점,
+  지속 피해는 dps*dt로 매 프레임 호출. 0 이하면 PlayerController.Kill로 사망 위임
+  (경로 단일화). HealthChanged/Damaged 이벤트(HUD 바/피격 플래시). maxHealth = 프리팹
+  튜닝. ApplyDamage = 정적 순수 함수 (EditMode 테스트 대상). GameFlow가 폴백 보강.
+- CarryLoad.cs: 무게 -> 이동속도 배율 (M2-1, ADR-0008 비율 재작성). RunInventory.
+  TotalWeight를 maxCarryWeight 대비 비율로 환산해 5단계 판정(가벼움/보통/무거움/
+  매우무거움/과적, 경계 25/50/75/90%) 후 Motor.SpeedScale 반영. LoadRatio(0..1) 노출.
+  배율(heavy/veryHeavy/severe/overloaded)/maxCarryWeight = 프리팹 튜닝, 경계는 코드 상수.
+  EvaluateStage(비율)/ResolveSpeedScale/StageLabel = 정적 순수 함수 (EditMode 테스트 대상)
 - FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003) + 벨트스크롤
   (ADR-0007 5항): z 추적은 전진 전용 래칫 - 플레이어가 후퇴해도 물러나지 않고,
   BackLimitZ를 Motor.CameraMinZ로 공급해 가시 영역 밖 이탈을 막는다.

@@ -66,6 +66,81 @@
 ### 다음 작업
 
 M2-3~6 잔여 (퀵슬롯/탈출 카드). 신규 위협/체크포인트 수치 플레이 튜닝.
+## 2026-07-23 (9) - 웹 이식 2차: 카메라/자동수집/인터페이스/시각 (ADR-0008 연장)
+
+사용자 지시로 웹 프로토타입을 시각/조작 전반까지 이식. 조작 방식(입력)은 유지.
+
+### 완료
+
+- 카메라 아이소: FollowCamera 직교(Orthographic) + pitch30/yaw-45(2:1 픽셀
+  아이소) + size12. 전진(+z)=화면 오른쪽 위(웹 진행 방향, 좌우반전 수정).
+  CameraOffsetXY로 시야 클리어런스 유도, CameraSide 부호 yaw에 연동.
+- 길바닥 아이템 자동수집: LootSpot E홀드 루팅 -> 밟으면 자동 획득(무게 여유 시).
+  조각낙하(LootPickup) 미사용. Collected 이벤트로 HUD 연출 훅.
+- 아이템 발광: LootVisual emissive 큐브 + bob/회전 + 포인트라이트. Bloom 추가
+  (TiltShiftProfile). 45도 기울여 마름모 룩.
+- 아이템 아이콘: 이모지 금지 규약 준수 - LootIconMaker가 종류별 절차적 도형
+  스프라이트 생성(Resources/LootIcons), LootIcons 런타임 로드. 가방슬롯/flyer 적용.
+- 인터페이스 웹 이식: HP바/무게바/탐색목표/가방 5열 그리드(등급 외곽선+아이콘)/
+  획득 토스트/진행 강조. 실시간 모션: flyToBag(메인+파티클4개 포물선 -> 가방
+  꽂힘 + pop), 바 보간, 토스트 슬라이드인, 강조 팝, 피격 붉은 플래시.
+- 바닥 그리드: GreyboxMaterials 그리드 텍스처/머티리얼 생성, SegmentPath가
+  스트립에 적용(타일링 1m=1셀). 화살표 데칼 머티리얼 코드(배치는 후속).
+
+### 검증
+
+- 컴파일 에러 0건(전 단계). Play 실측: 자동수집 동작, flyer 생성(파티클 포함),
+  아이콘 7종 로드, 바닥 그리드 78/82 스트립 적용, HUD 패널 활성 확인.
+
+### 나중으로 (미결)
+
+- 전진 방향 화살표 데칼 배치 (머티리얼 생성 코드만 있음, 스포너 배치 미구현).
+- LootVisual/그리드 인스턴스 머티리얼 누수 검토(스트립 파괴 시 해제).
+- 웹 5종 아이템(톱니/크리스탈/배터리/코일/희귀상자) 도입 여부(현재 tier 3종).
+- 밸런스 세트 튜닝(무게압축 <-> 과적), 아이콘 모양/크기 눈 확인 후 조정.
+- 보급 상자(2.5초 홀드 개봉) 웹 이식 여부.
+
+---
+
+## 2026-07-23 (8) - 웹 프로토타입 이식 (HP/속도감/장애물/등급) - ADR-0008
+
+별도 웹 프로토타입(D:/NHN2/voxel-extraction-proto)을 정답지로 4영역 전면 이식.
+사용자 결정: 퀵슬롯 제거 / HP 도입(A안 회복없음) / 전면 이식. 폴더 구조 불변.
+
+### 완료
+
+- HP 시스템 (A안): PlayerHealth 신설. Damage(amount, cause) 진입점, 0 이하 시
+  기존 Kill로 위임(경로 단일화). 회복 없음. PlayerController.Health 게터 +
+  리셋. GameFlow 폴백 보강. ApplyDamage 정적 순수 함수(테스트).
+- 속도감(관성): PlayerMotor 지수 보간 가속(k=1-exp(-accel*dt*load)), 무게 실릴수록
+  반응 저하. moveSpeed 4.2->5.0. smoothedMove 상태, 임펄스는 보간 제외.
+- 무게 5단계: CarryLoad 절대임계 3단계 -> 비율 4경계 5단계(25/50/75/90% ->
+  -7/-13/-23/-33%). maxCarryWeight 도입. enum/시그니처 변경 -> 테스트 재작성.
+- 장애물 3종 (전부 HP 데미지형, DangerGrid 예고): HazardFloor(지속 26/s) /
+  StrikeZone(반복 폭격, 예고 1.35s -> 40) / RollingBlock+Spawner(정면 스폰, 35).
+  DepthCurve 수량 3종 + SegmentSpawner 배치 3종. 산포 시드 RunManager.Rng.
+- 등급 합성 (A안): RunInventory 같은 id 5개 -> 상위 등급(무게 압축 + 가치 x6).
+  Entry.Grade/Weight/Value. BankedCounts(합성 전 원본)로 스태시 저장 -> 창고 불변.
+  RunSettlement.BankInventory 전환.
+- HP HUD: HudController 체력 바 + 피격 붉은 플래시(Damaged 이벤트). HudCanvasTemplate 배선.
+
+### 검증
+
+- Unity 컴파일 에러 0건 (전 어셈블리). EditMode 테스트 52/52 통과
+  (기존 46 + 신규 등급합성 5, 무게판정 재작성, 회계 회귀 1).
+- 자체 검토에서 등급합성 회계 버그 1건 발견·수정: "평균 단가" 방식이 정수
+  나눗셈 잔차로 TotalValue와 엔트리 합을 어긋나게 함 -> 제거 스택의 실제
+  무게/가치 합을 정확히 회수하는 방식으로 재작성 + 회귀 테스트 추가.
+- HudCanvas 프리팹 증분 배선 완료 (a안): 기존 프리팹 보존한 채 execute_code로
+  HealthBar(Fill+Text)/DamageFlash 추가 + HudController 필드 배선. 기존 배선
+  무손상 확인. HP 바/피격 플래시가 씬에 실제 노출됨.
+
+### 나중으로 (미결)
+
+- 밸런스 세트 튜닝: 등급 무게압축 <-> 과적 페널티는 플레이 확인 후 함께.
+- /codex 검토: codex CLI 미설치 환경이라 자체 검토로 대체 수행. 설치 후
+  정식 검토 재실행 여지.
+- 회복 수단 도입 여부는 A안 밸런스 확인 후.
 
 ---
 

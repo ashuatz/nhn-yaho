@@ -29,8 +29,6 @@ namespace Scavenger
         bool worldInitialized;
         CollapseFront collapseFront;
         CarryLoad carryLoad;
-        PlayerHealth playerHealth;
-        PlayerStamina playerStamina;
 
         void Awake()
         {
@@ -76,16 +74,9 @@ namespace Scavenger
             if (carryLoad == null)
                 carryLoad = player.gameObject.AddComponent<CarryLoad>();
 
-            // 체력/스테미나 (사용자 지시) - 기존 Player 프리팹에는 폴백으로 보강
-            playerHealth = player.GetComponent<PlayerHealth>();
-
-            if (playerHealth == null)
-                playerHealth = player.gameObject.AddComponent<PlayerHealth>();
-
-            playerStamina = player.GetComponent<PlayerStamina>();
-
-            if (playerStamina == null)
-                playerStamina = player.gameObject.AddComponent<PlayerStamina>();
+            // 체력 (HP, 데미지형 장애물의 전제) - 기존 Player 프리팹에는 폴백으로 보강
+            if (player.GetComponent<PlayerHealth>() == null)
+                player.gameObject.AddComponent<PlayerHealth>();
 
             // 카메라 쉐이크 (피격/위협 피드백) - 기존 카메라 프리팹에는 폴백으로 보강
             if (followCamera.GetComponent<CameraShake>() == null)
@@ -171,9 +162,6 @@ namespace Scavenger
             // 인벤토리는 StartRun에서 이미 비워졌다 - 이전 런의 과적 배율이
             // 첫 이동 프레임에 남지 않게 즉시 재판정 (Codex 검토 반영)
             carryLoad.RefreshNow();
-
-            playerHealth.ResetFull();
-            playerStamina.ResetFull();
 
             followCamera.SnapAndLook();
         }

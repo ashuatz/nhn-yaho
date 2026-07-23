@@ -9,12 +9,9 @@ namespace Scavenger.Segment
     [CreateAssetMenu(menuName = "Scavenger/Segment Definition", fileName = "SegmentDefinition")]
     public sealed class SegmentDefinition : ScriptableObject
     {
-        [Header("구간 형태")]
-        public float lengthMeters = 80f;
-
-        // 3.5 -> 5.25: 플레이 영역 1.5배 확장 (사용자 지시, 2026-07-22)
-        public float corridorHalfWidth = 5.25f;
-
+        [Header("구간 형태. 길이 200m (웹 이식 - 더 긴 레벨, ADR-0008)")]
+        public float lengthMeters = 200f;
+        public float corridorHalfWidth = 3.5f;
         public float wallHeight = 2f;
 
         public static SegmentDefinition CreateDefault()

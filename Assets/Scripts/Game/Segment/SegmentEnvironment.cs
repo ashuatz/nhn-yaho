@@ -142,16 +142,21 @@ namespace Scavenger.Segment
         }
 
         /// <summary>
-        /// 카메라가 있는 쪽 (+1 = +x). 카메라측은 지형이 발판을 가리면 안 되므로
+        /// 카메라가 있는 쪽 (+1 = +x, -1 = -x). 카메라측은 지형이 발판을 가리면 안 되므로
         /// 위로 쌓지 않고 단차로 내려간다 (사용자 지시). 클리어런스가 비활성이면
-        /// 리그 기본값(+x, Main Camera 프리팹 positionOffsetWorld.x = 9.5) 가정.
+        /// 아이소 리그 기본값(+x: yaw -45 카메라 오프셋 x가 양수, ADR-0008) 가정.
+        /// 활성이면 SightClearance.NearPoint(FollowCamera.CameraOffsetXY)로 실제 부호 판정.
         /// </summary>
         public static int CameraSide(SightClearance clearance)
         {
+            // 클리어런스 미제공 시 아이소 리그 기본 부호(+x, yaw -45)
             if (!clearance.Enabled)
                 return 1;
 
-            return clearance.NearPoint.x >= 0f ? 1 : -1;
+            if (clearance.NearPoint.x >= 0f)
+                return 1;
+
+            return -1;
         }
 
         // 보행 바닥 스트립 생성은 길 카테고리로 이동 - SegmentPath.BuildWalkFloorStrips (M4-1)

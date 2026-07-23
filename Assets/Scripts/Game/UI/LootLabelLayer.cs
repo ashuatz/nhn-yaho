@@ -8,12 +8,16 @@ using UnityEngine.UI;
 namespace Scavenger.UI
 {
     /// <summary>
-    /// 아이템 머리 위 간략 설명 라벨 (M5-1, 사용자 지시: 뭐가 뭔지 알 수 있게).
-    /// 루팅 스팟과 떨어진 조각을 화면에 투영해 이름/가치/무게/설명을 띄운다.
-    /// 라벨 풀은 프리팹의 비활성 템플릿을 복제해 만든다 (개수 고정, 매 프레임 재배치).
+    /// 아이템 머리 위 간략 설명 라벨.
+    /// 자동 수집(ADR-0008 웹 이식) 전환으로 길가 아이템은 이름/설명 라벨 없이
+    /// 발광 아이콘(LootVisual 큐브)만으로 표시한다 - showLabels가 기본 false.
+    /// 라벨이 필요하면 인스펙터에서 showLabels를 켠다 (리그/로직은 보존).
     /// </summary>
     public sealed class LootLabelLayer : MonoBehaviour
     {
+        [Header("라벨 표시 여부 (웹 이식: 기본 꺼짐 - 아이콘만)")]
+        public bool showLabels = false;
+
         [Header("uGUI 리그 (HudCanvas 프리팹이 배선)")]
         public RectTransform labelRoot;
         public Text labelTemplate;
@@ -58,6 +62,13 @@ namespace Scavenger.UI
 
         void Update()
         {
+            // 자동 수집 이식: 길가 아이템은 아이콘만 - 라벨은 기본 꺼짐
+            if (!showLabels)
+            {
+                HideAll();
+                return;
+            }
+
             if (!IsRunning() || !TryResolveScene())
             {
                 HideAll();
@@ -124,23 +135,7 @@ namespace Scavenger.UI
                 });
             }
 
-            foreach (LootPickup pickup in LootPickup.All)
-            {
-                if (pickup == null || !pickup.IsResting || pickup.Definition == null)
-                    continue;
-
-                float sqr = (pickup.transform.position - playerPosition).sqrMagnitude;
-
-                if (sqr > maxSqr)
-                    continue;
-
-                candidates.Add(new Candidate
-                {
-                    WorldPosition = pickup.transform.position + Vector3.up * pickupLabelHeight,
-                    Label = $"{pickup.Definition.displayName} 조각 +{pickup.PieceValue}",
-                    SqrDistance = sqr,
-                });
-            }
+            // 자동 수집(ADR-0008)으로 조각(LootPickup)이 사라져 스팟 라벨만 표시한다
         }
 
         static string BuildSpotLabel(LootDefinition definition)
