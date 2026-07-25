@@ -5,6 +5,55 @@
 
 ---
 
+## 2026-07-25 (6) - 바닥 겹침 수정 + HUD를 UI Toolkit으로 전환
+
+사용자 보고: "바닥 겹침 뭐야? 높이 처리 안했어?" + "UI도 UIToolkit 기반으로 바꿔서 셋업해봐".
+
+### 바닥 겹침 (높이 문제가 아니었다)
+
+원인 3개를 Unity MCP로 씬을 직접 조회해 특정했다.
+
+1. **구버전 프리팹이 회전 없이 붙어 복도를 침범** (주 원인).
+   FarmingPoint_Top/_Bottom이 아직 ver01 평면 규격(둘 다 +x로 뻗음)인데,
+   새 코드가 "상단은 -x 규격"이라고 타입으로 가정해 회전을 생략했다 ->
+   상단 플랫폼이 복도 위로 5x5 슬래브처럼 겹쳤다.
+   -> 프리팹이 방향을 선언하게 했다 (FarmingPoint.authoredSideSign, 기본 +1 = ver01).
+      소켓 1개인 구버전은 세션당 1회 경고로 재생성을 안내
+2. **SampleScene에 이전 세션 생성물(Zone_00~02)이 저장**되어 있었고
+   루트(SegmentSpawner)가 z -26.9로 밀려 있었다. 리스트 기반 정리로는 지워지지 않는다.
+   -> DespawnAll에 DestroyLeftoverSegments(자식 순회) 추가 + ValidateRootTransform으로
+      루트를 원점/무회전/스케일 1로 되돌린다 (경고 후 복구)
+3. 실제 플레이 씬은 Assets/Scenes/Greybox.unity였다 (SampleScene에는 RunSystems/
+   GameFlow/HUD가 없어 런이 시작되지 않는다). 두 씬을 혼동하지 말 것
+
+자체 수정 중 만든 함정도 되돌렸다: 생성물에 HideFlags.DontSaveInEditor를 붙였더니
+FindObjectsByType이 그 오브젝트를 제외해 조회가 0개가 됐다 (Unity 동작).
+
+검증 (플레이 모드 + 스크린샷): 복도 침범 렌더러 0 / 세그먼트 gap 0.000 /
+상단 +1.0 · 하단 -1.0 동시 생성 / 램프 경사 -26.6도 / 계단이 눈으로 확인됨.
+존당 개수 min을 2로 올렸다 - 배분 규칙상 상단+하단이 함께 나와 3층이 화면에 읽힌다.
+
+### HUD -> UI Toolkit
+
+- 자산: Assets/UI/Hud.uxml + Hud.uss + UnityDefaultRuntimeTheme.tss +
+  HudPanelSettings.asset, 씬 배치는 Prefabs/HudDocument.prefab
+- 런타임 뷰 3개: HudView(패널) / HudJoystickView(조이스틱) / HudLootLabelView(월드 라벨)
+- 에디터 메뉴 Scavenger > Ensure HUD Document (UI Toolkit), Setup Greybox Scene에 포함.
+  씬에서 uGUI HudCanvas를 빼고 HudDocument로 교체 (프리팹 파일은 롤백용으로 남김)
+- **함정: 폰트를 USS `resource("LegacyRuntime.ttf")`로 지정하면 런타임 패널에서
+  해석되지 않아 글자가 아예 안 그려진다** (박스만 보였다). 기본 테마 폰트는 한글
+  글리프가 없어서, 내장 동적 폰트를 코드로 루트에 넣는다 (HudView.ApplyFont)
+- 바인딩은 Update에서 지연 처리 - UIDocument가 트리를 만드는 OnEnable보다
+  뷰의 실행 순서가 빨라 rootVisualElement가 null이다
+- 미이식: 획득 플라이어 연출, 토스트 큐 (연출 문서 확정 후)
+
+### 검증 상태
+
+- Unity 컴파일 0 에러, EditMode 55건 통과 유지
+- 플레이 모드 스크린샷으로 HUD 렌더 확인 (타이머/경고/수집 요약/월드 라벨/조이스틱/가방 8칸)
+
+---
+
 ## 2026-07-25 (5) - 기준 문서 v0.0.2 개정 + 데이터 컬럼 블로커 해소
 
 사용자 지시: "어긋남 있는 문서는 v0.0.2로 개선 / 실질 블로커 우선 작업".

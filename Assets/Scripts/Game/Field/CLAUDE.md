@@ -141,6 +141,17 @@ GUID가 유지되므로 스포너 프리팹 참조는 끊기지 않는다).
   출구 소켓 좌표가 제거 기준선에 들어가면 통째 낙하 (파밍 문서 2.7)
 - 세그먼트 길이가 다르므로 위치 계산에 `stageStartZ + index * length` 산술을
   다시 도입하지 말 것. 위치는 FieldSegment의 StartZ/EndZ가 정본이다
+- 필드 루트(스포너)는 원점/무회전/스케일 1이어야 한다. 생성물은 월드 좌표와
+  localScale로 배치하므로 루트가 움직이면 만들어 둔 바닥이 전부 끌려간다
+  (실제로 루트가 z -26.9로 밀린 씬이 있었다). OnEnable의 ValidateRootTransform이
+  경고 후 되돌린다
+- 런타임 생성물에 HideFlags.DontSave 계열을 붙이지 말 것. 씬 저장은 막아주지만
+  Unity가 FindObjectsByType에서 그 오브젝트를 제외해, 생성물을 찾는 코드가 조용히
+  0개를 받는다 (검증 중 실제로 겪었다). 씬에 저장된 잔존물은 StartStage ->
+  DespawnAll -> DestroyLeftoverSegments가 경고와 함께 걷어낸다
+- 파밍 포인트 프리팹이 뻗는 방향은 프리팹이 authoredSideSign으로 선언한다.
+  타입(상단/하단)으로 방향을 가정하면 구버전 프리팹(전부 +x 규격)이 회전 없이
+  붙어 복도를 침범한다 - 바닥이 두 겹으로 보이던 원인
 
 ## 미구현 (문서 대비)
 

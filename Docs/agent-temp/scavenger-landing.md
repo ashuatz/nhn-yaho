@@ -26,6 +26,11 @@
   무게 5단계 페널티(25/50/75/90%). 가방 컬럼은 BagDefinition(최대 무게/슬롯/전역 N)
 - 조작: WASD/화살표 홀드 = 2D 벡터 이동 (화면 기준 축), 좌하단 가상 조이스틱,
   E 홀드 = 상호작용, 클릭/스페이스 = 라운드 재개, F1 대시보드
+- HUD: **UI Toolkit** (Assets/UI/Hud.uxml + Hud.uss, HudDocument 프리팹).
+  uGUI HudCanvas는 롤백용으로 파일만 남아 있고 씬에는 배치되지 않는다.
+  폰트는 코드가 넣는다 (USS resource()는 해석되지 않아 글자가 안 나온다)
+- **플레이 씬은 Assets/Scenes/Greybox.unity**다. SampleScene에는 RunSystems/GameFlow/
+  HUD가 없어 런이 시작되지 않는다 - 씬을 혼동하지 말 것
 - 카메라: 아이소 고정 (pitch 30 / yaw -45, 초망원 원근). 전진 전용 래칫 +
   후퇴 한계는 화면 하단 에지 지면 교점. **+x = 화면 아래(카메라 쪽) / -x = 화면 위**
 - 리소스: 런타임 생성물은 Assets/Materials/Greybox/Common.mat 기반
