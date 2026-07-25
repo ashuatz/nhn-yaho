@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb100b68e9fd6594983fd8df41eba602, type: 3}
+  m_Name: FieldTileSet
+  m_EditorClassIdentifier: Scavenger.Game::Scavenger.Field.FieldTileSet
+  tiles:
+  - prefab: {fileID: 1075838714130708777, guid: fe886192730744e4083a70766348382e, type: 3}
+    weight: 1
+  - prefab: {fileID: 1764361228932558448, guid: 3f2b2360f7ab9254aa0fde7cdba5435d, type: 3}
+    weight: 1
+  - prefab: {fileID: 1964699293418441462, guid: 52b8050d2e623ab41b0a18eb7a9fe788, type: 3}
+    weight: 1
+  noiseScale: 0.18
+  maxTiltDegrees: 0.8
+  tileSurfaceOffsetY: -0.1
+  tileThickness: 0.2
