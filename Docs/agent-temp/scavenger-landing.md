@@ -55,10 +55,25 @@
 
 ## 문서 맵
 
+정본 기획 (2026-07 이후 이 문서들이 기준이다. 아래 구 계획 문서보다 우선)
+
+- 작업 순서: Docs/agent-temp/7월_마일스톤_작업_우선순위_v0.0.1.md
+- 필드: Docs/agent-temp/필드_규칙_및_절차_v0.0.1.md
+- 드랍 아이템: Docs/agent-temp/드랍_아이템_시스템_v0.0.1.md
+- 가방과 무게: Docs/agent-temp/가방과_무게_시스템_v0.0.1.md
+- 파밍 아이템 및 포인트: Docs/agent-temp/파밍_아이템_및_포인트_시스템_v0.0.1.md
+- 아트 협업 규격/스케줄: Docs/agent-temp/아트_협업_스케줄_v0.0.1.md
+- 골격만 작성됨 (내용 대기): 기믹_시스템_v0.0.1.md, 인터렉션_존_시스템_v0.0.1.md,
+  코어메카닉_게임플로우_v0.0.1.md
+- 문서 작성 규약: Docs/NHN_기획서_작성_지침.md (ver13)
+
+구 계획 / 기록
+
 - 기획: Docs/agent-temp/scavenger-extraction_v0.0.2_plan.md
 - 구현 계획(마일스톤): Docs/agent-temp/scavenger-impl_v0.0.3_plan.md
 - 진행 기록: Docs/agent-temp/scavenger-worklog.md (세션마다 항목 추가할 것)
-- 결정: Docs/adr/ADR-0001~0007 (0007 = 2D 벡터 홀드 이동, 0006 이동부 대체)
+- 결정: Docs/adr/ADR-0001~0009 (0009 = 존 단위 필드 전환 + 기믹 제거,
+  0006 붕괴 전선과 0008 기믹 일부를 대체)
 - 코드 맵: Assets/Scripts/Game/CLAUDE.md + 폴더별 CLAUDE.md
 
 ## 환경 제약 (2026-07-22 기준)
