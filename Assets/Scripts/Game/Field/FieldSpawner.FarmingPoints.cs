@@ -293,7 +293,166 @@ namespace Scavenger.Field
                     Definition.farmingPointShakeStartBlocks * Definition.blockSize,
             });
 
+            // 스팟 좌표는 Initialize가 수집한 뒤라야 확정된다 (프리팹 마커 기준)
+            PopulateObjectSpots(point, grade);
+
             RecordFootprint(metrics);
+        }
+
+        // -- 아이템 오브젝트 (파밍 문서 3장) -----------------------------------
+
+        /// <summary>
+        /// 구역 안 오브젝트 스팟마다 아이템 오브젝트를 1대1로 생성한다 (문서 2.2 (3)).
+        /// 어떤 등급 오브젝트가 놓일지는 파밍 포인트 등급이 확률로 정한다 (문서 3.2).
+        /// </summary>
+        void PopulateObjectSpots(FarmingPoint point, FarmingPointGrade pointGrade)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.Rng == null)
+                return;
+
+            System.Random rng = run.Rng;
+
+            foreach (ObjectSpot spot in point.Spots)
+            {
+                if (spot == null || spot.IsOccupied)
+                    continue;
+
+                FarmingPointGrade objectGrade = RollObjectGrade(pointGrade, rng);
+
+                // 그레이박스 자리 표식은 오브젝트가 대신한다 - 겹쳐 두면 두 겹으로 보인다
+                ClearSpotMarkers(spot);
+
+                FarmingObject placed = SpawnFarmingObject(spot, objectGrade, rng);
+
+                if (placed == null)
+                    continue;
+
+                placed.Initialize(farmingItemCatalog, rng.Next(), ResolveCollectRadius());
+                spot.MarkOccupied();
+            }
+        }
+
+        /// <summary>
+        /// 파밍 포인트 등급별 오브젝트 등급 확률 (문서 3.2 "오브젝트 생성 확률").
+        /// 표가 컬럼으로 들어오면 이 배열이 데이터 조회로 바뀐다.
+        /// </summary>
+        static readonly float[][] ObjectGradeChance =
+        {
+            new[] { 0.75f, 0.22f, 0.03f },
+            new[] { 0.40f, 0.45f, 0.15f },
+            new[] { 0.15f, 0.40f, 0.45f },
+        };
+
+        static FarmingPointGrade RollObjectGrade(FarmingPointGrade pointGrade, System.Random rng)
+        {
+            float[] chance = ObjectGradeChance[(int)pointGrade];
+            float roll = (float)rng.NextDouble();
+            float accumulated = 0f;
+
+            for (int i = 0; i < chance.Length; i++)
+            {
+                accumulated += chance[i];
+
+                if (roll <= accumulated)
+                    return (FarmingPointGrade)i;
+            }
+
+            return FarmingPointGrade.Normal;
+        }
+
+        FarmingObject SpawnFarmingObject(
+            ObjectSpot spot, FarmingPointGrade objectGrade, System.Random rng)
+        {
+            // 진행 방향과 무관하게 놓여 보이도록 요 회전만 흩뿌린다 (시드 기반)
+            Quaternion rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
+
+            FarmingObject prefab = PickFarmingObjectPrefab(objectGrade, rng);
+
+            if (prefab != null)
+            {
+                FarmingObject instance = Instantiate(
+                    prefab, spot.transform.position, rotation, spot.transform);
+
+                instance.name = $"ItemObject_{instance.kind}_{objectGrade}";
+
+                return instance;
+            }
+
+            return BuildGreyboxFarmingObject(spot, objectGrade, rotation);
+        }
+
+        // 등급이 맞는 프리팹 중 하나. 그 등급 프리팹이 없으면 아무 것이나 쓴다 -
+        // 등급 하나가 비었다고 스팟이 통째로 비면 파밍할 것이 사라진다
+        FarmingObject PickFarmingObjectPrefab(FarmingPointGrade objectGrade, System.Random rng)
+        {
+            if (farmingObjectPrefabs == null || farmingObjectPrefabs.Count == 0)
+                return null;
+
+            List<FarmingObject> matching = new List<FarmingObject>(farmingObjectPrefabs.Count);
+            List<FarmingObject> available = new List<FarmingObject>(farmingObjectPrefabs.Count);
+
+            foreach (FarmingObject prefab in farmingObjectPrefabs)
+            {
+                if (prefab == null)
+                    continue;
+
+                available.Add(prefab);
+
+                if (prefab.grade == objectGrade)
+                    matching.Add(prefab);
+            }
+
+            if (matching.Count > 0)
+                return matching[rng.Next(0, matching.Count)];
+
+            if (available.Count > 0)
+                return available[rng.Next(0, available.Count)];
+
+            return null;
+        }
+
+        // 프리팹 미배선 폴백 - 코드로 상자 하나를 만든다 (아트 프리팹이 오면 대체된다)
+        FarmingObject BuildGreyboxFarmingObject(
+            ObjectSpot spot, FarmingPointGrade objectGrade, Quaternion rotation)
+        {
+            GameObject root = new GameObject($"ItemObject_Box_{objectGrade}");
+            root.transform.SetParent(spot.transform, false);
+            root.transform.localPosition = Vector3.zero;
+            root.transform.localRotation = rotation;
+
+            Color color = ResolveGradeColor(objectGrade);
+
+            GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            body.name = "Body";
+            body.transform.SetParent(root.transform, false);
+            body.transform.localScale = new Vector3(0.7f, 0.5f, 0.7f);
+            body.transform.localPosition = new Vector3(0f, 0.25f, 0f);
+            GreyboxPalette.Apply(body, color);
+
+            GameObject lid = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            lid.name = "Lid";
+            lid.transform.SetParent(root.transform, false);
+            lid.transform.localScale = new Vector3(0.76f, 0.1f, 0.76f);
+            lid.transform.localPosition = new Vector3(0f, 0.55f, 0f);
+            GreyboxPalette.Apply(lid, color * 1.25f);
+
+            FarmingObject farmingObject = root.AddComponent<FarmingObject>();
+            farmingObject.kind = FarmingObjectKind.Box;
+            farmingObject.grade = objectGrade;
+            farmingObject.interactSeconds = FarmingObject.DefaultInteractSeconds(objectGrade);
+            farmingObject.lid = lid.transform;
+
+            return farmingObject;
+        }
+
+        // 스팟 아래의 그레이박스 표식(SpotMarker)을 걷어낸다.
+        // 오브젝트를 붙이기 전에 비워야 새로 만든 오브젝트까지 함께 지우지 않는다
+        static void ClearSpotMarkers(ObjectSpot spot)
+        {
+            for (int i = spot.transform.childCount - 1; i >= 0; i--)
+                Destroy(spot.transform.GetChild(i).gameObject);
         }
 
         /// <summary>

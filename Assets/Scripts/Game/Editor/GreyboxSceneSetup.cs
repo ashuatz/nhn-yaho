@@ -1,5 +1,5 @@
+using System.Collections.Generic;
 using Scavenger;
-using Scavenger.Diagnostics;
 using Scavenger.Player;
 using Scavenger.Run;
 using Scavenger.Segment;
@@ -71,8 +71,10 @@ namespace Scavenger.EditorTools
             if (!AssetDatabase.IsValidFolder(PrefabFolder))
                 AssetDatabase.CreateFolder("Assets", "Prefabs");
 
-            // 필드 리소스 프리팹(존 바닥/파밍 포인트)을 먼저 - 스포너가 참조한다
+            // 필드 리소스 프리팹(존 바닥/파밍 포인트/아이템 오브젝트)을 먼저 -
+            // 스포너가 참조한다
             FieldPrefabTemplates.EnsureFieldPrefabs();
+            FarmingObjectTemplates.EnsureFarmingObjectPrefabs();
 
             EnsurePrefab(CameraPrefabPath, BuildCameraTemplate);
             EnsurePrefab(PlayerPrefabPath, BuildPlayerTemplate);
@@ -183,6 +185,10 @@ namespace Scavenger.EditorTools
                 serialized, "farmingPointBottomPrefab", LoadFieldComponent<Field.FarmingPoint>(
                     FieldPrefabTemplates.FarmingPointBottomPath));
 
+            // 아이템 오브젝트는 목록이라 비어 있을 때만 통째로 채운다 (파밍 문서 3.2)
+            assigned += AssignListIfEmpty(
+                serialized, "farmingObjectPrefabs", FarmingObjectTemplates.LoadAll());
+
             if (assigned > 0)
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
@@ -200,6 +206,32 @@ namespace Scavenger.EditorTools
                 return 0;
 
             property.objectReferenceValue = value;
+            return 1;
+        }
+
+        /// <summary>
+        /// 목록 프로퍼티를 채운다. 이미 항목이 하나라도 있으면 건드리지 않는다 -
+        /// 사용자가 고른 구성을 메뉴 재실행이 되돌리지 않게 하는 것이 목적.
+        /// </summary>
+        static int AssignListIfEmpty<T>(
+            SerializedObject serialized, string propertyName, List<T> values) where T : Object
+        {
+            if (values == null || values.Count == 0)
+                return 0;
+
+            SerializedProperty property = serialized.FindProperty(propertyName);
+
+            if (property == null || !property.isArray)
+                return 0;
+
+            if (property.arraySize > 0)
+                return 0;
+
+            property.arraySize = values.Count;
+
+            for (int i = 0; i < values.Count; i++)
+                property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+
             return 1;
         }
 
@@ -343,7 +375,8 @@ namespace Scavenger.EditorTools
             // RequireComponent가 RunStateMachine/RunTimer를 자동 부착
             systems.AddComponent<RunManager>();
             systems.AddComponent<RunSettlement>();
-            systems.AddComponent<RunDebugDashboard>();
+
+            // 진단 대시보드는 HUD 문서(UI Toolkit)로 이사했다 - RunDashboardView
 
             return systems;
         }

@@ -49,12 +49,15 @@ namespace Scavenger
 
             List<LootDefinition> lootCatalog = LootCatalog.CreateDefaults();
 
+            // 파밍 아이템은 아이템 오브젝트에서만 나오는 고가치 타입 (파밍 문서 4장)
+            List<LootDefinition> farmingCatalog = FarmingItemCatalog.CreateDefaults();
+
             runManager.Configure(runSettings);
 
             // 가방 컬럼: 슬롯 한도와 합성 기본값은 인벤토리가, 최대 무게는 CarryLoad가 쓴다
             runManager.Inventory.Configure(
                 bagDefinition.slotCountDefault, bagDefinition.mergeCountDefault);
-            fieldSpawner.Configure(zoneDefinition, lootCatalog);
+            fieldSpawner.Configure(zoneDefinition, lootCatalog, farmingCatalog);
             fieldSpawner.SetViewCamera(followCamera);
             fieldSpawner.Track(player);
             // 존 너비가 곧 보행 가능 폭이므로, 캐릭터 반경만큼 안쪽으로 클램프한다 -

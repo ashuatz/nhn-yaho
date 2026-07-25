@@ -49000,7 +49000,6 @@ GameObject:
   - component: {fileID: 390532537799393435}
   - component: {fileID: 1182326300384735826}
   - component: {fileID: 6424121769012675601}
-  - component: {fileID: 3485051178021412335}
   m_Layer: 0
   m_Name: RunSystems
   m_TagString: Untagged
@@ -49071,18 +49070,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8205bb30ae0d744ba2be0636453496b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Run.RunSettlement
---- !u!114 &3485051178021412335
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8320941388413192694}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8203458e36682eb458105bd9abec3eb0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Scavenger.Game::Scavenger.Diagnostics.RunDebugDashboard
 --- !u!1 &8331055502105759824
 GameObject:
   m_ObjectHideFlags: 0

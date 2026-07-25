@@ -244,12 +244,24 @@ namespace Scavenger.ArtTools
         /// </summary>
         public static Material EnsurePaletteMaterial(Material baseMaterial, int paletteIndex, Color color)
         {
+            return EnsureTintedMaterial(
+                baseMaterial, PaletteMaterialFolder, $"TrimSheetEnv_{paletteIndex:00}", color);
+        }
+
+        /// <summary>
+        /// 트림시트 머티리얼의 색만 다른 복사본. 기준 머티리얼을 <b>복사</b>하는 이유는
+        /// 아틀라스/타일링/렌더 상태를 그대로 물려받아야 하기 때문이다
+        /// (Shader.Find로 새로 만들면 그레이박스 공통 룩이 어긋난다).
+        /// </summary>
+        public static Material EnsureTintedMaterial(
+            Material baseMaterial, string folder, string materialName, Color color)
+        {
             if (baseMaterial == null)
                 return null;
 
-            EnsureFolder(PaletteMaterialFolder);
+            EnsureFolder(folder);
 
-            string path = $"{PaletteMaterialFolder}/TrimSheetEnv_{paletteIndex:00}.mat";
+            string path = $"{folder}/{materialName}.mat";
             Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
 
             if (material == null)
@@ -258,7 +270,7 @@ namespace Scavenger.ArtTools
 
                 if (!AssetDatabase.CopyAsset(basePath, path))
                 {
-                    Debug.LogError($"[TrimSheet] 팔레트 머티리얼 복사 실패: {basePath} -> {path}");
+                    Debug.LogError($"[TrimSheet] 틴트 머티리얼 복사 실패: {basePath} -> {path}");
                     return null;
                 }
 

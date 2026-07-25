@@ -49,6 +49,9 @@ namespace Scavenger.Field
         [SerializeField] FarmingPoint farmingPointTopPrefab;
         [SerializeField] FarmingPoint farmingPointBottomPrefab;
 
+        [Header("아이템 오브젝트 프리팹 (파밍 문서 3.2. 등급별로 여러 종류를 넣는다)")]
+        [SerializeField] List<FarmingObject> farmingObjectPrefabs = new List<FarmingObject>();
+
         [Header("배경 블록 인스턴싱 (GPU 인스턴싱). 파밍 포인트 영역은 자동 제외된다")]
         public bool buildBackgroundBlocks = true;
 
@@ -120,6 +123,7 @@ namespace Scavenger.Field
 
         readonly List<FieldSegment> aliveSegments = new List<FieldSegment>();
         List<LootDefinition> lootCatalog;
+        List<LootDefinition> farmingItemCatalog;
         EnvironmentRenderer environmentRenderer;
         FollowCamera viewCamera;
         PlayerController trackedPlayer;
@@ -207,10 +211,26 @@ namespace Scavenger.Field
                 Instance = null;
         }
 
-        public void Configure(ZoneDefinition definition, List<LootDefinition> catalog)
+        /// <summary>
+        /// 데이터 주입 (GameFlow가 배선). 드랍 카탈로그는 존 바닥에 흩뿌리는 아이템,
+        /// 파밍 카탈로그는 아이템 오브젝트에서 나오는 고가치 아이템이다 (파밍 문서 4장).
+        /// 파밍 카탈로그를 넘기지 않으면 코드 기본값으로 채운다.
+        /// </summary>
+        public void Configure(
+            ZoneDefinition definition,
+            List<LootDefinition> catalog,
+            List<LootDefinition> farmingCatalog = null)
         {
             Definition = definition;
             lootCatalog = catalog;
+
+            if (farmingCatalog != null)
+            {
+                farmingItemCatalog = farmingCatalog;
+                return;
+            }
+
+            farmingItemCatalog = FarmingItemCatalog.CreateDefaults();
         }
 
         /// <summary>배경 시야 클리어런스 기준 카메라. GameFlow가 배선.</summary>

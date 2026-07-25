@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 8662525269657426990}
   - component: {fileID: 4751170592737536602}
   - component: {fileID: 8418658891683188976}
+  - component: {fileID: 3690221134711135790}
   m_Layer: 0
   m_Name: HudDocument
   m_TagString: Untagged
@@ -99,3 +100,18 @@ MonoBehaviour:
   maxDistance: 14
   maxLabels: 8
   labelHeight: 0.9
+--- !u!114 &3690221134711135790
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7861577537315952738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 673507c78cd0d96488bcd1ea1f8b3adb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Scavenger.Game::Scavenger.Diagnostics.RunDashboardView
+  dashboardTree: {fileID: 9197481963319205126, guid: e0adf7f9708041146a9a1a0b72dec506, type: 3}
+  startFolded: 1
+  refreshInterval: 0.1

@@ -67,6 +67,16 @@ namespace Scavenger.Field
         /// <summary>플랫폼 높이 (m. 상단은 +, 하단은 -. 본선 = 0).</summary>
         public float PlatformY { get; private set; }
 
+        /// <summary>
+        /// 낙하가 시작되었는가. 구역 위 상호작용(아이템 오브젝트)은 이 값을 보고
+        /// 즉시 중단한다 - 낙하 중에도 오브젝트는 계속 살아 있어서
+        /// 자기 OnDisable만으로는 해제 시점이 파괴까지 늦어진다.
+        /// </summary>
+        public bool IsFalling
+        {
+            get { return falling; }
+        }
+
         /// <summary>구역 안 오브젝트 스팟 (아이템 오브젝트 생성 자리).</summary>
         public IReadOnlyList<ObjectSpot> Spots
         {

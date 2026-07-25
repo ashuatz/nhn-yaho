@@ -87,4 +87,11 @@ MonoBehaviour:
   floorRowPrefab: {fileID: 8895889237179486207, guid: 08aacc7ce5b31ac498d107c5dca874b7, type: 3}
   farmingPointTopPrefab: {fileID: 5403503015605519672, guid: a79d8d9cc70e8b24f8c54b3003daa84d, type: 3}
   farmingPointBottomPrefab: {fileID: 5296968079903288030, guid: a95b22d3ced471a46a6ab52d83361168, type: 3}
+  farmingObjectPrefabs:
+  - {fileID: 3417004519180752685, guid: 26f9ed4784d10de43943e28706aeca68, type: 3}
+  - {fileID: 2200238508692432777, guid: 39b637506bc9bd044ab36e216f4c76ba, type: 3}
+  - {fileID: 2290137301380205653, guid: e5b2643ee7163cc4ea098a582681bfa9, type: 3}
+  - {fileID: 9148705492757092498, guid: 0eb29fd25a0f12d4681479f660877eec, type: 3}
+  - {fileID: 611479130342303851, guid: 40d90d0963db07645b503063efe12050, type: 3}
+  - {fileID: 3842297165024459387, guid: 42107308db111694ba835782a597e321, type: 3}
   buildBackgroundBlocks: 1

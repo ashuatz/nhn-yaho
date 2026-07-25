@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<engine:UXML
+    xmlns:engine="UnityEngine.UIElements"
+    xsi="http://www.w3.org/2001/XMLSchema-instance"
+    engine="UnityEngine.UIElements"
+    noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <engine:Style src="project://database/Assets/UI/Dashboard.uss" />
+
+    <!-- 진단 대시보드. HUD 문서에 얹히므로 루트는 좌측 상단 고정 폭 패널이다.
+         헤더만 픽킹을 받는다 - 본문까지 픽킹을 켜면 뒤쪽 게임 클릭이 막힌다 -->
+    <engine:VisualElement name="dash-root" class="dash-root" picking-mode="Ignore">
+
+        <engine:Button name="dash-header" class="dash-header">
+            <engine:Label name="dash-title" class="dash-title" text="DEBUG" picking-mode="Ignore" />
+            <engine:Label name="dash-summary" class="dash-summary" text="" picking-mode="Ignore" />
+            <engine:Label name="dash-fold" class="dash-fold" text="[+]" picking-mode="Ignore" />
+        </engine:Button>
+
+        <engine:VisualElement name="dash-body" class="dash-body" picking-mode="Ignore">
+
+            <engine:VisualElement class="dash-section" picking-mode="Ignore">
+                <engine:Label class="dash-section-title" text="RUN" />
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="상태" />
+                    <engine:Label name="run-state" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="시드 / 깊이" />
+                    <engine:Label name="run-seed" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="경과 / 남음" />
+                    <engine:Label name="run-time" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="스테이지 경과" />
+                    <engine:Label name="run-stage-time" class="dash-value" text="-" />
+                </engine:VisualElement>
+            </engine:VisualElement>
+
+            <engine:VisualElement class="dash-section" picking-mode="Ignore">
+                <engine:Label class="dash-section-title" text="FIELD" />
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="스테이지" />
+                    <engine:Label name="field-stage" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="존" />
+                    <engine:Label name="field-zone" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="진행도" />
+                    <engine:VisualElement name="field-progress" class="dash-meter">
+                        <engine:VisualElement name="field-progress-fill" class="dash-meter-fill" />
+                        <engine:Label name="field-progress-text" class="dash-meter-text" text="0%" />
+                    </engine:VisualElement>
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="제거선 z" />
+                    <engine:Label name="field-remove-z" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="제거선 거리" />
+                    <engine:Label name="field-remove-distance" class="dash-value" text="-" />
+                </engine:VisualElement>
+            </engine:VisualElement>
+
+            <engine:VisualElement class="dash-section" picking-mode="Ignore">
+                <engine:Label class="dash-section-title" text="PLAYER" />
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="상태" />
+                    <engine:Label name="player-state" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="위치" />
+                    <engine:Label name="player-position" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="안전지대" />
+                    <engine:Label name="player-safe" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="상호작용" />
+                    <engine:Label name="player-interact" class="dash-value" text="-" />
+                </engine:VisualElement>
+            </engine:VisualElement>
+
+            <engine:VisualElement class="dash-section" picking-mode="Ignore">
+                <engine:Label class="dash-section-title" text="LOOT" />
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="종류 / 슬롯" />
+                    <engine:Label name="loot-kinds" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="가치" />
+                    <engine:Label name="loot-value" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="무게" />
+                    <engine:Label name="loot-weight" class="dash-value" text="-" />
+                </engine:VisualElement>
+                <engine:VisualElement class="dash-row">
+                    <engine:Label class="dash-key" text="필드 아이템" />
+                    <engine:Label name="loot-field" class="dash-value" text="-" />
+                </engine:VisualElement>
+            </engine:VisualElement>
+
+            <engine:Label name="dash-hint" class="dash-hint" text="F1 표시 / 헤더 클릭 접기" />
+
+        </engine:VisualElement>
+    </engine:VisualElement>
+</engine:UXML>

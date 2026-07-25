@@ -45,6 +45,9 @@ namespace Scavenger.UI
         VisualElement loadFill;
         VisualElement bagSlotRow;
         VisualElement resultPanel;
+        VisualElement gaugeBox;
+        VisualElement gaugeFill;
+        Label gaugeText;
         Label timerText;
         Label healthText;
         Label loadText;
@@ -100,6 +103,7 @@ namespace Scavenger.UI
             UpdateObjective(run, running);
             UpdateBag(run, running);
             UpdateInteract(running);
+            UpdateInteractGauge(running);
             UpdateCollapseWarning(running);
             UpdateAnnounce(running);
             UpdateResult(run);
@@ -128,6 +132,11 @@ namespace Scavenger.UI
             loadFill = root.Q<VisualElement>("load-fill");
             bagSlotRow = root.Q<VisualElement>("bag-slots");
             resultPanel = root.Q<VisualElement>("result-panel");
+
+            // 하단 중앙 게이지 - 아이템 오브젝트 상호작용 진행도 (파밍 문서 3.3)
+            gaugeBox = root.Q<VisualElement>("bottom-center");
+            gaugeFill = root.Q<VisualElement>("loot-gauge-fill");
+            gaugeText = root.Q<Label>("loot-gauge-text");
 
             timerText = root.Q<Label>("timer-text");
             healthText = root.Q<Label>("health-text");
@@ -264,16 +273,66 @@ namespace Scavenger.UI
             if (interactButton == null)
                 return;
 
-            // 줍기 대상이 있을 때만 노출 (드랍은 자동 수집이므로 조각 줍기 전용)
-            bool visible = running && LootPickup.PromptTarget != null;
+            // 노출 조건 (드랍은 자동 수집이라 제외): 조각 줍기 대상이 있거나,
+            // 파밍 포인트의 아이템 오브젝트가 사거리에 있거나, 여는 중일 때
+            bool visible = running && HasInteractTarget();
 
             SetVisible(interactButton, visible);
 
             if (visible)
+            {
+                interactButton.text = ResolveInteractLabel();
                 return;
+            }
 
             if (player != null)
                 player.SetExternalInteractHeld(false);
+        }
+
+        static bool HasInteractTarget()
+        {
+            if (LootPickup.PromptTarget != null)
+                return true;
+
+            if (Field.FarmingObject.Active != null)
+                return true;
+
+            return Field.FarmingObject.PromptTarget != null;
+        }
+
+        static string ResolveInteractLabel()
+        {
+            if (Field.FarmingObject.Active != null)
+                return "여는 중";
+
+            if (Field.FarmingObject.PromptTarget != null)
+                return "열기 (홀드)";
+
+            return "줍기";
+        }
+
+        /// <summary>
+        /// 아이템 오브젝트 상호작용 게이지 (파밍 문서 3.3). 진행 중에만 노출한다 -
+        /// 이동/홀드 해제로 중단되면 게이지도 함께 사라져 중단이 바로 읽힌다.
+        /// </summary>
+        void UpdateInteractGauge(bool running)
+        {
+            if (gaugeBox == null)
+                return;
+
+            Field.FarmingObject active = Field.FarmingObject.Active;
+            bool visible = running && active != null;
+
+            SetVisible(gaugeBox, visible);
+
+            if (!visible)
+                return;
+
+            if (gaugeFill != null)
+                SetFillRatio(gaugeFill, active.Progress01);
+
+            if (gaugeText != null)
+                gaugeText.text = $"{Mathf.RoundToInt(active.Progress01 * 100f)}%";
         }
 
         void UpdateCollapseWarning(bool running)

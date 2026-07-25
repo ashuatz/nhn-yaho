@@ -160,8 +160,11 @@ namespace Scavenger.Field
             zone.AttachToRow(spotObject.transform);
         }
 
-        // 웹 룩(ADR-0008): 45도 돌린 발광 큐브 + 부유 연출 (LootVisual)
-        static void BuildDropVisual(Transform parent, int tier)
+        /// <summary>
+        /// 아이템 표시물 (웹 룩 ADR-0008: 45도 돌린 발광 큐브 + 부유 연출).
+        /// 파밍 오브젝트가 내놓는 아이템도 같은 룩을 써야 하므로 공용이다.
+        /// </summary>
+        internal static void BuildDropVisual(Transform parent, int tier)
         {
             GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.name = "Visual";

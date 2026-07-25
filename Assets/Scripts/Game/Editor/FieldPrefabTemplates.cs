@@ -111,6 +111,46 @@ namespace Scavenger.EditorTools
             AssetDatabase.SaveAssets();
         }
 
+        /// <summary>
+        /// 바닥 프리팹(행 + 타일 3종)을 현재 템플릿으로 다시 만든다.
+        /// 트림시트 경로가 메시를 갈아끼울 때 쓰는 입구이기도 하다
+        /// (무엇을 만들지는 GreyboxBlockFactory가 정한다 - 형태 코드는 한 벌).
+        /// </summary>
+        public static void RebuildFloorPrefabsNow()
+        {
+            EnsureFolder();
+
+            if (!AssetDatabase.IsValidFolder("Assets/Prefabs/Field/Tiles"))
+                AssetDatabase.CreateFolder(FieldFolder, "Tiles");
+
+            ReplacePrefab(FloorRowPath, BuildFloorRow);
+
+            for (int i = 0; i < TilePaths.Length; i++)
+            {
+                int index = i;
+                ReplacePrefab(TilePaths[index], () => BuildFloorTile(index));
+            }
+
+            EnsureTileSet();
+
+            AssetDatabase.SaveAssets();
+        }
+
+        [MenuItem("Scavenger/Rebuild Floor Prefabs")]
+        public static void RebuildFloorPrefabs()
+        {
+            bool confirmed = EditorUtility.DisplayDialog(
+                "바닥 프리팹 재생성",
+                "FloorRow / FloorTile_A~C 를 기본 템플릿으로 다시 만든다.\n"
+                + "프리팹에서 직접 다듬은 내용이 있으면 사라진다.",
+                "재생성", "취소");
+
+            if (!confirmed)
+                return;
+
+            RebuildFloorPrefabsNow();
+        }
+
         static void ReplacePrefab(string path, System.Func<GameObject> buildTemplate)
         {
             GameObject template = buildTemplate();
@@ -140,16 +180,12 @@ namespace Scavenger.EditorTools
         /// </summary>
         static GameObject BuildFloorTile(int index)
         {
-            GameObject tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            tile.name = System.IO.Path.GetFileNameWithoutExtension(TilePaths[index]);
-            tile.transform.localScale = new Vector3(BlockSize, FloorThickness, BlockSize);
+            GameObject tile = GreyboxBlockFactory.Create(
+                System.IO.Path.GetFileNameWithoutExtension(TilePaths[index]),
+                new Vector3(BlockSize, FloorThickness, BlockSize),
+                TileColors[index],
+                withCollider: false);
 
-            Collider tileCollider = tile.GetComponent<Collider>();
-
-            if (tileCollider != null)
-                Object.DestroyImmediate(tileCollider);
-
-            AssignCommonMaterial(tile, TileColors[index]);
             return tile;
         }
 
@@ -216,11 +252,11 @@ namespace Scavenger.EditorTools
         /// </summary>
         static GameObject BuildFloorRow()
         {
-            GameObject row = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            row.name = "FloorRow";
-            row.transform.localScale = new Vector3(ZoneWidth, FloorThickness, BlockSize);
-
-            AssignCommonMaterial(row, FloorColor);
+            GameObject row = GreyboxBlockFactory.Create(
+                "FloorRow",
+                new Vector3(ZoneWidth, FloorThickness, BlockSize),
+                FloorColor,
+                withCollider: true);
 
             row.AddComponent<FloorRow>();
             return row;
@@ -396,47 +432,25 @@ namespace Scavenger.EditorTools
         static GameObject CreateBlock(
             Transform parent, string name, Vector3 localPosition, Vector3 size, Color color)
         {
-            GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            block.name = name;
+            GameObject block = GreyboxBlockFactory.Create(name, size, color, withCollider: true);
+
             block.transform.SetParent(parent, false);
             block.transform.localPosition = localPosition;
-            block.transform.localScale = size;
-
-            AssignCommonMaterial(block, color);
 
             return block;
         }
 
-        // 스팟 자리 표시 (그레이박스 전용 - 아이템 오브젝트가 들어오면 지운다)
+        // 스팟 자리 표시 (그레이박스 전용 - 아이템 오브젝트가 배치되면 코드가 지운다)
         static void BuildSpotMarker(Transform parent, Color color)
         {
-            GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            marker.name = "SpotMarker";
+            GameObject marker = GreyboxBlockFactory.Create(
+                "SpotMarker", new Vector3(0.5f, 0.12f, 0.5f), color * 1.4f, withCollider: false);
+
             marker.transform.SetParent(parent, false);
             marker.transform.localPosition = new Vector3(0f, 0.06f, 0f);
-            marker.transform.localScale = new Vector3(0.5f, 0.12f, 0.5f);
-
-            Collider markerCollider = marker.GetComponent<Collider>();
-
-            if (markerCollider != null)
-                Object.DestroyImmediate(markerCollider);
-
-            AssignCommonMaterial(marker, color * 1.4f);
         }
 
-        /// <summary>
-        /// 런타임 생성물과 같은 기준 머티리얼(Common.mat)을 쓴다.
-        /// 색만 다른 경우는 색상 기반 에셋으로 분기해 프리팹 저장 후에도 참조가 안정적이다
-        /// (인메모리 머티리얼을 프리팹에 저장하면 리로드 후 마젠타가 된다 - 실제 발생).
-        /// </summary>
-        static void AssignCommonMaterial(GameObject target, Color color)
-        {
-            Renderer targetRenderer = target.GetComponent<Renderer>();
-
-            if (targetRenderer == null)
-                return;
-
-            targetRenderer.sharedMaterial = GreyboxMaterials.EnsureForColor(color);
-        }
+        // 머티리얼 배정은 GreyboxBlockFactory가 담당한다 (색상 기반 디스크 에셋).
+        // 인메모리 머티리얼을 프리팹에 저장하면 리로드 후 마젠타가 된다 - 실제 발생
     }
 }

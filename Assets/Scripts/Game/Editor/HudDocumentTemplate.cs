@@ -22,6 +22,9 @@ namespace Scavenger.EditorTools
         public const string PanelSettingsPath = "Assets/UI/HudPanelSettings.asset";
         public const string PrefabPath = "Assets/Prefabs/HudDocument.prefab";
 
+        /// <summary>진단 대시보드 레이아웃 (개발 빌드 전용 패널, HUD 문서에 얹힌다).</summary>
+        public const string DashboardUxmlPath = "Assets/UI/Dashboard.uxml";
+
         // 기준 해상도 - 세로가 짧은 화면에서도 HUD가 잘리지 않게 폭/높이 절충
         static readonly Vector2Int ReferenceResolution = new Vector2Int(1920, 1080);
 
@@ -33,8 +36,65 @@ namespace Scavenger.EditorTools
 
             PanelSettings settings = EnsurePanelSettings();
             EnsurePrefab(settings);
+            EnsureDashboardView();
 
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// 진단 대시보드 뷰를 HUD 프리팹에 보강한다. 프리팹을 덮어쓰지 않고 컴포넌트만
+        /// 더하는 마이그레이션 경로다 - 기존 HUD 프리팹에도 대시보드가 붙는다.
+        /// 레이아웃 참조가 비어 있을 때만 채운다 (사용자가 다른 UXML을 물릴 수 있게).
+        /// </summary>
+        static void EnsureDashboardView()
+        {
+            VisualTreeAsset dashboardTree =
+                AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(DashboardUxmlPath);
+
+            if (dashboardTree == null)
+            {
+                UnityEngine.Debug.LogWarning(
+                    $"[Setup] {DashboardUxmlPath} 가 없다. 진단 대시보드는 붙이지 않는다.");
+                return;
+            }
+
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+
+            if (prefab == null)
+                return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
+
+            // 예외가 나도 반드시 언로드 - 프리팹 스테이지 잔존 방지
+            try
+            {
+                Diagnostics.RunDashboardView view =
+                    contents.GetComponent<Diagnostics.RunDashboardView>();
+
+                bool changed = false;
+
+                if (view == null)
+                {
+                    view = contents.AddComponent<Diagnostics.RunDashboardView>();
+                    changed = true;
+                }
+
+                if (view.dashboardTree == null)
+                {
+                    view.dashboardTree = dashboardTree;
+                    changed = true;
+                }
+
+                if (!changed)
+                    return;
+
+                PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
+                UnityEngine.Debug.Log($"[Setup] 진단 대시보드 뷰 배선: {PrefabPath}");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
         }
 
         /// <summary>
