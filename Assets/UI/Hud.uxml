@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<engine:UXML
+    xmlns:engine="UnityEngine.UIElements"
+    xsi="http://www.w3.org/2001/XMLSchema-instance"
+    engine="UnityEngine.UIElements"
+    noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <engine:Style src="project://database/Assets/UI/Hud.uss" />
+
+    <!-- 루트: 화면 전체를 덮되 클릭은 통과시킨다 (조작 요소만 픽킹) -->
+    <engine:VisualElement name="hud-root" class="hud-root" picking-mode="Ignore">
+
+        <!-- 피격 플래시 (알파만 코드가 조절) -->
+        <engine:VisualElement name="damage-flash" class="damage-flash" picking-mode="Ignore" />
+
+        <!-- 월드 아이템 라벨 레이어 (코드가 자식을 채운다) -->
+        <engine:VisualElement name="label-layer" class="label-layer" picking-mode="Ignore" />
+
+        <!-- 상단 중앙: 남은 시간 -->
+        <engine:VisualElement name="top-center" class="top-center" picking-mode="Ignore">
+            <engine:VisualElement name="timer-box" class="panel timer-box">
+                <engine:Label name="timer-text" class="timer-text" text="02:30" />
+            </engine:VisualElement>
+            <engine:Label name="announce-text" class="announce-text" text="" />
+            <engine:Label name="warning-text" class="warning-text" text="" />
+        </engine:VisualElement>
+
+        <!-- 좌상단: 체력 / 무게 -->
+        <engine:VisualElement name="top-left" class="top-left" picking-mode="Ignore">
+            <engine:VisualElement name="health-bar" class="panel bar">
+                <engine:VisualElement name="health-fill" class="bar-fill health-fill" />
+                <engine:Label name="health-text" class="bar-text" text="HP 100" />
+            </engine:VisualElement>
+            <engine:VisualElement name="load-bar" class="panel bar">
+                <engine:VisualElement name="load-fill" class="bar-fill load-fill" />
+                <engine:Label name="load-text" class="bar-text" text="0.0kg (가벼움)" />
+            </engine:VisualElement>
+        </engine:VisualElement>
+
+        <!-- 우상단: 수집 요약 -->
+        <engine:VisualElement name="top-right" class="top-right" picking-mode="Ignore">
+            <engine:VisualElement name="objective-box" class="panel objective-box">
+                <engine:Label name="objective-title" class="objective-title" text="전리품 수집" />
+                <engine:Label name="objective-text" class="objective-text" text="종류 0 · 가치 0" />
+            </engine:VisualElement>
+        </engine:VisualElement>
+
+        <!-- 좌하단: 가상 조이스틱 -->
+        <engine:VisualElement name="joystick-base" class="joystick-base">
+            <engine:VisualElement name="joystick-knob" class="joystick-knob" picking-mode="Ignore" />
+        </engine:VisualElement>
+
+        <!-- 하단 중앙: 루팅 게이지 -->
+        <engine:VisualElement name="bottom-center" class="bottom-center" picking-mode="Ignore">
+            <engine:VisualElement name="loot-gauge" class="panel gauge">
+                <engine:VisualElement name="loot-gauge-fill" class="gauge-fill" />
+                <engine:Label name="loot-gauge-text" class="gauge-text" text="" />
+            </engine:VisualElement>
+        </engine:VisualElement>
+
+        <!-- 우하단: 가방 + 상호작용 버튼 -->
+        <engine:VisualElement name="bottom-right" class="bottom-right">
+            <engine:VisualElement name="bag-panel" class="panel bag-panel" picking-mode="Ignore">
+                <engine:Label name="bag-weight" class="bag-weight" text="0.0kg" />
+                <engine:VisualElement name="bag-slots" class="bag-slots" picking-mode="Ignore" />
+            </engine:VisualElement>
+            <engine:Button name="interact-button" class="interact-button" text="상호작용" />
+        </engine:VisualElement>
+
+        <!-- 런 종료 결과 -->
+        <engine:VisualElement name="result-panel" class="result-panel">
+            <engine:Label name="result-title" class="result-title" text="" />
+            <engine:Label name="result-body" class="result-body" text="" />
+            <engine:Label name="result-hint" class="result-hint" text="클릭 또는 스페이스로 계속" />
+        </engine:VisualElement>
+
+    </engine:VisualElement>
+</engine:UXML>

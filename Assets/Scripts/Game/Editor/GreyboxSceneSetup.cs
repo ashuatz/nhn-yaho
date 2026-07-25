@@ -47,7 +47,11 @@ namespace Scavenger.EditorTools
             GameObject player = InstantiatePrefab(PlayerPrefabPath);
             GameObject cameraObject = InstantiatePrefab(CameraPrefabPath);
             GameObject flow = InstantiatePrefab(GameFlowPrefabPath);
-            InstantiatePrefab(HudCanvasPrefabPath);
+
+            // HUD는 UI Toolkit 문서 (사용자 지시 2026-07-25). uGUI HudCanvas는 배치하지
+            // 않는다 - 둘을 함께 두면 같은 정보가 두 번 그려진다.
+            // 프리팹 파일은 롤백용으로 남겨 둔다
+            InstantiatePrefab(HudDocumentTemplate.PrefabPath);
 
             BuildLight();
             WireSceneReferences(runSystems, spawner, player, cameraObject, flow);
@@ -76,6 +80,9 @@ namespace Scavenger.EditorTools
             EnsurePrefab(SpawnerPrefabPath, BuildSpawnerTemplate);
             EnsurePrefab(GameFlowPrefabPath, BuildGameFlowTemplate);
             EnsurePrefab(HudCanvasPrefabPath, HudCanvasTemplate.Build);
+
+            // UI Toolkit HUD (현행). uGUI HudCanvas는 위에서 유지만 한다 (롤백 경로)
+            HudDocumentTemplate.EnsureHudDocument();
 
             RepairPrefabs();
 

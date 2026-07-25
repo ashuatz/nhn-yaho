@@ -65,11 +65,12 @@ namespace Scavenger
             player.Motor.corridorHalfWidth = Mathf.Max(
                 0.5f, zoneDefinition.corridorHalfWidth - bodyRadius);
 
-            // uGUI HUD (M5-1)는 HudCanvas 프리팹으로 씬에 배치된다.
+            // HUD는 UI Toolkit 문서 (HudDocument 프리팹)로 씬에 배치된다.
             // 런타임 생성 금지 규약 - 없으면 경고만 (씬 재구성 안내)
-            if (FindFirstObjectByType<UI.HudController>() == null)
+            if (FindFirstObjectByType<UI.HudView>() == null)
                 UnityEngine.Debug.LogWarning(
-                    "[Flow] HudCanvas 프리팹이 씬에 없다. 'Scavenger > Setup Greybox Scene' 재실행 필요.");
+                    "[Flow] HudDocument 프리팹이 씬에 없다. " +
+                    "'Scavenger > Ensure HUD Document (UI Toolkit)' 후 씬에 배치할 것.");
 
             // 무게 과적 (M2-1) - 기존 Player 프리팹에는 폴백으로 보강
             carryLoad = player.GetComponent<CarryLoad>();
