@@ -34,6 +34,19 @@ namespace Scavenger.Field
         [Header("드랍 아이템 생성 간격 거리 (블록 단위 - 서로 붙지 않게)")]
         public float dropSpacingDistance = 2f;
 
+        [Header("파밍 포인트 개수 (min / max, 존 시트 값)")]
+        public int farmingPointCountMin = 1;
+        public int farmingPointCountMax = 3;
+
+        [Header("파밍 포인트 크기 (블록. 문서 규격 4 이상 ~ 7)")]
+        [Range(4, 7)] public int farmingPointSizeBlocks = 5;
+
+        [Header("파밍 포인트 간 최소 간격 (블록)")]
+        public float farmingPointSpacingBlocks = 7f;
+
+        [Header("파밍 포인트 흔들림 시작 거리 (블록. 소켓과 제거 기준선 거리)")]
+        public float farmingPointShakeStartBlocks = 4f;
+
         /// <summary>존 길이 (m). 배경/생성 로직 공용 - 블록 수 x 블록 크기.</summary>
         public float lengthMeters
         {
@@ -68,6 +81,26 @@ namespace Scavenger.Field
             dropValueBudgetMin = Mathf.Max(0, dropValueBudgetMin);
             dropValueBudgetMax = Mathf.Max(dropValueBudgetMin, dropValueBudgetMax);
             dropSpacingDistance = Mathf.Max(0f, dropSpacingDistance);
+
+            farmingPointCountMin = Mathf.Max(0, farmingPointCountMin);
+            farmingPointCountMax = Mathf.Max(farmingPointCountMin, farmingPointCountMax);
+            farmingPointSpacingBlocks = Mathf.Max(0f, farmingPointSpacingBlocks);
+            farmingPointShakeStartBlocks = Mathf.Max(0f, farmingPointShakeStartBlocks);
+        }
+
+        /// <summary>존에 배치할 파밍 포인트 개수를 확정한다 (시드 기반).</summary>
+        public int RollFarmingPointCount(System.Random rng)
+        {
+            if (rng == null)
+                return farmingPointCountMin;
+
+            return rng.Next(farmingPointCountMin, farmingPointCountMax + 1);
+        }
+
+        /// <summary>파밍 포인트 크기 (m).</summary>
+        public float FarmingPointSize
+        {
+            get { return farmingPointSizeBlocks * blockSize; }
         }
 
         /// <summary>스테이지 진입 시 존 개수를 확정한다 (시드 기반 - 재현성).</summary>

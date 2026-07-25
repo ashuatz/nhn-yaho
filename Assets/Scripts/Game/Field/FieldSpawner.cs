@@ -75,6 +75,10 @@ namespace Scavenger.Field
         FollowCamera viewCamera;
         PlayerController trackedPlayer;
 
+        // 스테이지 인계 시 플레이어 뒤로 확보하는 바닥 여유 (m).
+        // 웨이포인트 트리거 깊이(z 두께 2m)와 캐릭터 반경을 덮는 값
+        const float StageHandoffFloorMargin = 3f;
+
         float stageStartZ;
         int builtZoneCount;
 
@@ -115,6 +119,15 @@ namespace Scavenger.Field
         {
             if (Definition == null)
                 Definition = ZoneDefinition.CreateDefault();
+
+            // 인계 가드: 새 스테이지는 반드시 플레이어보다 뒤에서 시작한다.
+            // 기존 존을 즉시 걷어내므로, 플레이어가 새 존 0의 첫 행보다 앞에 있지
+            // 않으면 발밑이 비어 낙사한다 (탈출/진행 지점 통과 시 실제 발생)
+            if (trackedPlayer != null)
+            {
+                float guarded = trackedPlayer.transform.position.z - StageHandoffFloorMargin;
+                startZ = Mathf.Min(startZ, guarded);
+            }
 
             DespawnAll();
 
@@ -235,6 +248,7 @@ namespace Scavenger.Field
             zone.Build(Definition, zoneIndex, startZ, isLast);
 
             PopulateDrops(zone);
+            PopulateFarmingPoints(zone);
 
             if (isLast)
                 BuildStageExit(zone);

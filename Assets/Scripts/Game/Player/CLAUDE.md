@@ -17,7 +17,10 @@
   SpeedScale = 외부 시스템(CarryLoad)이 설정하는 이동속도 배율 (1 = 정상).
   AddImpulse(Vector3) = 외부 충격 속도 (밀기 트랩, M3-3). impulseDamping으로 감쇠,
   입력과 합산 후 동일 클램프 적용. ResetVertical이 잔존 임펄스/관성도 초기화.
-  x는 복도 반폭, z는 MinZ(붕괴 전선)로 이동 전 사전 클램프. 누적 중력 = 낙사 지원
+  x는 복도 반폭, z는 MinZ(바닥 제거 기준선)로 이동 전 사전 클램프. 누적 중력 = 낙사 지원.
+  SetBoundsOverride(minX, maxX, minZ, maxZ) / ClearBoundsOverride = 이동 경계 교체
+  (파밍 포인트 진입 - 복도 밖으로 나가되 구역 안에서 떨어지지 않게).
+  후퇴 한계(MinZ)는 override보다 항상 우선 - 사라진 바닥으로는 걸어갈 수 없다
 - PlayerHealth.cs: 체력 (HP, ADR-0008 A안 - 회복 없음). Damage(amount, cause) 진입점,
   지속 피해는 dps*dt로 매 프레임 호출. 0 이하면 PlayerController.Kill로 사망 위임
   (경로 단일화). HealthChanged/Damaged 이벤트(HUD 바/피격 플래시). maxHealth = 프리팹

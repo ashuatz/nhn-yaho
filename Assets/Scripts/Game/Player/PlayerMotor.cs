@@ -56,6 +56,11 @@ namespace Scavenger.Player
         float fallVelocity;
         Vector3 externalVelocity;
 
+        // 이동 경계 override (파밍 포인트 진입 - 복도 밖으로 나가되 그 안에서는
+        // 떨어지지 않아야 한다). 설정한 주체가 매 프레임 갱신하고 벗어날 때 해제한다
+        bool hasBoundsOverride;
+        float boundsMinX, boundsMaxX, boundsMinZ, boundsMaxZ;
+
         // 지수 보간되는 수평 이동 속도 (관성). 입력이 사라져도 감쇠하며 멈춘다 -
         // 임펄스(externalVelocity)는 별도 관리라 여기 포함하지 않는다 (타격감 유지)
         Vector2 smoothedMove;
@@ -72,6 +77,26 @@ namespace Scavenger.Player
         public void AddImpulse(Vector3 velocity)
         {
             externalVelocity += velocity;
+        }
+
+        /// <summary>
+        /// 이동 경계 override (파밍 포인트 진입용). 복도 밖으로 나가는 것을 허용하되
+        /// 그 구역 안에서는 떨어지지 않도록 x/z 범위를 함께 지정한다.
+        /// z 범위를 제한하지 않으려면 +-Infinity를 넘길 것.
+        /// 설정한 주체가 매 프레임 갱신하고, 벗어나면 ClearBoundsOverride를 호출한다.
+        /// </summary>
+        public void SetBoundsOverride(float minX, float maxX, float minZ, float maxZ)
+        {
+            hasBoundsOverride = true;
+            boundsMinX = minX;
+            boundsMaxX = maxX;
+            boundsMinZ = minZ;
+            boundsMaxZ = maxZ;
+        }
+
+        public void ClearBoundsOverride()
+        {
+            hasBoundsOverride = false;
         }
 
         /// <summary>이동 입력 설정. 크기 1 초과는 클램프 (대각 가속 방지).</summary>
@@ -117,10 +142,20 @@ namespace Scavenger.Player
             float desiredX = smoothedMove.x + externalVelocity.x;
             float desiredZ = smoothedMove.y + externalVelocity.z;
 
+            // 경계: 기본은 복도 반폭, 파밍 포인트 진입 중에는 override 범위를 쓴다.
+            // 후퇴 한계(backwardLimit)는 override보다 항상 우선한다 - 사라진 바닥으로
+            // 걸어 들어가는 것은 어떤 경우에도 허용하지 않는다
+            float lateralMin = hasBoundsOverride ? boundsMinX : -corridorHalfWidth;
+            float lateralMax = hasBoundsOverride ? boundsMaxX : corridorHalfWidth;
+            float forwardMax = hasBoundsOverride ? boundsMaxZ : float.PositiveInfinity;
+            float backwardMin = hasBoundsOverride
+                ? Mathf.Max(backwardLimit, Mathf.Min(boundsMinZ, transform.position.z))
+                : backwardLimit;
+
             velocity.x = ComputeAxisSpeed(
-                transform.position.x, desiredX, -corridorHalfWidth, corridorHalfWidth, deltaTime);
+                transform.position.x, desiredX, lateralMin, lateralMax, deltaTime);
             velocity.z = ComputeAxisSpeed(
-                transform.position.z, desiredZ, backwardLimit, float.PositiveInfinity, deltaTime);
+                transform.position.z, desiredZ, backwardMin, forwardMax, deltaTime);
 
             externalVelocity = Vector3.MoveTowards(
                 externalVelocity, Vector3.zero, impulseDamping * deltaTime);

@@ -58,6 +58,12 @@ namespace Scavenger.Diagnostics
                 GUILayout.Label($"Remove line z: {field.RemoveLineZ:F1}");
                 GUILayout.Label($"Remove line distance: {field.RemoveLineDistanceToPlayer:F1}m");
                 GUILayout.Label($"Zone: {field.CurrentZoneIndex + 1} / {field.StageZoneCount}");
+
+                Field.FarmingPoint point = Field.FarmingPoint.PlayerInside;
+
+                GUILayout.Label(point != null
+                    ? $"Safe zone: {point.PointType} / {point.Grade}"
+                    : "Safe zone: -");
             }
 
             DrawExtraSections(run);
