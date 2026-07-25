@@ -17,6 +17,12 @@
   maxWeight / slotCountDefault(0 = 무제한) / slotCountMax / mergeCountDefault(전역 N).
   GameFlow가 CarryLoad(무게)와 RunInventory(슬롯·N)에 배선한다 - 두 판정이
   같은 값을 보게 하는 것이 목적. CreateDefault 폴백
+- FarmingItemCatalog.cs: 파밍 아이템 카탈로그 (파밍 문서 4장). 드랍과 다른 타입 -
+  아이템 오브젝트를 열어야 나오는 고가치 4종 (골동 그릇 t1 60 / 손목시계 t2 150 /
+  유물 조각 t3 400 / 도금 왕관 t4 1000). 합성 필요 개수 N = 3 (전역 기본 5를 덮어쓴다).
+  Draw(카탈로그, 오브젝트 등급, rng) = 등급별 아이템 등급 확률로 1개 추첨
+  (문서 3.2 아이템 그룹 표가 들어오면 여기만 교체한다).
+  GameFlow가 만들어 FieldSpawner.Configure로 주입한다
 - LootCatalog.cs: 코드 폴백 카탈로그 3종 (폐지 t1 w1 / 고철 t2 w4 / 금고 t3 w9)
   + 한 줄 설명 + 압축/정렬 임시값. 정식 에셋 승격은 트랙 B 이후
 - RunInventory.cs: 순수 클래스 (EditMode 테스트 대상). Add/Clear/TotalValue/TotalWeight,

@@ -8,7 +8,7 @@
 | 폴더 | 네임스페이스 | 역할 |
 |------|--------------|------|
 | Run/ | Scavenger.Run | 런 상태 머신, 제한 시간, 시드/깊이, 정산 |
-| Debug/ | Scavenger.Diagnostics | 디버그 대시보드 (Debug 네임스페이스는 UnityEngine.Debug와 충돌하여 회피) |
+| Debug/ | Scavenger.Diagnostics | 진단 대시보드 (UI Toolkit, HUD 문서에 얹힘. Debug 네임스페이스는 UnityEngine.Debug와 충돌하여 회피) |
 | Player/ | Scavenger.Player | 상태 기반 이동, 체력, 무게 페널티, 카메라 |
 | Loot/ | Scavenger.Loot | 드랍 아이템, 인벤토리(등급 합성), 스태시 |
 | Field/ | Scavenger.Field | 블록/존/필드 규격, 존 절차 생성, 바닥 제거 (기준 문서: 필드 규칙 및 절차) |
@@ -37,7 +37,8 @@
 
 ## 전역 규칙
 
-- 숨김 타이머 실수치는 Diagnostics 대시보드에만 노출. 플레이어 HUD 노출 금지.
+- 숨김 타이머 실수치는 Diagnostics 대시보드에만 노출 (기본 접힘, F1 토글).
+  플레이어 HUD 노출 금지.
 - 난수는 반드시 RunManager.Rng (시드 기반) 사용. UnityEngine.Random 금지 (재현성).
   - 게임 결과에 닿는 지연 산포(조각 착지, 착탄점)는 배치 시 RunManager.Rng에서
     시드를 배정받아 로컬 System.Random 사용 (런타임 직접 소비 금지 - 스트림 오염)

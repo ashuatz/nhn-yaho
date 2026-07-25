@@ -10,7 +10,8 @@ LootLabelLayer + HudCanvas 프리팹)는 롤백용으로 파일만 남아 있고
 
 자산: Assets/UI/Hud.uxml (레이아웃) / Hud.uss (스타일) /
 UnityDefaultRuntimeTheme.tss (런타임 테마) / HudPanelSettings.asset (패널 설정).
-씬 배치는 Assets/Prefabs/HudDocument.prefab (UIDocument + 아래 뷰 3종).
+씬 배치는 Assets/Prefabs/HudDocument.prefab (UIDocument + 아래 뷰 3종
++ 진단 대시보드 뷰 RunDashboardView - Debug/CLAUDE.md 참조. 같은 문서를 공유한다).
 생성/배선은 에디터 메뉴 **Scavenger > Ensure HUD Document (UI Toolkit)**
 (Setup Greybox Scene에 포함). 있으면 덮어쓰지 않는다.
 
@@ -18,7 +19,11 @@ UnityDefaultRuntimeTheme.tss (런타임 테마) / HudPanelSettings.asset (패널
   타이머(RunTimer.Remaining) / 체력 바 + 피격 플래시(PlayerHealth.Damaged) /
   무게 바 + 5단계 라벨(CarryLoad) / 수집 요약(종류·가치) / 가방 슬롯 /
   붕괴 근접 경고(RemoveLineDistanceToPlayer) / 진행 마일스톤 안내(StageProgress01) /
-  런 결과 패널 / 상호작용 홀드 버튼(LootPickup.PromptTarget 있을 때만).
+  런 결과 패널 / 상호작용 홀드 버튼 / 상호작용 게이지.
+  상호작용 버튼 노출 조건 = 조각 줍기 대상(LootPickup.PromptTarget) 또는
+  아이템 오브젝트(Field.FarmingObject.PromptTarget / Active). 버튼 문구도 대상에 따라 바뀐다.
+  하단 중앙 게이지(bottom-center)는 아이템 오브젝트 상호작용 진행도 전용 -
+  중단되면 즉시 사라져 중단이 눈에 읽힌다 (파밍 문서 3.3).
   가방 슬롯은 RunInventory.SlotCapacity만큼 만들고 재사용한다 - 빈 칸이 곧 슬롯 한도 표시.
   외곽선 = 현재 등급(합성 반영), 아이콘 = 아이템 시작 등급, 좌상단 점 = 압축 가능 여부
 - HudJoystickView.cs: 가상 조이스틱 (ADR-0007). 실행 순서 -200.
@@ -55,6 +60,6 @@ UnityDefaultRuntimeTheme.tss (런타임 테마) / HudPanelSettings.asset (패널
 ## 규칙
 
 - 숨김 정보(타이머 실수치, 실거리 수치) 노출 금지. 그건 Diagnostics 대시보드 전용
-  (F1 IMGUI 대시보드는 개발 빌드 전용이며 화면 좌상단 HUD와 겹친다 - 의도된 상태)
+  (같은 UIDocument에 얹히지만 개발 빌드 전용이고 기본은 접혀 있다)
 - 레이아웃/색은 UXML/USS가 소유한다. 코드는 수치와 표시 여부만 넣는다
 - HudDocument 프리팹이 씬에 없으면 GameFlow가 경고 로그만 낸다 (런타임 생성 금지 규약)
