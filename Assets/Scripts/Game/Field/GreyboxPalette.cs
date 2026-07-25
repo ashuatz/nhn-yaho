@@ -91,6 +91,20 @@ namespace Scavenger.Field
             targetRenderer.sharedMaterial = glow;
         }
 
+        /// <summary>
+        /// 공유 틴트 머티리얼을 직접 얻는다 (기준 머티리얼 미주입이면 null).
+        /// GPU 인스턴싱 드로우(EnvironmentRenderer)가 팔레트별로 참조한다 -
+        /// 배경도 Common.mat 쉐이더를 쓰게 하는 경로 (사용자 지시).
+        /// 반환된 머티리얼은 공유 자산이므로 호출자가 Destroy하면 안 된다.
+        /// </summary>
+        public static Material GetTinted(Color color)
+        {
+            if (baseMaterial == null)
+                return null;
+
+            return Resolve(color);
+        }
+
         static Material Resolve(Color color)
         {
             if (tintedCache.TryGetValue(color, out Material cached))

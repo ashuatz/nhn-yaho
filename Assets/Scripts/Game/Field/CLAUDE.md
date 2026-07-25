@@ -107,9 +107,14 @@ y축 180도 회전으로 붙인다 (음수 스케일은 콜라이더/노멀이 �
   그레이박스는 보행면과 같은 높이(flush)로 만든다 (파밍 문서 2.4 (1))
 - 스테이지별 컬럼 분리 (지금은 ZoneDefinition 하나가 전 스테이지 공통값)
 
-## 알려진 한계
+## 배경 블록 (GPU 인스턴싱)
 
-- 배경 블록 인스턴싱(EnvironmentRenderer)은 현재 기본 비활성이다
-  (FieldSpawner.buildBackgroundBlocks = false). 파밍 포인트가 존 옆으로 뻗어
-  럽블과 겹쳐 보이는 문제 때문에 사용자 지시로 끈 상태.
-  다시 켤 때 파밍 포인트 z 범위의 배경 생성을 제외하는 처리를 함께 넣는다
+- FieldSpawner.buildBackgroundBlocks로 on/off (기본 on).
+  드로우는 Segment/EnvironmentRenderer (Graphics.RenderMeshInstanced)
+- 팔레트 머티리얼도 GreyboxPalette.GetTinted 경유 - 배경까지 Common.mat
+  쉐이더를 공유한다 (사용자 지시). 팔레트 색당 1장이고 파괴 책임은 팔레트에 있다
+  (EnvironmentRenderer가 Destroy하면 다른 생성물의 머티리얼까지 깨진다)
+- 파밍 포인트 영역(RecordFootprint)과 겹치는 블록은 생성 후 필터로 버린다.
+  생성 자체를 막지 않는 이유는 rng 소비 순서를 유지해 같은 시드에서 같은 배치가
+  나오게 하기 위함. 영역 기록은 존마다 초기화되며, 조기 반환보다 앞에서 비운다
+  (파밍 포인트가 없는 존에서 이전 존 기록이 남으면 엉뚱한 블록이 지워진다)

@@ -30,8 +30,8 @@ namespace Scavenger.Field
         [SerializeField] FarmingPoint farmingPointTopPrefab;
         [SerializeField] FarmingPoint farmingPointBottomPrefab;
 
-        [Header("배경 블록 인스턴싱. 파밍 포인트와 겹쳐 일단 끔 (사용자 지시)")]
-        public bool buildBackgroundBlocks;
+        [Header("배경 블록 인스턴싱 (GPU 인스턴싱). 파밍 포인트 영역은 자동 제외된다")]
+        public bool buildBackgroundBlocks = true;
 
         public ZoneDefinition Definition { get; private set; }
 
@@ -312,7 +312,48 @@ namespace Scavenger.Field
             SightClearance clearance = BuildSightClearance(viewCamera, Definition);
             List<EnvironmentBlock> blocks = SegmentEnvironment.GenerateBlocks(Definition, rng, clearance);
 
+            // 파밍 포인트가 차지한 영역의 블록은 버린다 - 안 버리면 럽블이 플랫폼을
+            // 관통해 솟는다. 생성 자체를 막지 않고 사후 필터인 이유는 rng 소비 순서를
+            // 건드리지 않기 위함 (같은 시드 = 같은 배치 유지)
+            RemoveBlocksInFootprints(blocks, startZ);
+
             return environmentRenderer.AddChunk(blocks, new Vector3(0f, 0f, startZ));
+        }
+
+        void RemoveBlocksInFootprints(List<EnvironmentBlock> blocks, float startZ)
+        {
+            if (currentFootprints.Count == 0)
+                return;
+
+            for (int i = blocks.Count - 1; i >= 0; i--)
+            {
+                Vector3 localPosition = blocks[i].LocalMatrix.GetColumn(3);
+                Vector3 scale = blocks[i].LocalMatrix.lossyScale;
+
+                float minX = localPosition.x - scale.x * 0.5f;
+                float maxX = localPosition.x + scale.x * 0.5f;
+
+                // 블록 z는 청크 로컬 - 파밍 포인트 영역은 월드라 startZ를 더해 맞춘다
+                float worldZ = localPosition.z + startZ;
+                float minZ = worldZ - scale.z * 0.5f;
+                float maxZ = worldZ + scale.z * 0.5f;
+
+                if (!IsInsideAnyFootprint(minX, maxX, minZ, maxZ))
+                    continue;
+
+                blocks.RemoveAt(i);
+            }
+        }
+
+        bool IsInsideAnyFootprint(float minX, float maxX, float minZ, float maxZ)
+        {
+            foreach (Footprint footprint in currentFootprints)
+            {
+                if (footprint.Overlaps(minX, maxX, minZ, maxZ))
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>

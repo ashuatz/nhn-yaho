@@ -300,17 +300,28 @@ namespace Scavenger.Segment
             if (instanceMesh == null)
                 instanceMesh = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
 
-            if (baseMaterial == null)
-            {
-                Shader litShader = Shader.Find("Universal Render Pipeline/Lit");
-                baseMaterial = new Material(litShader);
-            }
-
             Color[] palette = SegmentEnvironment.Palette;
             paletteMaterials = new Material[palette.Length];
 
             for (int i = 0; i < palette.Length; i++)
             {
+                // 배경도 런타임 생성물과 같은 기준 머티리얼(Common.mat) 쉐이더를 쓴다
+                // (사용자 지시). 팔레트 색당 1장 공유 - 파괴 책임은 팔레트에 있다
+                Material shared = Field.GreyboxPalette.GetTinted(palette[i]);
+
+                if (shared != null)
+                {
+                    paletteMaterials[i] = shared;
+                    continue;
+                }
+
+                // 폴백: 기준 머티리얼 미주입 (에디터 프리뷰 등)
+                if (baseMaterial == null)
+                {
+                    Shader litShader = Shader.Find("Universal Render Pipeline/Lit");
+                    baseMaterial = new Material(litShader);
+                }
+
                 Material material = new Material(baseMaterial);
                 material.color = palette[i];
                 material.enableInstancing = true;

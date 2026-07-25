@@ -33,12 +33,38 @@ namespace Scavenger.Field
 
         readonly List<float> placedSocketZ = new List<float>();
 
+        /// <summary>파밍 포인트가 차지하는 월드 XZ 영역 (배경 블록 제외에 사용).</summary>
+        public struct Footprint
+        {
+            public float MinX, MaxX, MinZ, MaxZ;
+
+            public bool Overlaps(float minX, float maxX, float minZ, float maxZ)
+            {
+                if (maxX < MinX || minX > MaxX)
+                    return false;
+
+                if (maxZ < MinZ || minZ > MaxZ)
+                    return false;
+
+                return true;
+            }
+        }
+
+        // 현재 빌드 중인 존의 파밍 포인트 영역. BuildZoneAt이 파밍 포인트를 먼저 만들고
+        // 배경을 나중에 만들므로, 배경 생성이 이 목록을 보고 겹치는 블록을 버린다
+        readonly List<Footprint> currentFootprints = new List<Footprint>();
+
         /// <summary>
         /// 존 양옆에 파밍 포인트를 배치한다. 소켓 z는 존 안에서 뽑되
         /// 구역 전체가 존 z 범위를 벗어나지 않도록 여유를 둔다.
         /// </summary>
         void PopulateFarmingPoints(Zone zone)
         {
+            // 존마다 초기화가 먼저 - 조기 반환 뒤에 두면 파밍 포인트가 없는 존에서
+            // 이전 존의 영역 기록이 남아 배경 필터가 엉뚱한 블록을 지운다
+            placedSocketZ.Clear();
+            currentFootprints.Clear();
+
             RunManager run = RunManager.Instance;
 
             if (run == null || run.Rng == null)
@@ -62,8 +88,6 @@ namespace Scavenger.Field
 
             if (maxSocketZ <= minSocketZ)
                 return;
-
-            placedSocketZ.Clear();
 
             int placed = 0;
             int attempts = 0;
@@ -161,6 +185,26 @@ namespace Scavenger.Field
                 pointType, grade, socketPosition, sideSign, zoneHalfWidth,
                 depth: effectiveSize, length: effectiveSize,
                 shakeStartDistance: Definition.farmingPointShakeStartBlocks * Definition.blockSize);
+
+            RecordFootprint(sideSign, zoneHalfWidth, socketZ, effectiveSize);
+        }
+
+        // 배경 블록이 파밍 포인트를 관통하지 않도록 점유 영역을 기록한다.
+        // 존 가장자리부터 바깥으로 뻗는 사각형 + 약간의 여유
+        void RecordFootprint(float sideSign, float zoneHalfWidth, float socketZ, float size)
+        {
+            const float FootprintMargin = 0.5f;
+
+            float edgeX = sideSign * zoneHalfWidth;
+            float outerX = sideSign * (zoneHalfWidth + size);
+
+            currentFootprints.Add(new Footprint
+            {
+                MinX = Mathf.Min(edgeX, outerX) - FootprintMargin,
+                MaxX = Mathf.Max(edgeX, outerX) + FootprintMargin,
+                MinZ = socketZ - size * 0.5f - FootprintMargin,
+                MaxZ = socketZ + size * 0.5f + FootprintMargin,
+            });
         }
 
         /// <summary>
