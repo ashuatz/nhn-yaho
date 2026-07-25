@@ -18,7 +18,12 @@
   존 청크 등록/해제(AddChunk/RemoveChunk), 팔레트별 머티리얼, 콜당 1023 분할,
   청크 바운드 컬링, Wave>0 블록만 동적 그룹으로 사인파 갱신. static Active
 - EnvironmentAuthoring.cs: 사전 배치 배경 마커. 커버 z 범위 표시용.
-  생성은 에디터 윈도우 Scavenger > Environment Authoring
+  생성 입구 2개 (둘 다 Editor/BackgroundBlockBuilder를 호출 - 로직은 그쪽에만 있다):
+  - FieldSpawner 인스펙터의 "실제 객체로 생성" 버튼 (buildBackgroundBlocks 플래그 옆)
+  - 에디터 윈도우 Scavenger > Environment Authoring
+  주의: FieldSpawner.BuildBackground는 이 마커의 커버 범위를 확인하지 않는다.
+  사전 배치를 둔 채 플레이하면 인스턴싱 배경이 위에 겹쳐 그려진다 -
+  사전 배치만 쓰려면 buildBackgroundBlocks를 꺼야 한다 (양쪽 UI가 경고로 안내).
 - DepthLighting.cs: 깊이별 조도 (M4-2). RunStarted/DepthChanged 구독,
   씬 베이스 라이팅 캡처 후 배율만 적용. minAmbientFactor/minLightFactor = 시인성 가드
 - ExtractionWaypoint.cs: 스테이지 끝 웨이포인트 (ADR-0008). Extract = 탈출(정산),

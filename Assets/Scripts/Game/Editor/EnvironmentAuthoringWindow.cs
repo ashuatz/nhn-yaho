@@ -1,16 +1,16 @@
 using Scavenger.Field;
-using Scavenger.Player;
 using Scavenger.Segment;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace Scavenger.EditorTools
 {
     /// <summary>
-    /// 배경 사전 배치 윈도우. 시드/구간 수를 지정해 배경을 씬에 생성해두고
-    /// 손으로 다듬을 수 있다. EnvironmentAuthoring 마커가 커버하는 범위에서는
-    /// 런타임 배경 생성이 스킵되어 다듬은 결과가 그대로 쓰인다 (ADR-0004).
+    /// 배경 사전 배치 윈도우. 시드/구간 수를 지정해 배경을 씬에 실제 오브젝트로
+    /// 생성해두고 손으로 다듬을 수 있다.
+    ///
+    /// 생성 로직은 <see cref="BackgroundBlockBuilder"/>가 소유한다.
+    /// FieldSpawner 인스펙터 버튼과 같은 결과를 내야 하므로 여기서 직접 만들지 않는다.
     /// </summary>
     public sealed class EnvironmentAuthoringWindow : EditorWindow
     {
@@ -31,13 +31,15 @@ namespace Scavenger.EditorTools
             EditorGUILayout.Space(4f);
 
             seed = EditorGUILayout.IntField("Seed", seed);
-            segmentCount = Mathf.Clamp(EditorGUILayout.IntField("Segment Count", segmentCount), 1, 50);
+            segmentCount = EditorGUILayout.IntSlider(
+                "Segment Count", segmentCount,
+                BackgroundBlockBuilder.MinZoneCount, BackgroundBlockBuilder.MaxZoneCount);
             definition = (ZoneDefinition)EditorGUILayout.ObjectField(
                 "Segment Definition", definition, typeof(ZoneDefinition), false);
 
             EditorGUILayout.Space(8f);
 
-            EnvironmentAuthoring existing = FindFirstObjectByType<EnvironmentAuthoring>();
+            EnvironmentAuthoring existing = BackgroundBlockBuilder.FindExisting();
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -47,7 +49,7 @@ namespace Scavenger.EditorTools
                 using (new EditorGUI.DisabledScope(existing == null))
                 {
                     if (GUILayout.Button("Clear"))
-                        Clear();
+                        BackgroundBlockBuilder.Clear();
                 }
             }
 
@@ -55,56 +57,27 @@ namespace Scavenger.EditorTools
             {
                 EditorGUILayout.Space(4f);
                 EditorGUILayout.HelpBox(
-                    $"사전 배치됨: z {existing.coveredFromZ:F0} ~ {existing.coveredToZ:F0}. "
-                    + "이 범위는 런타임 배경 생성이 스킵된다. 블록은 자유롭게 수정/추가 가능.",
+                    $"사전 배치됨: 블록 {BackgroundBlockBuilder.CountBlocks(existing)}개, "
+                    + $"z {existing.coveredFromZ:F0} ~ {existing.coveredToZ:F0}. "
+                    + "블록은 자유롭게 수정/추가 가능.",
                     MessageType.Info);
+
+                EditorGUILayout.HelpBox(
+                    "런타임 생성은 이 범위를 건너뛰지 않는다. 사전 배치만 쓰려면 "
+                    + "FieldSpawner의 Build Background Blocks를 끈다.",
+                    MessageType.Warning);
             }
         }
 
         void Generate()
         {
-            Clear();
+            EnvironmentAuthoring created = BackgroundBlockBuilder.Build(definition, seed, segmentCount);
 
-            ZoneDefinition activeDefinition = definition;
-
-            if (activeDefinition == null)
-                activeDefinition = ZoneDefinition.CreateDefault();
-
-            GameObject root = new GameObject("PreplacedEnvironment");
-            EnvironmentAuthoring authoring = root.AddComponent<EnvironmentAuthoring>();
-
-            System.Random rng = new System.Random(seed);
-
-            // 씬 카메라 기준 시야 클리어런스 - 런타임 생성과 동일 규칙 적용
-            FollowCamera sceneCamera = FindFirstObjectByType<FollowCamera>();
-            SightClearance clearance = FieldSpawner.BuildSightClearance(sceneCamera, activeDefinition);
-
-            for (int i = 0; i < segmentCount; i++)
-            {
-                GameObject chunk = new GameObject($"EnvChunk_{i}");
-                chunk.transform.SetParent(root.transform, false);
-                chunk.transform.localPosition = new Vector3(0f, 0f, i * activeDefinition.lengthMeters);
-
-                SegmentEnvironment.BuildGameObjects(chunk.transform, activeDefinition, rng, clearance);
-            }
-
-            authoring.coveredFromZ = 0f;
-            authoring.coveredToZ = segmentCount * activeDefinition.lengthMeters;
-
-            Undo.RegisterCreatedObjectUndo(root, "Generate Preplaced Environment");
-            EditorSceneManager.MarkSceneDirty(root.scene);
-        }
-
-        static void Clear()
-        {
-            EnvironmentAuthoring existing = FindFirstObjectByType<EnvironmentAuthoring>();
-
-            if (existing == null)
+            if (created == null)
                 return;
 
-            UnityEngine.SceneManagement.Scene scene = existing.gameObject.scene;
-            Undo.DestroyObjectImmediate(existing.gameObject);
-            EditorSceneManager.MarkSceneDirty(scene);
+            Selection.activeGameObject = created.gameObject;
+            EditorGUIUtility.PingObject(created.gameObject);
         }
     }
 }
