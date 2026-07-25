@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Scavenger.Field;
 using UnityEngine;
 
 namespace Scavenger.Segment
@@ -122,13 +123,13 @@ namespace Scavenger.Segment
 
         // -- 데이터 생성 ------------------------------------------------------
 
-        public static List<EnvironmentBlock> GenerateBlocks(SegmentDefinition definition, System.Random rng)
+        public static List<EnvironmentBlock> GenerateBlocks(ZoneDefinition definition, System.Random rng)
         {
             return GenerateBlocks(definition, rng, default);
         }
 
         public static List<EnvironmentBlock> GenerateBlocks(
-            SegmentDefinition definition, System.Random rng, SightClearance clearance)
+            ZoneDefinition definition, System.Random rng, SightClearance clearance)
         {
             List<EnvironmentBlock> blocks = new List<EnvironmentBlock>(384);
 
@@ -164,7 +165,7 @@ namespace Scavenger.Segment
         // -- 측면 럽블 매스 ---------------------------------------------------
 
         static void AddRubbleSides(
-            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -268,7 +269,7 @@ namespace Scavenger.Segment
         // -- 상부층 (복층 느낌) ------------------------------------------------
 
         static void AddUpperStory(
-            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -375,7 +376,7 @@ namespace Scavenger.Segment
         // 카메라측 = 보행면 아래로 가라앉은 매스 - 내려간 단차 아래의 잔해 지대.
         // 카메라측 상판은 항상 y<0 이라 발판을 가리지 않는다 (사용자 지시)
         static void AddMidground(
-            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -416,7 +417,7 @@ namespace Scavenger.Segment
         // 원경 (팔레트 7): 시야 반대편 = 높은 스카이라인 실루엣,
         // 카메라측 = 더 내려간 저지대 - 복도가 능선 위에 있다는 인상을 만든다
         static void AddFarground(
-            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -456,7 +457,7 @@ namespace Scavenger.Segment
         // -- 보행로 내 데브리 --------------------------------------------------
 
         static void AddDebris(
-            List<EnvironmentBlock> blocks, SegmentDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
         {
             float length = definition.lengthMeters;
             float halfWidth = definition.corridorHalfWidth;
@@ -483,16 +484,15 @@ namespace Scavenger.Segment
 
         // -- GameObject 백엔드 (배경 사전 배치/수동 편집 전용, ADR-0005) --------
 
-        public static void BuildGameObjects(Transform parent, SegmentDefinition definition, System.Random rng)
+        public static void BuildGameObjects(Transform parent, ZoneDefinition definition, System.Random rng)
         {
             BuildGameObjects(parent, definition, rng, default);
         }
 
         public static void BuildGameObjects(
-            Transform parent, SegmentDefinition definition, System.Random rng, SightClearance clearance)
+            Transform parent, ZoneDefinition definition, System.Random rng, SightClearance clearance)
         {
-            SegmentPath.BuildWalkFloorStrips(parent, definition);
-
+            // 보행 바닥은 존이 소유한다 (Field/Zone) - 여기서는 배경 블록만 만든다
             List<EnvironmentBlock> blocks = GenerateBlocks(definition, rng, clearance);
 
             foreach (EnvironmentBlock block in blocks)

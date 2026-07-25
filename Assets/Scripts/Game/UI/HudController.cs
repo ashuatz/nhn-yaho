@@ -747,12 +747,12 @@ namespace Scavenger.UI
 
         void CheckMilestones()
         {
-            SegmentSpawner spawner = FindFirstObjectByType<SegmentSpawner>();
+            Field.FieldSpawner field = Field.FieldSpawner.Instance;
 
-            if (spawner == null || player == null)
+            if (field == null || player == null)
                 return;
 
-            float progress = ResolveProgress(spawner);
+            float progress = field.StageProgress01;
 
             for (int i = 0; i < Milestones.Length; i++)
             {
@@ -765,23 +765,6 @@ namespace Scavenger.UI
                 milestonesPassed[i] = true;
                 ShowAnnounce(i < Milestones.Length - 1 ? "탈출 지역에 가까워지고 있습니다" : "탈출 지점이 근처에 있습니다!");
             }
-        }
-
-        // 현재 구간 내 진행 비율 (0..1). 구간 시작 z ~ 선택지 z 사이 플레이어 위치
-        float ResolveProgress(SegmentSpawner spawner)
-        {
-            float length = spawner.Definition != null ? spawner.Definition.lengthMeters : 1f;
-
-            if (length <= 0f)
-                return 0f;
-
-            // 플레이어 z를 구간 길이로 나눈 근사 (라운드 경계 넘으면 1로 포화)
-            float localZ = player.transform.position.z % length;
-
-            if (localZ < 0f)
-                localZ += length;
-
-            return Mathf.Clamp01(localZ / length);
         }
 
         void ShowAnnounce(string message)
@@ -944,25 +927,20 @@ namespace Scavenger.UI
             SetActive(choiceRoot, false);
         }
 
+        // 거리 신호(SignalEmitter)는 폐기됨 - 배너는 마일스톤 안내만 사용한다
         void UpdateSignal()
         {
-            bool visible = !string.IsNullOrEmpty(SignalEmitter.LastMessage)
-                && Time.time - SignalEmitter.LastMessageAt <= SignalBannerSeconds;
-
-            SetActive(signalRoot, visible);
-
-            if (visible && signalText != null)
-                signalText.text = SignalEmitter.LastMessage;
+            SetActive(signalRoot, false);
         }
 
-        // 시간 압박 인지 표현 (ADR-0006): 붕괴 전선 근접 경고
+        // 시간 압박 인지 표현: 바닥 제거 기준선 근접 경고 (필드 규칙 3.2)
         void UpdateCollapse(bool running)
         {
-            CollapseFront collapse = CollapseFront.Instance;
+            Field.FieldSpawner field = Field.FieldSpawner.Instance;
 
             bool visible = running
-                && collapse != null
-                && collapse.DistanceToPlayer <= CollapseWarningDistance;
+                && field != null
+                && field.RemoveLineDistanceToPlayer <= CollapseWarningDistance;
 
             SetActive(collapseRoot, visible);
         }

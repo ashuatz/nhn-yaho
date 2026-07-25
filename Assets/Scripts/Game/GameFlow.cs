@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Scavenger.Field;
 using Scavenger.Loot;
 using Scavenger.Player;
 using Scavenger.Run;
@@ -17,17 +18,15 @@ namespace Scavenger
     {
         [Header("씬 참조 (비우면 씬에서 자동 탐색)")]
         [SerializeField] RunManager runManager;
-        [SerializeField] SegmentSpawner segmentSpawner;
+        [SerializeField] FieldSpawner fieldSpawner;
         [SerializeField] PlayerController player;
         [SerializeField] FollowCamera followCamera;
 
         [Header("데이터 에셋 (비우면 기본값 생성)")]
         [SerializeField] RunSettings runSettings;
-        [SerializeField] SegmentDefinition segmentDefinition;
-        [SerializeField] DepthCurve depthCurve;
+        [SerializeField] ZoneDefinition zoneDefinition;
 
         bool worldInitialized;
-        CollapseFront collapseFront;
         CarryLoad carryLoad;
 
         void Awake()
@@ -41,26 +40,16 @@ namespace Scavenger
             if (runSettings == null)
                 runSettings = RunSettings.CreateDefault();
 
-            if (segmentDefinition == null)
-                segmentDefinition = SegmentDefinition.CreateDefault();
-
-            if (depthCurve == null)
-                depthCurve = DepthCurve.CreateDefault();
+            if (zoneDefinition == null)
+                zoneDefinition = ZoneDefinition.CreateDefault();
 
             List<LootDefinition> lootCatalog = LootCatalog.CreateDefaults();
 
             runManager.Configure(runSettings);
-            segmentSpawner.Configure(segmentDefinition, lootCatalog, depthCurve);
-            segmentSpawner.SetViewCamera(followCamera);
-            player.Motor.corridorHalfWidth = segmentDefinition.corridorHalfWidth;
-
-            // 바닥 붕괴 (ADR-0006): 스포너와 같은 오브젝트에 상주
-            collapseFront = segmentSpawner.GetComponent<CollapseFront>();
-
-            if (collapseFront == null)
-                collapseFront = segmentSpawner.gameObject.AddComponent<CollapseFront>();
-
-            collapseFront.Track(player);
+            fieldSpawner.Configure(zoneDefinition, lootCatalog);
+            fieldSpawner.SetViewCamera(followCamera);
+            fieldSpawner.Track(player);
+            player.Motor.corridorHalfWidth = zoneDefinition.corridorHalfWidth;
 
             // uGUI HUD (M5-1)는 HudCanvas 프리팹으로 씬에 배치된다.
             // 런타임 생성 금지 규약 - 없으면 경고만 (씬 재구성 안내)
@@ -82,13 +71,9 @@ namespace Scavenger
             if (followCamera.GetComponent<CameraShake>() == null)
                 followCamera.gameObject.AddComponent<CameraShake>();
 
-            // 위험 그리드 (M3-1) - 기존 스포너 프리팹에는 폴백으로 보강
-            if (segmentSpawner.GetComponent<DangerGrid>() == null)
-                segmentSpawner.gameObject.AddComponent<DangerGrid>();
-
             // 깊이별 조도 (M4-2) - 기존 스포너 프리팹에는 폴백으로 보강
-            if (segmentSpawner.GetComponent<DepthLighting>() == null)
-                segmentSpawner.gameObject.AddComponent<DepthLighting>();
+            if (fieldSpawner.GetComponent<DepthLighting>() == null)
+                fieldSpawner.gameObject.AddComponent<DepthLighting>();
 
             runManager.RunStarted += OnRunStarted;
         }
@@ -114,8 +99,8 @@ namespace Scavenger
             if (runManager == null)
                 runManager = FindFirstObjectByType<RunManager>();
 
-            if (segmentSpawner == null)
-                segmentSpawner = FindFirstObjectByType<SegmentSpawner>();
+            if (fieldSpawner == null)
+                fieldSpawner = FindFirstObjectByType<FieldSpawner>();
 
             if (player == null)
                 player = FindFirstObjectByType<PlayerController>();
@@ -123,7 +108,7 @@ namespace Scavenger
             if (followCamera == null)
                 followCamera = FindFirstObjectByType<FollowCamera>();
 
-            if (runManager != null && segmentSpawner != null && player != null && followCamera != null)
+            if (runManager != null && fieldSpawner != null && player != null && followCamera != null)
                 return true;
 
             UnityEngine.Debug.LogError(
@@ -137,8 +122,6 @@ namespace Scavenger
         // 월드를 재생성한다. 첫 라운드만 원점 기준.
         void OnRunStarted()
         {
-            SignalEmitter.Clear();
-
             float startZ = 0f;
 
             if (worldInitialized)
@@ -146,13 +129,8 @@ namespace Scavenger
             else
                 worldInitialized = true;
 
-            segmentSpawner.DespawnAll();
-
-            // 현재 + 다음 구간을 함께 생성 - 다음 스테이지 확정 노출 (ADR-0004)
-            segmentSpawner.BuildInitialChain(runManager.Depth, startZ);
-
-            // 붕괴 전선을 플레이어 뒤로 리셋 (ADR-0006)
-            collapseFront.ResetFront(player.transform.position.z - 8f);
+            // 스테이지 진입: 존 개수 확정 + 현재/다음 존 생성 (필드 규칙 3.1)
+            fieldSpawner.StartStage(startZ);
 
             // 낙사 후 재개: 구멍 아래에 있으면 바닥 위로 복귀
             RecoverPlayerIfFallen(startZ);
@@ -175,7 +153,7 @@ namespace Scavenger
 
             position.y = 0.05f;
             position.x = Mathf.Clamp(
-                position.x, -segmentDefinition.corridorHalfWidth, segmentDefinition.corridorHalfWidth);
+                position.x, -zoneDefinition.corridorHalfWidth, zoneDefinition.corridorHalfWidth);
             position.z = Mathf.Max(position.z, startZ + 2f);
 
             // CharacterController는 활성 상태에서 transform 이동을 무시하므로 잠시 끈다

@@ -1,3 +1,4 @@
+using Scavenger.Field;
 using Scavenger.Player;
 using Scavenger.Segment;
 using UnityEditor;
@@ -15,7 +16,7 @@ namespace Scavenger.EditorTools
     {
         int seed = 12345;
         int segmentCount = 6;
-        SegmentDefinition definition;
+        ZoneDefinition definition;
 
         [MenuItem("Scavenger/Environment Authoring")]
         public static void Open()
@@ -31,8 +32,8 @@ namespace Scavenger.EditorTools
 
             seed = EditorGUILayout.IntField("Seed", seed);
             segmentCount = Mathf.Clamp(EditorGUILayout.IntField("Segment Count", segmentCount), 1, 50);
-            definition = (SegmentDefinition)EditorGUILayout.ObjectField(
-                "Segment Definition", definition, typeof(SegmentDefinition), false);
+            definition = (ZoneDefinition)EditorGUILayout.ObjectField(
+                "Segment Definition", definition, typeof(ZoneDefinition), false);
 
             EditorGUILayout.Space(8f);
 
@@ -64,10 +65,10 @@ namespace Scavenger.EditorTools
         {
             Clear();
 
-            SegmentDefinition activeDefinition = definition;
+            ZoneDefinition activeDefinition = definition;
 
             if (activeDefinition == null)
-                activeDefinition = SegmentDefinition.CreateDefault();
+                activeDefinition = ZoneDefinition.CreateDefault();
 
             GameObject root = new GameObject("PreplacedEnvironment");
             EnvironmentAuthoring authoring = root.AddComponent<EnvironmentAuthoring>();
@@ -76,7 +77,7 @@ namespace Scavenger.EditorTools
 
             // 씬 카메라 기준 시야 클리어런스 - 런타임 생성과 동일 규칙 적용
             FollowCamera sceneCamera = FindFirstObjectByType<FollowCamera>();
-            SightClearance clearance = SegmentSpawner.BuildSightClearance(sceneCamera, activeDefinition);
+            SightClearance clearance = FieldSpawner.BuildSightClearance(sceneCamera, activeDefinition);
 
             for (int i = 0; i < segmentCount; i++)
             {

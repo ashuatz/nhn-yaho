@@ -86,24 +86,25 @@ namespace Scavenger.Player
             // 임펄스는 제곱 커브 - 작은 충격은 은은하게, 큰 충격은 확실하게
             float impulse = trauma * trauma;
 
-            float continuous = Mathf.Max(externalTremor, ComputeCollapseTremor());
+            float continuous = Mathf.Max(externalTremor, ComputeRemovalTremor());
 
             return Mathf.Clamp01(Mathf.Max(impulse, continuous));
         }
 
-        float ComputeCollapseTremor()
+        // 바닥 제거 기준선이 등 뒤로 다가올수록 지속 트레머 (필드 규칙 3.2 압박 피드백)
+        float ComputeRemovalTremor()
         {
             RunManager run = RunManager.Instance;
 
             if (run == null || run.StateMachine.Current != RunState.Running)
                 return 0f;
 
-            CollapseFront collapse = CollapseFront.Instance;
+            Field.FieldSpawner field = Field.FieldSpawner.Instance;
 
-            if (collapse == null)
+            if (field == null)
                 return 0f;
 
-            float distance = collapse.DistanceToPlayer;
+            float distance = field.RemoveLineDistanceToPlayer;
 
             if (distance >= collapseTremorDistance)
                 return 0f;

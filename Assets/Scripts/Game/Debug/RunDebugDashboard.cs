@@ -50,13 +50,14 @@ namespace Scavenger.Diagnostics
 
             GUILayout.Label($"Elapsed: {run.Timer.Elapsed:F1}s");
 
-            // 붕괴 전선 실수치 - 플레이어 HUD에는 근접 경고만 노출
-            CollapseFront collapse = CollapseFront.Instance;
+            // 바닥 제거 기준선 실수치 - 플레이어 HUD에는 근접 경고만 노출
+            Field.FieldSpawner field = Field.FieldSpawner.Instance;
 
-            if (collapse != null)
+            if (field != null)
             {
-                GUILayout.Label($"Collapse front z: {collapse.FrontZ:F1}");
-                GUILayout.Label($"Collapse distance: {collapse.DistanceToPlayer:F1}m");
+                GUILayout.Label($"Remove line z: {field.RemoveLineZ:F1}");
+                GUILayout.Label($"Remove line distance: {field.RemoveLineDistanceToPlayer:F1}m");
+                GUILayout.Label($"Zone: {field.CurrentZoneIndex + 1} / {field.StageZoneCount}");
             }
 
             DrawExtraSections(run);
@@ -83,16 +84,7 @@ namespace Scavenger.Diagnostics
                 depthEnteredAt = Time.time;
             }
 
-            GUILayout.Label($"Segment elapsed: {Time.time - depthEnteredAt:F1}s (target 120-180s/round)");
-
-            GUILayout.Space(4f);
-
-            // 신호의 실거리 - 플레이어 HUD에는 절대 노출 금지
-            if (!string.IsNullOrEmpty(SignalEmitter.LastMessage))
-            {
-                GUILayout.Label($"Signal: {SignalEmitter.LastMessage}");
-                GUILayout.Label($"Signal real distance: {SignalEmitter.LastRealDistance:F1}m");
-            }
+            GUILayout.Label($"Stage elapsed: {Time.time - depthEnteredAt:F1}s (target 150s/stage)");
         }
 #endif
     }

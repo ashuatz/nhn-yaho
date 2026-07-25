@@ -178,9 +178,8 @@ namespace Scavenger.EditorTools
             // 무게 과적 -> 이동속도 배율 (M2-1). 임계/배율은 프리팹에서 튜닝
             root.AddComponent<CarryLoad>();
 
-            // 체력/스테미나 (HUD 표시 대상). 수치는 프리팹에서 튜닝
+            // 체력 (HP). 수치는 프리팹에서 튜닝. 스태미나는 별도 문서 확정 후 도입
             root.AddComponent<PlayerHealth>();
-            root.AddComponent<PlayerStamina>();
 
             // 비주얼: 큐브 2개 (머리 + 몸) - 로직 루트와 분리해 트랙 B에서 교체 가능
             GameObject visual = new GameObject("Visual");
@@ -218,16 +217,12 @@ namespace Scavenger.EditorTools
 
         static GameObject BuildSpawnerTemplate()
         {
-            GameObject spawnerObject = new GameObject("SegmentSpawner");
+            GameObject spawnerObject = new GameObject("FieldSpawner");
 
-            // 배경 인스턴스 렌더러 (ADR-0005) + 붕괴 전선 (ADR-0006) - 스포너와 동거.
+            // 배경 인스턴스 렌더러 (ADR-0005) - 필드 스포너와 동거.
             // 기존 프리팹에는 런타임 GetComponent/AddComponent 폴백이 보강한다
             spawnerObject.AddComponent<EnvironmentRenderer>();
-            spawnerObject.AddComponent<CollapseFront>();
-            spawnerObject.AddComponent<SegmentSpawner>();
-
-            // 위험 범위 셀 표시 (M3-1). 수치는 프리팹에서 튜닝
-            spawnerObject.AddComponent<DangerGrid>();
+            spawnerObject.AddComponent<Field.FieldSpawner>();
 
             // 깊이별 조도 (M4-2). 수치는 프리팹에서 튜닝
             spawnerObject.AddComponent<DepthLighting>();
@@ -264,7 +259,7 @@ namespace Scavenger.EditorTools
             GameFlow gameFlow = flow.GetComponent<GameFlow>();
             SerializedObject serialized = new SerializedObject(gameFlow);
             serialized.FindProperty("runManager").objectReferenceValue = runSystems.GetComponent<RunManager>();
-            serialized.FindProperty("segmentSpawner").objectReferenceValue = spawner.GetComponent<SegmentSpawner>();
+            serialized.FindProperty("fieldSpawner").objectReferenceValue = spawner.GetComponent<Field.FieldSpawner>();
             serialized.FindProperty("player").objectReferenceValue = player.GetComponent<PlayerController>();
             serialized.FindProperty("followCamera").objectReferenceValue = followCamera;
             serialized.ApplyModifiedPropertiesWithoutUndo();
