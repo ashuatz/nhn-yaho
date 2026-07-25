@@ -40,10 +40,12 @@ namespace Scavenger.Field
         [Header("드랍 아이템 생성 간격 거리 (블록 단위 - 서로 붙지 않게)")]
         public float dropSpacingDistance = 2f;
 
-        // 구역이 길어져(입구 + 본체 + 출구) 25블록 존에는 최소 간격을 지켜 2개까지 들어간다.
+        // min 2 = 배분 규칙(1번째 상단 / 2번째 하단)에 따라 존마다 상단과 하단이
+        // 하나씩 생겨 화면에 3층이 동시에 읽힌다 (3층 구조 계획 2.1의 목표).
+        // 구역이 길어져(입구 + 본체 + 출구) 25블록 존에는 최소 간격을 지켜 2개까지 들어간다 -
         // 3개 이상을 넣으려면 존 길이나 최소 간격을 함께 조정할 것
         [Header("파밍 포인트 개수 (min / max, 존 시트 값)")]
-        public int farmingPointCountMin = 1;
+        public int farmingPointCountMin = 2;
         public int farmingPointCountMax = 2;
 
         [Header("파밍 포인트 플랫폼 깊이 (블록. 존 밖으로 뻗는 x 길이, 문서 규격 4~7)")]

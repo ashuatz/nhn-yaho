@@ -42,6 +42,10 @@ namespace Scavenger.Field
         [Header("프리팹 자체 길이 (블록, z. 0이면 ZoneDefinition 값)")]
         public float authoredLengthBlocks;
 
+        [Header("프리팹이 뻗는 방향 (+1 = +x / -1 = -x). 반대편에 붙일 때 회전 기준")]
+        [Tooltip("구버전(ver01) 프리팹은 전부 +x 규격이므로 기본값이 +1이다")]
+        public float authoredSideSign = 1f;
+
         /// <summary>플레이어가 어느 파밍 포인트 안에 있는가 (없으면 null).</summary>
         public static FarmingPoint PlayerInside { get; private set; }
 

@@ -55,6 +55,9 @@ namespace Scavenger.Field
 
         readonly List<float> placedSocketZ = new List<float>();
 
+        // 구버전 프리팹 경고는 세션당 1회 (존마다 반복되면 콘솔이 묻힌다)
+        static bool legacyPrefabWarned;
+
         /// <summary>파밍 포인트가 차지하는 월드 XZ 영역 (배경 블록 제외에 사용).</summary>
         public struct Footprint
         {
@@ -366,17 +369,18 @@ namespace Scavenger.Field
         }
 
         /// <summary>
-        /// 아트 프리팹 배치. 프리팹 규격은 기본 아이소 리그(카메라 +x) 기준으로,
-        /// 상단은 -x / 하단은 +x로 뻗고 입구가 z- 쪽에 온다.
-        /// 리그가 뒤집힌 경우에만 y축 180도로 돌려 붙인다 (음수 스케일은 콜라이더/노멀이
+        /// 아트 프리팹 배치. 프리팹이 뻗는 방향을 authoredSideSign으로 선언받고,
+        /// 붙일 방향과 다르면 y축 180도로 돌린다 (음수 스케일은 콜라이더/노멀이
         /// 뒤집히므로 금지) - 이때 z도 함께 뒤집히므로 입구/출구는 마커의 월드 z로 판별한다.
+        ///
+        /// 방향을 타입으로 가정하지 않는 이유: 구버전(ver01) 프리팹은 상단/하단 모두
+        /// +x 규격이라, 타입으로 가정하면 상단이 회전 없이 복도를 침범한다 (실제 발생).
         /// </summary>
         static FarmingPoint InstantiatePointPrefab(
             FarmingPoint prefab, Zone zone, PointMetrics metrics,
             FarmingPointType pointType, FarmingPointGrade grade)
         {
-            // 프리팹이 만들어진 기준 방향 (기본 리그: 상단 -x / 하단 +x)
-            float authoredSide = pointType == FarmingPointType.Top ? -1f : 1f;
+            float authoredSide = prefab.authoredSideSign >= 0f ? 1f : -1f;
 
             Quaternion rotation = Quaternion.identity;
 
@@ -388,7 +392,28 @@ namespace Scavenger.Field
             FarmingPoint point = Instantiate(prefab, origin, rotation, zone.transform);
             point.name = $"FarmingPoint_{pointType}_{grade}";
 
+            WarnOnLegacyPrefab(point);
+
             return point;
+        }
+
+        // 구버전 규격 감지 - 소켓이 1개면 입구/출구가 나뉘지 않은 평면 프리팹이다.
+        // 방향은 authoredSideSign으로 맞춰지므로 겹치지는 않지만 3층 구조가 없다.
+        // 존마다 반복되므로 세션당 1회만 알린다
+        static void WarnOnLegacyPrefab(FarmingPoint point)
+        {
+            if (legacyPrefabWarned)
+                return;
+
+            if (point.GetComponentsInChildren<PointSocket>(true).Length >= 2)
+                return;
+
+            legacyPrefabWarned = true;
+
+            UnityEngine.Debug.LogWarning(
+                $"[Field] {point.name}: 소켓이 1개인 구버전(ver01) 파밍 포인트 프리팹이다. " +
+                "3층 구조와 입구/출구가 적용되지 않는다 - " +
+                "메뉴 Scavenger > Rebuild Farming Point Prefabs로 재생성할 것.");
         }
 
         // 프리팹 미배선 폴백 - 코드로 그레이박스 지형을 만든다

@@ -94,6 +94,15 @@ namespace Scavenger.EditorTools
             if (!confirmed)
                 return;
 
+            RebuildFarmingPointPrefabsNow();
+        }
+
+        /// <summary>
+        /// 확인 대화 없이 재생성한다 (자동화/스크립트 경로).
+        /// 사람이 누르는 경로는 RebuildFarmingPointPrefabs가 확인을 받는다.
+        /// </summary>
+        public static void RebuildFarmingPointPrefabsNow()
+        {
             EnsureFolder();
 
             ReplacePrefab(FarmingPointTopPath, BuildFarmingPointTop);
@@ -286,7 +295,10 @@ namespace Scavenger.EditorTools
                 BuildSpotMarker(spot.transform, color);
             }
 
-            root.AddComponent<FarmingPoint>();
+            // 뻗는 방향을 프리팹이 선언한다 - 코드가 타입으로 가정하지 않는다
+            FarmingPoint point = root.AddComponent<FarmingPoint>();
+            point.authoredSideSign = sideSign;
+
             return root;
         }
 

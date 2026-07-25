@@ -158,24 +158,32 @@ namespace Scavenger.Field
             // 런타임 생성물의 기준 머티리얼 (Assets/Materials/Greybox/Common.mat)
             GreyboxPalette.SetBaseMaterial(greyboxMaterial);
 
-            ValidateRootScale();
+            ValidateRootTransform();
         }
 
         /// <summary>
-        /// 필드 루트의 스케일은 1이어야 한다. 세그먼트 지형은 월드 좌표 + localScale로
-        /// 크기를 지정하므로, 루트 스케일이 1이 아니면 콜라이더 치수가 배로 어긋난다
-        /// (계단 경사와 플랫폼 높이가 발판과 맞지 않게 된다 - Codex 검토 지적).
+        /// 필드 루트는 원점 + 무회전 + 스케일 1이어야 한다.
+        /// 세그먼트 지형은 월드 좌표와 localScale로 배치하므로, 루트가 움직이면
+        /// 만들어 둔 바닥 전체가 함께 끌려가고(실제 발생: 루트가 z -26.9로 밀려 있었다),
+        /// 스케일이 1이 아니면 콜라이더 치수가 배로 어긋난다 (Codex 검토 지적).
         /// </summary>
-        void ValidateRootScale()
+        void ValidateRootTransform()
         {
-            if (IsUnitScale(transform.lossyScale))
+            bool offsetOk = transform.position == Vector3.zero;
+            bool rotationOk = transform.rotation == Quaternion.identity;
+            bool scaleOk = IsUnitScale(transform.lossyScale);
+
+            if (offsetOk && rotationOk && scaleOk)
                 return;
 
             UnityEngine.Debug.LogWarning(
-                $"[Field] 필드 루트 스케일이 1이 아니다 ({transform.lossyScale}). " +
-                "지형 치수가 어긋나므로 로컬 스케일을 1로 되돌린다. " +
-                "부모 오브젝트에 스케일이 걸려 있으면 그쪽을 1로 맞출 것.");
+                $"[Field] 필드 루트 트랜스폼이 기본값이 아니다 (pos={transform.position} " +
+                $"rot={transform.eulerAngles} scale={transform.lossyScale}). " +
+                "생성된 바닥이 함께 끌려가므로 원점/무회전/스케일 1로 되돌린다. " +
+                "부모 오브젝트가 원인이면 그쪽을 맞출 것.");
 
+            transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
             transform.localScale = Vector3.one;
         }
 
@@ -387,6 +395,11 @@ namespace Scavenger.Field
             nextSegmentIndex += 1;
             frontierZ = zone.EndZ;
         }
+
+        // 생성물에 HideFlags.DontSaveInEditor를 붙이지 말 것.
+        // 씬 저장은 막아주지만 Unity가 FindObjectsByType에서 그 오브젝트를 제외하므로,
+        // 생성물을 찾는 코드가 조용히 0개를 받는다 (검증 중 실제로 겪었다).
+        // 씬에 저장된 잔존물은 DespawnAll의 DestroyLeftoverSegments가 걷어낸다
 
         // 구간에는 드랍/파밍 포인트를 두지 않는다 - 정산 지점을 읽기 쉽게 비운다
         void PopulateSegment(Zone zone, bool isJunction)
@@ -602,6 +615,31 @@ namespace Scavenger.Field
             }
 
             aliveSegments.Clear();
+
+            DestroyLeftoverSegments();
+        }
+
+        /// <summary>
+        /// 기록에 없는 세그먼트까지 걷어낸다. 런타임 생성물이 씬에 저장된 채로 열리면
+        /// (실제 발생) 새로 만든 바닥과 두 겹으로 겹쳐 보이고, 리스트 기반 정리로는
+        /// 지워지지 않는다. 생성 경계가 이 컴포넌트이므로 여기서 책임진다.
+        /// </summary>
+        void DestroyLeftoverSegments()
+        {
+            Zone[] leftovers = GetComponentsInChildren<Zone>(true);
+
+            if (leftovers.Length == 0)
+                return;
+
+            UnityEngine.Debug.LogWarning(
+                $"[Field] 씬에 남아 있던 세그먼트 {leftovers.Length}개를 제거한다. " +
+                "런타임 생성물이 씬에 저장된 상태였다 (플레이 중 씬 저장 여부 확인 필요).");
+
+            foreach (Zone zone in leftovers)
+            {
+                if (zone != null)
+                    zone.DestroyImmediateAll();
+            }
         }
 
         void ReleaseSegment(FieldSegment segment)
