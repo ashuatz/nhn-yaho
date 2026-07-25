@@ -101,10 +101,9 @@ namespace Scavenger.UI
         const float AnnounceSeconds = 2.2f;
         static readonly float[] Milestones = { 0.25f, 0.5f, 0.75f, 0.9f };
 
-        // 등급 외곽선 색 (웹 g1 파랑 / g2 보라)
-        static readonly Color GradeColor0 = new Color(0.6f, 0.7f, 0.8f, 0.5f);
-        static readonly Color GradeColor1 = new Color(0.3f, 0.64f, 1f, 1f);
-        static readonly Color GradeColor2 = new Color(0.69f, 0.42f, 1f, 1f);
+        // 등급 외곽선 알파 (색은 LootDefinition.GradeColor가 정본 - 드랍 문서 2.2).
+        // 일반 등급은 외곽선을 눌러 표시하고, 희귀 이상은 또렷하게 보여준다
+        const float NormalGradeOutlineAlpha = 0.5f;
 
         CarryLoad carryLoad;
         PlayerController player;
@@ -359,7 +358,7 @@ namespace Scavenger.UI
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 canvasRect, bagScreen, canvas.worldCamera, out endLocal);
 
-            Color color = LootDefinition.TierColor(definition.tier);
+            Color color = LootDefinition.GradeColor(definition.tier);
             Sprite sprite = LootIcons.Get(definition.id);
 
             // 메인 아이콘 (크고, 종류 스프라이트, 도착 시 pop)
@@ -632,8 +631,8 @@ namespace Scavenger.UI
                     iconImage.sprite = sprite;
                     iconImage.enabled = sprite != null;
 
-                    // 아이콘 색은 종류색(티어) - 등급은 외곽선이 담당
-                    iconImage.color = LootDefinition.TierColor(entry.Definition.tier);
+                    // 아이콘 색은 아이템의 시작 등급, 외곽선은 합성으로 오른 현재 등급
+                    iconImage.color = LootDefinition.GradeColor(entry.Definition.tier);
                 }
             }
 
@@ -647,26 +646,24 @@ namespace Scavenger.UI
             label.alignment = TextAnchor.LowerRight;
         }
 
+        // 등급 색은 아이템 데이터가 정본 (일반 흰 / 희귀 파랑 / 영웅 보라 / 전설 빨강)
         static Color ResolveGradeColor(int grade)
         {
-            if (grade >= 2)
-                return GradeColor2;
+            Color color = LootDefinition.GradeColor(grade);
 
-            if (grade == 1)
-                return GradeColor1;
+            if (grade <= 1)
+                color.a = NormalGradeOutlineAlpha;
 
-            return GradeColor0;
+            return color;
         }
 
+        // 일반 등급은 접두어를 붙이지 않는다 (기본 상태라 이름이 길어지기만 한다)
         static string ResolveGradePrefix(int grade)
         {
-            if (grade >= 2)
-                return "레어 ";
+            if (grade <= 1)
+                return "";
 
-            if (grade == 1)
-                return "희귀 ";
-
-            return "";
+            return $"{LootDefinition.GradeName(grade)} ";
         }
 
         // 탐색 목표 (웹 이식): 수집 종류 수 / 총 가치

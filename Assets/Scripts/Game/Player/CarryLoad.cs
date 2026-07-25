@@ -27,7 +27,8 @@ namespace Scavenger.Player
     [RequireComponent(typeof(PlayerMotor))]
     public sealed class CarryLoad : MonoBehaviour
     {
-        [Header("최대 적재량 (kg). 무게 비율 = 합산 / 이 값 (웹 MAXW 대응)")]
+        [Header("최대 적재량 (kg). 무게 비율 = 합산 / 이 값 (웹 MAXW 대응).")]
+        [Tooltip("가방 컬럼(BagDefinition)이 배선되면 그 값으로 덮어쓴다")]
         public float maxCarryWeight = 45f;
 
         [Header("단계별 이동속도 배율 (일반=1). 웹 이식: -7/-13/-23/-33%")]
@@ -54,6 +55,18 @@ namespace Scavenger.Player
         void Awake()
         {
             motor = GetComponent<PlayerMotor>();
+        }
+
+        /// <summary>
+        /// 가방 컬럼 주입 (가방 문서 7.1). 최대 무게의 정본은 데이터 시트이므로
+        /// 배선되면 프리팹 값을 덮어쓴다 - 무게 판정과 획득 제한이 같은 값을 보게 한다.
+        /// </summary>
+        public void Configure(Loot.BagDefinition definition)
+        {
+            if (definition == null)
+                return;
+
+            maxCarryWeight = Mathf.Max(0.01f, definition.maxWeight);
         }
 
         void Update()

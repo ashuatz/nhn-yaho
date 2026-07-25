@@ -32,7 +32,7 @@ namespace Scavenger.EditorTools
             if (existing != null)
                 return existing;
 
-            Color color = Scavenger.Loot.LootDefinition.TierColor(tier);
+            Color color = Scavenger.Loot.LootDefinition.GradeColor(tier);
             Texture2D texture = Draw(id, color);
 
             File.WriteAllBytes(path, texture.EncodeToPNG());

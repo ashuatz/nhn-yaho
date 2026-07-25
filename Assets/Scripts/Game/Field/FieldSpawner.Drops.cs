@@ -8,24 +8,21 @@ namespace Scavenger.Field
 {
     /// <summary>
     /// FieldSpawner - 배치 카테고리. 존 안의 드랍 아이템(드랍 아이템 문서 5장)과
-    /// 스테이지 끝 탈출 지점을 배치한다. 수명 주기/존 체인은 FieldSpawner.cs 참조.
+    /// 존 사이 구간의 탈출 지점을 배치한다. 수명 주기/세그먼트 체인은 FieldSpawner.cs 참조.
     /// </summary>
     public sealed partial class FieldSpawner
     {
-        const float LootCollectRadius = 1f;
+        // 아이템 획득 거리 폴백 (m). 정본은 플레이어 옵션 (드랍 문서 9.3)
+        const float LootCollectRadiusFallback = 1f;
 
         // 존 가장자리 여유 (m). 아이템이 바닥 밖으로 걸치지 않게
         const float DropEdgeMargin = 0.6f;
 
-        // 탈출 지점 주변은 비운다 - 랜드마크 시야 확보
-        const float StageExitClearance = 3f;
-
         // 배치 시도 상한 - 예산이 남아도 자리를 못 찾으면 중단 (무한 루프 방지)
         const int DropPlacementAttemptsPerItem = 8;
 
-        // 웹 탈출 지점 룩 (ADR-0008): 탈출=청록, 다음 스테이지=녹색
+        // 웹 탈출 지점 룩 (ADR-0008): 탈출 = 청록 빛기둥 랜드마크
         static readonly Color ExtractColor = new Color(0.35f, 0.78f, 1f);
-        static readonly Color AdvanceColor = new Color(0.4f, 0.9f, 0.55f);
 
         readonly List<Vector3> placedDropPositions = new List<Vector3>();
 
@@ -51,18 +48,18 @@ namespace Scavenger.Field
             float minZ = zone.StartZ + DropEdgeMargin;
             float maxZ = zone.EndZ - DropEdgeMargin;
 
-            // 마지막 존은 탈출 지점 앞을 비운다
-            if (zone.IsLastZone)
-                maxZ -= StageExitClearance;
-
             if (maxZ <= minZ || halfWidth <= 0f)
                 return;
 
             placedDropPositions.Clear();
 
+            // 등장 존 판정은 스테이지 내 존 순번 기준 (드랍 문서 5.2 (4)).
+            // 이 값은 세그먼트를 만드는 중에만 유효하다 - 배치가 생성 시점에 끝나므로 안전
+            int zoneIndexInStage = buildStageZoneIndex;
+
             while (budget > 0)
             {
-                LootDefinition definition = PickAffordableLoot(rng, budget);
+                LootDefinition definition = PickAffordableLoot(rng, budget, zoneIndexInStage);
 
                 if (definition == null)
                     return;
@@ -77,15 +74,29 @@ namespace Scavenger.Field
             }
         }
 
-        // 남은 예산으로 감당되는 아이템 중 하나를 무작위로 고른다.
+        // 아이템 획득 거리는 플레이어 옵션이 정본 (드랍 문서 9.3).
+        // 플레이어 배선 전(에디터 프리뷰 등)에는 폴백 상수를 쓴다
+        float ResolveCollectRadius()
+        {
+            if (trackedPlayer != null)
+                return Mathf.Max(0.1f, trackedPlayer.itemCollectDistance);
+
+            return LootCollectRadiusFallback;
+        }
+
+        // 남은 예산으로 감당되고 이 존에 등장할 수 있는 아이템 중 하나를 무작위로 고른다.
         // 감당 가능한 것이 없으면 null - 배치를 끝낸다
-        LootDefinition PickAffordableLoot(System.Random rng, int budget)
+        LootDefinition PickAffordableLoot(System.Random rng, int budget, int zoneIndexInStage)
         {
             List<LootDefinition> affordable = new List<LootDefinition>(lootCatalog.Count);
 
             foreach (LootDefinition definition in lootCatalog)
             {
                 if (definition == null)
+                    continue;
+
+                // 등장 존 제한 (드랍 문서 5.2 (4)) - 목록이 비어 있으면 모든 존
+                if (!definition.CanSpawnInZone(zoneIndexInStage))
                     continue;
 
                 if (Mathf.Max(1, definition.value) <= budget)
@@ -140,7 +151,7 @@ namespace Scavenger.Field
             spotObject.transform.position = worldPosition;
 
             LootSpot spot = spotObject.AddComponent<LootSpot>();
-            spot.Initialize(definition, LootCollectRadius);
+            spot.Initialize(definition, ResolveCollectRadius());
 
             BuildDropVisual(spotObject.transform, definition.tier);
 
@@ -165,7 +176,7 @@ namespace Scavenger.Field
             if (cubeCollider != null)
                 Destroy(cubeCollider);
 
-            Color tierColor = LootDefinition.TierColor(tier);
+            Color tierColor = LootDefinition.GradeColor(tier);
 
             // 공유 머티리얼만 깔아둔다 - LootVisual이 여기서 개체 인스턴스를 떠서
             // 발광/부유를 얹으므로(개체별 위상), 그 원본이 Common.mat이 되게 하는 역할
@@ -175,24 +186,30 @@ namespace Scavenger.Field
             visual.Configure(tierColor);
         }
 
-        // -- 스테이지 끝: 탈출 지점 / 다음 스테이지 (웹 이식, ADR-0008) ------------
+        // -- 존 사이 구간: 탈출 지점 (웹 이식, ADR-0008) ------------------------
 
-        void BuildStageExit(Zone zone)
+        /// <summary>
+        /// 구간에 탈출 웨이포인트를 하나 놓는다 (사용자 지시: Extract만 구성).
+        /// 진행(Advance)은 오브젝트가 아니다 - 밟지 않고 걸어서 구간을 통과하면
+        /// 그것이 곧 다음 스테이지이며, 앞쪽 존은 계속 생성된다.
+        ///
+        /// 직진 동선에서 벗어난 화면 위쪽(카메라 반대편)에 붙인다 -
+        /// 그냥 지나가려는 플레이어가 밟아서 강제 정산되지 않게 하기 위함.
+        /// </summary>
+        void BuildJunctionWaypoint(Zone zone)
         {
-            float exitZ = zone.EndZ - 1.5f;
-            float sideX = Definition.corridorHalfWidth * 0.5f;
+            int cameraSide = SegmentEnvironment.CameraSide(
+                BuildSightClearance(viewCamera, Definition));
 
-            BuildWaypoint(zone, ExtractionWaypoint.Kind.Extract,
-                new Vector3(-sideX, 0f, exitZ), ExtractColor);
+            float sideX = -cameraSide * Definition.corridorHalfWidth * 0.6f;
+            float centerZ = (zone.StartZ + zone.EndZ) * 0.5f;
 
-            BuildWaypoint(zone, ExtractionWaypoint.Kind.Advance,
-                new Vector3(sideX, 0f, exitZ), AdvanceColor);
+            BuildWaypoint(zone, new Vector3(sideX, 0f, centerZ), ExtractColor);
         }
 
-        void BuildWaypoint(
-            Zone zone, ExtractionWaypoint.Kind kind, Vector3 worldPosition, Color color)
+        void BuildWaypoint(Zone zone, Vector3 worldPosition, Color color)
         {
-            GameObject waypointObject = new GameObject($"Waypoint_{kind}");
+            GameObject waypointObject = new GameObject("Waypoint_Extract");
             waypointObject.transform.SetParent(zone.transform, true);
             waypointObject.transform.position = worldPosition;
 
@@ -202,27 +219,13 @@ namespace Scavenger.Field
             trigger.center = new Vector3(0f, 1.5f, 0f);
 
             ExtractionWaypoint waypoint = waypointObject.AddComponent<ExtractionWaypoint>();
-
-            if (kind == ExtractionWaypoint.Kind.Extract)
-                waypoint.Initialize(kind, OnExtractReached);
-            else
-                waypoint.Initialize(kind, OnAdvanceReached);
+            waypoint.Initialize(OnExtractReached);
 
             BuildWaypointVisual(waypointObject.transform, color);
-        }
 
-        // 다음 스테이지: 깊이를 올리고 이 지점부터 새 필드를 생성한다 (심리스)
-        void OnAdvanceReached(ExtractionWaypoint waypoint)
-        {
-            RunManager run = RunManager.Instance;
-
-            if (run == null)
-                return;
-
-            run.AdvanceDepth();
-
-            // 밟은 지점 앞부터 새 스테이지 - 기존 존은 StartStage가 정리한다
-            StartStage(waypoint.transform.position.z);
+            // 바닥 행이 낙하하면 정산 지점도 함께 떨어진다 - 사라진 바닥 위에
+            // 트리거만 공중에 남는 것을 막는다 (드랍 아이템과 같은 규칙)
+            zone.AttachToRow(waypointObject.transform);
         }
 
         static void OnExtractReached(ExtractionWaypoint waypoint)

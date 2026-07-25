@@ -25,6 +25,7 @@ namespace Scavenger
         [Header("데이터 에셋 (비우면 기본값 생성)")]
         [SerializeField] RunSettings runSettings;
         [SerializeField] ZoneDefinition zoneDefinition;
+        [SerializeField] BagDefinition bagDefinition;
 
         bool worldInitialized;
         CarryLoad carryLoad;
@@ -43,9 +44,16 @@ namespace Scavenger
             if (zoneDefinition == null)
                 zoneDefinition = ZoneDefinition.CreateDefault();
 
+            if (bagDefinition == null)
+                bagDefinition = BagDefinition.CreateDefault();
+
             List<LootDefinition> lootCatalog = LootCatalog.CreateDefaults();
 
             runManager.Configure(runSettings);
+
+            // 가방 컬럼: 슬롯 한도와 합성 기본값은 인벤토리가, 최대 무게는 CarryLoad가 쓴다
+            runManager.Inventory.Configure(
+                bagDefinition.slotCountDefault, bagDefinition.mergeCountDefault);
             fieldSpawner.Configure(zoneDefinition, lootCatalog);
             fieldSpawner.SetViewCamera(followCamera);
             fieldSpawner.Track(player);
@@ -68,6 +76,8 @@ namespace Scavenger
 
             if (carryLoad == null)
                 carryLoad = player.gameObject.AddComponent<CarryLoad>();
+
+            carryLoad.Configure(bagDefinition);
 
             // 체력 (HP, 데미지형 장애물의 전제) - 기존 Player 프리팹에는 폴백으로 보강
             if (player.GetComponent<PlayerHealth>() == null)

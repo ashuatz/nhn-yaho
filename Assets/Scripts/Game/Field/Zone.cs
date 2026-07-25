@@ -4,21 +4,24 @@ using UnityEngine;
 namespace Scavenger.Field
 {
     /// <summary>
-    /// 존 하나 (필드 규칙 문서 2.1 (2)). 블록이 모인 25 x 7 덩어리.
+    /// 필드 세그먼트 하나 (필드 규칙 문서 2.1 (2)). 블록이 모인 25 x 7 덩어리.
     /// 바닥은 제거 단위인 FloorRow(1블록 두께)로 분할해 보유하고,
     /// 제거 기준선이 뒤에서 다가오면 행 단위로 정상 -> 제거 예정 -> 제거로 넘긴다.
     /// 생성/제거의 단일 경계는 FieldSpawner - 존은 자기 바닥 상태만 소유한다.
+    ///
+    /// 존과 존 사이 구간(Junction)도 같은 클래스가 담당한다 - 길이만 짧고
+    /// 드랍/파밍 포인트 없이 웨이포인트만 놓이는 세그먼트 (IsJunction).
     /// </summary>
     public sealed class Zone : MonoBehaviour
     {
-        /// <summary>존 인덱스 (스테이지 내 순번, 0부터).</summary>
+        /// <summary>세그먼트 순번 (필드 전체 통산, 0부터).</summary>
         public int ZoneIndex { get; private set; }
 
         public float StartZ { get; private set; }
         public float EndZ { get; private set; }
 
-        /// <summary>스테이지의 마지막 존인가 (탈출 지점 배치 대상).</summary>
-        public bool IsLastZone { get; private set; }
+        /// <summary>존과 존 사이 구간인가 (웨이포인트 전용 세그먼트).</summary>
+        public bool IsJunction { get; private set; }
 
         /// <summary>남은 바닥 행이 없으면 존 오브젝트를 정리할 수 있다.</summary>
         public bool IsFullyRemoved
@@ -44,28 +47,33 @@ namespace Scavenger.Field
 
             /// <summary>노이즈 오프셋 (런 시드 유래 - 같은 시드면 같은 바닥).</summary>
             public Vector2 NoiseOrigin;
+
+            /// <summary>이 세그먼트의 길이 (블록 수). 존과 구간이 서로 다르다.</summary>
+            public int LengthBlocks;
         }
 
         /// <summary>
-        /// 바닥 행을 만들고 존 범위를 확정한다. startZ는 존의 시작 월드 z.
+        /// 바닥 행을 만들고 세그먼트 범위를 확정한다. startZ는 시작 월드 z.
         /// 행은 z+ 방향으로 blockSize 간격, 존 너비 전체를 덮는다.
         /// 바닥 구성 우선순위: 타일셋(노이즈 조합) -> 행 프리팹 -> 코드 큐브 폴백.
         /// </summary>
-        public void Build(BuildContext context, int zoneIndex, float startZ, bool isLastZone)
+        public void Build(BuildContext context, int zoneIndex, float startZ, bool isJunction)
         {
             ZoneDefinition definition = context.Definition;
 
+            int lengthBlocks = Mathf.Max(1, context.LengthBlocks);
+
             ZoneIndex = zoneIndex;
-            IsLastZone = isLastZone;
+            IsJunction = isJunction;
             StartZ = startZ;
-            EndZ = startZ + definition.lengthMeters;
+            EndZ = startZ + lengthBlocks * definition.blockSize;
 
             float blockSize = definition.blockSize;
             float width = definition.zoneWidthBlocks * blockSize;
 
             bool useTiles = context.TileSet != null && context.TileSet.HasTiles;
 
-            for (int block = 0; block < definition.zoneLengthBlocks; block++)
+            for (int block = 0; block < lengthBlocks; block++)
             {
                 float centerZ = startZ + (block + 0.5f) * blockSize;
 

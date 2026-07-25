@@ -57,7 +57,12 @@ namespace Scavenger.Diagnostics
             {
                 GUILayout.Label($"Remove line z: {field.RemoveLineZ:F1}");
                 GUILayout.Label($"Remove line distance: {field.RemoveLineDistanceToPlayer:F1}m");
-                GUILayout.Label($"Zone: {field.CurrentZoneIndex + 1} / {field.StageZoneCount}");
+                GUILayout.Label($"Stage: {field.StageIndex + 1} (zones {field.StageZoneCount})");
+
+                // 구간(존 사이)에 있으면 존 인덱스가 -1이다
+                GUILayout.Label(field.CurrentZoneIndex >= 0
+                    ? $"Zone: {field.CurrentZoneIndex + 1} / {field.StageZoneCount}"
+                    : "Zone: junction (waypoint)");
 
                 Field.FarmingPoint point = Field.FarmingPoint.PlayerInside;
 

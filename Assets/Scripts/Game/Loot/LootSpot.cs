@@ -85,7 +85,8 @@ namespace Scavenger.Loot
             return sqrPlanar <= collectRadius * collectRadius;
         }
 
-        // 무게 여유가 있으면 즉시 획득. 초과면 남겨두고(두고 갈 선택) 아무 것도 안 한다
+        // 획득 제한 (가방 문서 5장 / 드랍 문서 6.3): 무게 초과 또는 슬롯 초과면
+        // 남겨두고(두고 갈 선택) 아무 것도 안 한다
         void TryCollect()
         {
             RunManager run = RunManager.Instance;
@@ -97,6 +98,10 @@ namespace Scavenger.Loot
             float maxWeight = ResolveMaxWeight();
 
             if (projectedWeight > maxWeight)
+                return;
+
+            // 슬롯 초과: 같은 (id, 등급) 스택이 없고 빈 슬롯도 없으면 담을 자리가 없다
+            if (!run.Inventory.HasSlotFor(Definition))
                 return;
 
             collected = true;

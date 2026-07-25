@@ -16,6 +16,9 @@ namespace Scavenger.Player
     [RequireComponent(typeof(PlayerMotor))]
     public sealed class PlayerController : MonoBehaviour
     {
+        [Header("아이템 획득 거리 (m). 흡수가 시작되는 접근 거리 (드랍 문서 9.3)")]
+        public float itemCollectDistance = 1f;
+
         public PlayerState State { get; private set; } = PlayerState.Advancing;
 
         /// <summary>이번 프레임 좌우 입력 (-1..1). 루팅 취소 판정에 사용.</summary>

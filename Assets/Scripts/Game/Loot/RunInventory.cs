@@ -6,9 +6,17 @@ namespace Scavenger.Loot
     /// 런 한정 인벤토리. 사망 시 전량 소멸, 탈출 시 스태시로 확정 (S7).
     /// MonoBehaviour가 아닌 순수 클래스 - EditMode 테스트 대상.
     ///
-    /// 등급 합성 (웹 프로토타입 이식, A안): 같은 id + 같은 등급이 MergeThreshold(5)개
-    /// 모이면 상위 등급 1개로 자동 합성. 무게는 1개분으로 압축(과적 압박 완화),
-    /// 가치는 등급당 GradeValueMultiplier(6)배로 증폭 = 파밍 보상감.
+    /// 등급 합성 (드랍 문서 3장 / 파밍 문서 4.2): 같은 id + 같은 등급이
+    /// 합성 필요 개수(N)만큼 모이면 상위 등급 1개로 자동 합성. 등급 축은 아이템 등급과
+    /// 같다 (1=일반 / 2=희귀 / 3=영웅 / 4=전설) - 아이템의 tier가 시작 등급이고
+    /// 전설에서 멈춘다. 무게는 1개분으로 압축(과적 압박 완화), 가치는 등급당
+    /// GradeValueMultiplier(6)배로 증폭 = 파밍 보상감.
+    ///
+    /// N은 전역 기본값 + 아이템별 덮어쓰기다 (드랍 9.4 전역 컬럼 + 파밍 4.4 아이템 컬럼).
+    ///
+    /// 슬롯 한도 (가방 문서 2.1): 슬롯 하나 = (id, 등급) 스택 하나.
+    /// 새 스택이 필요한데 슬롯이 없으면 획득이 거부된다 (가방 문서 5장).
+    ///
     /// 스태시 저장은 등급을 인식하지 않는다 - BankedCounts(id별 실물 총 획득 개수)를
     /// 별도 누적해 정산이 참조 (창고는 기존 id 스택 유지, 아웃게임 설계 불변).
     /// </summary>
@@ -19,7 +27,7 @@ namespace Scavenger.Loot
             public LootDefinition Definition;
             public int Count;
 
-            /// <summary>등급 (0=일반, 1=희귀, 2=레어). 합성으로 상승.</summary>
+            /// <summary>등급 (1=일반 / 2=희귀 / 3=영웅 / 4=전설). 합성으로 상승.</summary>
             public int Grade;
 
             /// <summary>이 (id, 등급) 스택의 무게 합. 합성 시 압축 반영.</summary>
@@ -29,15 +37,21 @@ namespace Scavenger.Loot
             public int Value;
         }
 
-        // 웹 이식 상수: 5개 합성, 최대 등급 2(레어), 등급당 가치 x6
-        const int MergeThreshold = 5;
-        const int MaxGrade = 2;
+        /// <summary>합성 필요 개수 전역 기본값 (드랍 문서 9.4). 아이템이 0이면 이 값.</summary>
+        public const int DefaultMergeCount = 5;
+
+        /// <summary>슬롯 무제한 (한도를 배선하지 않은 경우).</summary>
+        public const int UnlimitedSlots = 0;
+
+        // 등급당 가치 배수 (웹 이식). 합성 보상감의 크기
         const int GradeValueMultiplier = 6;
 
         readonly List<Entry> entries = new List<Entry>();
 
         // 스태시 저장용 - id별 실물 총 획득 개수 (합성과 무관, 합성 전 원본 기준)
         readonly Dictionary<string, int> bankedCounts = new Dictionary<string, int>();
+
+        int mergeCountDefault = DefaultMergeCount;
 
         public IReadOnlyList<Entry> Entries
         {
@@ -55,6 +69,46 @@ namespace Scavenger.Loot
         /// <summary>무게 합산 (M2-1). CarryLoad가 과적 판정에 사용.</summary>
         public float TotalWeight { get; private set; }
 
+        /// <summary>사용 가능한 슬롯 개수 (가방 문서 2.1). 0이면 무제한.</summary>
+        public int SlotCapacity { get; private set; } = UnlimitedSlots;
+
+        /// <summary>사용 중인 슬롯 개수 = (id, 등급) 스택 개수.</summary>
+        public int UsedSlots
+        {
+            get { return entries.Count; }
+        }
+
+        /// <summary>
+        /// 가방 규격 주입 (가방 컬럼). GameFlow가 BagDefinition에서 배선한다.
+        /// slotCapacity 0 = 무제한 (한도를 쓰지 않는 구성).
+        /// </summary>
+        public void Configure(int slotCapacity, int mergeCountDefault)
+        {
+            SlotCapacity = slotCapacity < 0 ? UnlimitedSlots : slotCapacity;
+
+            if (mergeCountDefault >= 2)
+                this.mergeCountDefault = mergeCountDefault;
+        }
+
+        /// <summary>
+        /// 이 아이템을 담을 슬롯이 있는가 (가방 문서 5장 - 슬롯 초과 판정).
+        /// 이미 같은 (id, 등급) 스택이 있으면 개수만 늘어나므로 슬롯을 쓰지 않는다.
+        /// 무게 초과 판정은 CarryLoad가 소유한다 - 여기서는 슬롯만 본다.
+        /// </summary>
+        public bool HasSlotFor(LootDefinition definition)
+        {
+            if (definition == null)
+                return false;
+
+            if (SlotCapacity == UnlimitedSlots)
+                return true;
+
+            if (FindEntry(definition.id, ResolveStartGrade(definition)) != null)
+                return true;
+
+            return entries.Count < SlotCapacity;
+        }
+
         public void Add(LootDefinition definition)
         {
             if (definition == null)
@@ -66,12 +120,14 @@ namespace Scavenger.Loot
         /// <summary>
         /// 조각 획득용 (LootPickup): 정의는 공유 참조 그대로 두고 가치/무게만
         /// 지분으로 반영한다 - 조각마다 런타임 SO를 만들지 않는다 (Codex 교차 검토).
-        /// 등급 0 스택에 쌓이고, 5개가 되면 상위 등급으로 합성된다.
+        /// 아이템의 등급(tier)에서 시작하고, N개가 되면 상위 등급으로 합성된다.
         /// </summary>
         public void Add(LootDefinition definition, int value, float weight)
         {
             if (definition == null)
                 return;
+
+            int startGrade = ResolveStartGrade(definition);
 
             TotalValue += value;
             TotalWeight += weight;
@@ -79,7 +135,7 @@ namespace Scavenger.Loot
             // 스태시 저장 개수는 합성과 무관하게 실물 획득 시점에 누적
             BankOne(definition.id);
 
-            Entry existing = FindEntry(definition.id, grade: 0);
+            Entry existing = FindEntry(definition.id, startGrade);
 
             if (existing != null)
             {
@@ -93,13 +149,13 @@ namespace Scavenger.Loot
                 {
                     Definition = definition,
                     Count = 1,
-                    Grade = 0,
+                    Grade = startGrade,
                     Weight = weight,
                     Value = value,
                 });
             }
 
-            MergeChain(definition.id, grade: 0);
+            MergeChain(definition.id, startGrade);
         }
 
         public void Clear()
@@ -110,40 +166,68 @@ namespace Scavenger.Loot
             TotalWeight = 0f;
         }
 
-        // 같은 (id, grade)가 5개면 상위 등급 1개로 합성하고, 상위에서 다시 5개가
-        // 되면 연쇄 합성한다 (등급 2에서 정지). 무게 압축/가치 배수는 여기서 반영.
+        // 아이템의 시작 등급 = 아이템 등급(tier). 범위를 벗어난 데이터는 클램프
+        static int ResolveStartGrade(LootDefinition definition)
+        {
+            if (definition.tier < 1)
+                return 1;
+
+            if (definition.tier > LootDefinition.MaxTier)
+                return LootDefinition.MaxTier;
+
+            return definition.tier;
+        }
+
+        // 합성 필요 개수: 아이템 컬럼이 0이면 전역 기본값 (파밍 문서 4.2)
+        int ResolveMergeCount(LootDefinition definition)
+        {
+            if (definition != null && definition.mergeCount >= 2)
+                return definition.mergeCount;
+
+            return mergeCountDefault;
+        }
+
+        // 같은 (id, grade)가 N개면 상위 등급 1개로 합성하고, 상위에서 다시 N개가
+        // 되면 연쇄 합성한다 (전설에서 정지). 무게 압축/가치 배수는 여기서 반영.
         //
-        // 회계 원칙 (자체 검토 반영): "평균 단가"가 아니라 제거되는 5개 스택의 실제
+        // 회계 원칙 (자체 검토 반영): "평균 단가"가 아니라 제거되는 N개 스택의 실제
         // 무게/가치 합을 정확히 회수한다. 조각 지분(LootPickup)으로 개당 값이 달라도
         // 스택 합과 TotalWeight/Value가 어긋나지 않는다. 정수 나눗셈 잔차는 회수 합에
         // 자연히 포함되므로 누수 없음.
         void MergeChain(string id, int grade)
         {
-            if (grade >= MaxGrade)
+            if (grade >= LootDefinition.MaxTier)
                 return;
 
             Entry lower = FindEntry(id, grade);
 
-            if (lower == null || lower.Count < MergeThreshold)
+            if (lower == null)
                 return;
 
-            // 제거할 5개분의 실제 무게/가치 = 스택 합의 5/Count 비례 (float 정확)
-            float removedWeight = lower.Weight * MergeThreshold / lower.Count;
-            int removedValue = (int)System.Math.Round((double)lower.Value * MergeThreshold / lower.Count);
+            int mergeCount = ResolveMergeCount(lower.Definition);
 
-            RemoveUnits(lower, MergeThreshold, removedWeight, removedValue);
+            if (lower.Count < mergeCount)
+                return;
 
-            // 상위 등급 1개: 무게는 5개분의 1/5(압축), 가치는 5개분에 등급 배수
-            float mergedWeight = removedWeight / MergeThreshold;
-            int mergedValue = removedValue * GradeValueMultiplier / MergeThreshold;
+            // 제거할 N개분의 실제 무게/가치 = 스택 합의 N/Count 비례 (float 정확)
+            float removedWeight = lower.Weight * mergeCount / lower.Count;
+            int removedValue = (int)System.Math.Round((double)lower.Value * mergeCount / lower.Count);
 
-            AddMerged(lower.Definition, grade + 1, mergedWeight, mergedValue);
+            LootDefinition definition = lower.Definition;
+
+            RemoveUnits(lower, mergeCount, removedWeight, removedValue);
+
+            // 상위 등급 1개: 무게는 N개분의 1/N(압축), 가치는 N개분에 등급 배수
+            float mergedWeight = removedWeight / mergeCount;
+            int mergedValue = removedValue * GradeValueMultiplier / mergeCount;
+
+            AddMerged(definition, grade + 1, mergedWeight, mergedValue);
 
             // 총량 조정 = 넣는 값 - 회수한 값 (스택 실제값과 항상 정합)
             TotalWeight += mergedWeight - removedWeight;
             TotalValue += mergedValue - removedValue;
 
-            // 연쇄: 방금 만든 상위 등급이 5개가 됐는지 재확인
+            // 연쇄: 방금 만든 상위 등급이 N개가 됐는지 재확인
             MergeChain(id, grade + 1);
         }
 

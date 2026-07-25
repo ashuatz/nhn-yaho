@@ -21,6 +21,12 @@ namespace Scavenger.Field
         public int zoneCountMin = 6;
         public int zoneCountMax = 9;
 
+        [Header("존과 존 사이 구간 길이 (블록). 웨이포인트가 놓이는 구간")]
+        public int junctionLengthBlocks = 8;
+
+        [Header("전방 미리 생성 존 개수 (패딩). 생성 장면이 화면에 잘려 보이지 않게")]
+        [Range(1, 4)] public int zoneLookAheadCount = 2;
+
         [Header("바닥 제거 시작 거리 (캐릭터 뒤 몇 칸부터 제거 대상)")]
         public int floorRemoveStartBlocks = 6;
 
@@ -34,15 +40,29 @@ namespace Scavenger.Field
         [Header("드랍 아이템 생성 간격 거리 (블록 단위 - 서로 붙지 않게)")]
         public float dropSpacingDistance = 2f;
 
+        // 구역이 길어져(입구 + 본체 + 출구) 25블록 존에는 최소 간격을 지켜 2개까지 들어간다.
+        // 3개 이상을 넣으려면 존 길이나 최소 간격을 함께 조정할 것
         [Header("파밍 포인트 개수 (min / max, 존 시트 값)")]
         public int farmingPointCountMin = 1;
-        public int farmingPointCountMax = 3;
+        public int farmingPointCountMax = 2;
 
-        [Header("파밍 포인트 크기 (블록. 문서 규격 4 이상 ~ 7)")]
-        [Range(4, 7)] public int farmingPointSizeBlocks = 5;
+        [Header("파밍 포인트 플랫폼 깊이 (블록. 존 밖으로 뻗는 x 길이, 문서 규격 4~7)")]
+        [Range(4, 7)] public int farmingPointDepthBlocks = 5;
+
+        [Header("파밍 포인트 길이 (블록. z 방향 - 입구/출구가 나뉘어 조금 더 길다)")]
+        public int farmingPointLengthBlocks = 9;
+
+        [Header("입구/출구 게이트 길이 (블록. 계단이 놓이는 z 구간, 앞뒤 각각)")]
+        public int farmingPointGateBlocks = 2;
+
+        [Header("파밍 포인트 단차 (블록. 상단은 +y / 하단은 -y - 3층 구조)")]
+        public float farmingPointRiseBlocks = 1f;
+
+        [Header("계단 길이 (블록. x 방향 - 단차를 오르내리는 구간)")]
+        public float farmingPointStairBlocks = 2f;
 
         [Header("파밍 포인트 간 최소 간격 (블록)")]
-        public float farmingPointSpacingBlocks = 7f;
+        public float farmingPointSpacingBlocks = 10f;
 
         [Header("파밍 포인트 흔들림 시작 거리 (블록. 소켓과 제거 기준선 거리)")]
         public float farmingPointShakeStartBlocks = 4f;
@@ -65,6 +85,18 @@ namespace Scavenger.Field
             get { return floorRemoveStartBlocks * blockSize; }
         }
 
+        /// <summary>존과 존 사이 구간 길이 (m). 웨이포인트가 놓이는 세그먼트.</summary>
+        public float JunctionLengthMeters
+        {
+            get { return junctionLengthBlocks * blockSize; }
+        }
+
+        /// <summary>전방 미리 생성 거리 (m). 플레이어 앞으로 확보할 바닥 패딩.</summary>
+        public float LookAheadDistance
+        {
+            get { return zoneLookAheadCount * lengthMeters; }
+        }
+
         // 튜닝 실수 가드: 역전된 min/max와 0 규격 방지
         void OnValidate()
         {
@@ -74,6 +106,9 @@ namespace Scavenger.Field
 
             zoneCountMin = Mathf.Max(1, zoneCountMin);
             zoneCountMax = Mathf.Max(zoneCountMin, zoneCountMax);
+
+            junctionLengthBlocks = Mathf.Max(1, junctionLengthBlocks);
+            zoneLookAheadCount = Mathf.Max(1, zoneLookAheadCount);
 
             floorRemoveStartBlocks = Mathf.Max(1, floorRemoveStartBlocks);
             shakeSeconds = Mathf.Max(0f, shakeSeconds);
@@ -86,6 +121,14 @@ namespace Scavenger.Field
             farmingPointCountMax = Mathf.Max(farmingPointCountMin, farmingPointCountMax);
             farmingPointSpacingBlocks = Mathf.Max(0f, farmingPointSpacingBlocks);
             farmingPointShakeStartBlocks = Mathf.Max(0f, farmingPointShakeStartBlocks);
+
+            // 입구/출구가 겹치면 통과 동선이 사라진다 - 게이트 2개 + 본체 1블록 이상
+            farmingPointGateBlocks = Mathf.Max(1, farmingPointGateBlocks);
+            farmingPointLengthBlocks = Mathf.Max(
+                farmingPointGateBlocks * 2 + 1, farmingPointLengthBlocks);
+
+            farmingPointRiseBlocks = Mathf.Max(0f, farmingPointRiseBlocks);
+            farmingPointStairBlocks = Mathf.Max(0.5f, farmingPointStairBlocks);
         }
 
         /// <summary>존에 배치할 파밍 포인트 개수를 확정한다 (시드 기반).</summary>
@@ -97,10 +140,40 @@ namespace Scavenger.Field
             return rng.Next(farmingPointCountMin, farmingPointCountMax + 1);
         }
 
-        /// <summary>파밍 포인트 크기 (m).</summary>
-        public float FarmingPointSize
+        /// <summary>파밍 포인트 플랫폼 깊이 (m. 계단을 제외한 평면 구간).</summary>
+        public float FarmingPointDepth
         {
-            get { return farmingPointSizeBlocks * blockSize; }
+            get { return farmingPointDepthBlocks * blockSize; }
+        }
+
+        /// <summary>파밍 포인트 길이 (m. z 방향 - 입구 게이트 + 본체 + 출구 게이트).</summary>
+        public float FarmingPointLength
+        {
+            get { return farmingPointLengthBlocks * blockSize; }
+        }
+
+        /// <summary>입구/출구 게이트 길이 (m. 계단이 놓이는 z 구간).</summary>
+        public float FarmingPointGateLength
+        {
+            get { return farmingPointGateBlocks * blockSize; }
+        }
+
+        /// <summary>파밍 포인트 단차 (m. 부호 없는 크기 - 방향은 타입이 정한다).</summary>
+        public float FarmingPointRise
+        {
+            get { return farmingPointRiseBlocks * blockSize; }
+        }
+
+        /// <summary>계단 길이 (m. 존 가장자리에서 플랫폼까지의 x 거리).</summary>
+        public float FarmingPointStairLength
+        {
+            get { return farmingPointStairBlocks * blockSize; }
+        }
+
+        /// <summary>파밍 포인트 전체 깊이 (m. 계단 + 플랫폼 - 안전지대 x 범위).</summary>
+        public float FarmingPointTotalDepth
+        {
+            get { return FarmingPointStairLength + FarmingPointDepth; }
         }
 
         /// <summary>스테이지 진입 시 존 개수를 확정한다 (시드 기반 - 재현성).</summary>

@@ -6,31 +6,22 @@ using UnityEngine;
 namespace Scavenger.Segment
 {
     /// <summary>
-    /// 구간 끝 웨이포인트 (웹 프로토타입 이식, ADR-0008 - ChoiceNode 선택 대체).
-    /// 두 개가 나란히 놓인다: 탈출 지점(Extract) / 다음 스테이지 포탈(Advance).
-    /// 웹처럼 "밟으면 자동" - 선택 UI 없이 플레이어가 밟은 웨이포인트의 동작을 실행.
-    /// 시각(청록 빛기둥 랜드마크)은 스포너의 BuildWaypointVisual이 만든다.
+    /// 탈출 웨이포인트 (웹 프로토타입 이식, ADR-0008 - ChoiceNode 선택 대체).
+    /// 존과 존 사이 구간에 하나 놓인다 - 밟으면 자동 탈출(정산).
+    /// 선택 UI는 없다.
+    ///
+    /// 진행(Advance)은 웨이포인트가 아니다 (사용자 지시): 밟지 않고 걸어서
+    /// 구간을 통과하는 것이 곧 다음 스테이지이며, 통과 감지와 깊이 증가는
+    /// Field/FieldSpawner가 담당한다.
+    /// 배치와 시각(청록 빛기둥 랜드마크)은 Field/FieldSpawner.Drops.cs가 소유.
     /// </summary>
     public sealed class ExtractionWaypoint : MonoBehaviour
     {
-        public enum Kind
-        {
-            Extract,   // 탈출 지점 - 밟으면 자동 탈출(정산)
-            Advance,   // 다음 스테이지 포탈 - 밟으면 depth+1 진행
-        }
-
-        Kind kind;
         Action<ExtractionWaypoint> onTrigger;
         bool consumed;
 
-        public Kind WaypointKind
+        public void Initialize(Action<ExtractionWaypoint> onTrigger)
         {
-            get { return kind; }
-        }
-
-        public void Initialize(Kind kind, Action<ExtractionWaypoint> onTrigger)
-        {
-            this.kind = kind;
             this.onTrigger = onTrigger;
         }
 

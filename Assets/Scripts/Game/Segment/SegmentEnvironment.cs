@@ -131,13 +131,23 @@ namespace Scavenger.Segment
         public static List<EnvironmentBlock> GenerateBlocks(
             ZoneDefinition definition, System.Random rng, SightClearance clearance)
         {
+            return GenerateBlocks(definition, rng, clearance, definition.lengthMeters);
+        }
+
+        /// <summary>
+        /// 세그먼트 길이를 직접 지정하는 경로. 존과 존 사이 구간처럼 존보다 짧은
+        /// 세그먼트는 배경도 그 길이만큼만 만들어야 다음 세그먼트 배경과 겹치지 않는다.
+        /// </summary>
+        public static List<EnvironmentBlock> GenerateBlocks(
+            ZoneDefinition definition, System.Random rng, SightClearance clearance, float segmentLength)
+        {
             List<EnvironmentBlock> blocks = new List<EnvironmentBlock>(384);
 
-            AddRubbleSides(blocks, definition, rng, clearance);
-            AddUpperStory(blocks, definition, rng, clearance);
-            AddDebris(blocks, definition, rng, clearance);
-            AddMidground(blocks, definition, rng, clearance);
-            AddFarground(blocks, definition, rng, clearance);
+            AddRubbleSides(blocks, definition, rng, clearance, segmentLength);
+            AddUpperStory(blocks, definition, rng, clearance, segmentLength);
+            AddDebris(blocks, definition, rng, clearance, segmentLength);
+            AddMidground(blocks, definition, rng, clearance, segmentLength);
+            AddFarground(blocks, definition, rng, clearance, segmentLength);
 
             return blocks;
         }
@@ -165,9 +175,10 @@ namespace Scavenger.Segment
         // -- 측면 럽블 매스 ---------------------------------------------------
 
         static void AddRubbleSides(
-            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng,
+            SightClearance clearance, float segmentLength)
         {
-            float length = definition.lengthMeters;
+            float length = segmentLength;
             float halfWidth = definition.corridorHalfWidth;
             int cameraSide = CameraSide(clearance);
 
@@ -269,9 +280,10 @@ namespace Scavenger.Segment
         // -- 상부층 (복층 느낌) ------------------------------------------------
 
         static void AddUpperStory(
-            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng,
+            SightClearance clearance, float segmentLength)
         {
-            float length = definition.lengthMeters;
+            float length = segmentLength;
             float halfWidth = definition.corridorHalfWidth;
             int cameraSide = CameraSide(clearance);
 
@@ -376,9 +388,10 @@ namespace Scavenger.Segment
         // 카메라측 = 보행면 아래로 가라앉은 매스 - 내려간 단차 아래의 잔해 지대.
         // 카메라측 상판은 항상 y<0 이라 발판을 가리지 않는다 (사용자 지시)
         static void AddMidground(
-            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng,
+            SightClearance clearance, float segmentLength)
         {
-            float length = definition.lengthMeters;
+            float length = segmentLength;
             float halfWidth = definition.corridorHalfWidth;
             int cameraSide = CameraSide(clearance);
 
@@ -417,9 +430,10 @@ namespace Scavenger.Segment
         // 원경 (팔레트 7): 시야 반대편 = 높은 스카이라인 실루엣,
         // 카메라측 = 더 내려간 저지대 - 복도가 능선 위에 있다는 인상을 만든다
         static void AddFarground(
-            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng,
+            SightClearance clearance, float segmentLength)
         {
-            float length = definition.lengthMeters;
+            float length = segmentLength;
             float halfWidth = definition.corridorHalfWidth;
             int cameraSide = CameraSide(clearance);
 
@@ -457,9 +471,10 @@ namespace Scavenger.Segment
         // -- 보행로 내 데브리 --------------------------------------------------
 
         static void AddDebris(
-            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng, SightClearance clearance)
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng,
+            SightClearance clearance, float segmentLength)
         {
-            float length = definition.lengthMeters;
+            float length = segmentLength;
             float halfWidth = definition.corridorHalfWidth;
 
             int count = Mathf.RoundToInt(length / 6f);

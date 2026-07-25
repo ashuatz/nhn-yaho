@@ -209,7 +209,7 @@ namespace Scavenger.Loot
             UnityEngine.Debug.Log(
                 $"[Loot] 줍기 {Definition.displayName} +{PieceValue} (total {run.Inventory.TotalValue})");
 
-            LootBurst.Spawn(transform.position, 3, LootDefinition.TierColor(Definition.tier));
+            LootBurst.Spawn(transform.position, 3, LootDefinition.GradeColor(Definition.tier));
             Destroy(gameObject);
         }
 
@@ -236,10 +236,10 @@ namespace Scavenger.Loot
             trail.minVertexDistance = 0.05f;
             trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-            trailMaterial = CreateTrailMaterial(LootDefinition.TierColor(tier));
+            trailMaterial = CreateTrailMaterial(LootDefinition.GradeColor(tier));
             trail.sharedMaterial = trailMaterial;
 
-            Color tierColor = LootDefinition.TierColor(tier);
+            Color tierColor = LootDefinition.GradeColor(tier);
             trail.startColor = tierColor;
             trail.endColor = new Color(tierColor.r, tierColor.g, tierColor.b, 0f);
         }
@@ -294,7 +294,7 @@ namespace Scavenger.Loot
             if (cubeRenderer != null)
             {
                 visualMaterial = new Material(cubeRenderer.sharedMaterial);
-                visualMaterial.color = LootDefinition.TierColor(tier);
+                visualMaterial.color = LootDefinition.GradeColor(tier);
                 cubeRenderer.sharedMaterial = visualMaterial;
             }
         }
