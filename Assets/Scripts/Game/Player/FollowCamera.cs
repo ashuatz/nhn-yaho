@@ -4,28 +4,45 @@ namespace Scavenger.Player
 {
     /// <summary>
     /// 아이소메트릭 추적 카메라 (ADR-0008, 웹 프로토타입 이식 - 기존 원근 로우앵글
-    /// ADR-0003을 대체). 직교(Orthographic) 투영 + 고정 회전(pitch 30 / yaw 45 =
-    /// 2:1 픽셀 아이소). 원근 왜곡이 없어 웹의 평평한 아이소 룩과 일치한다.
+    /// ADR-0003을 대체). 고정 회전(pitch 30 / yaw 45 = 2:1 픽셀 아이소).
+    /// 투영은 두 모드다 (사용자 지시):
+    ///   - 원근 초망원 (기본): fov 15~20 + 카메라를 멀리 후퇴. 오쏘와 거의 같은 룩에
+    ///     아주 약한 원근 단서만 남는다. 그림자/포그/블러가 원근을 전제하는 URP
+    ///     기능들과도 어긋나지 않는다
+    ///   - 직교: orthographic = true. 원근 왜곡이 완전히 0인 순수 아이소
     /// 리그 구성:
     ///   1. 회전 = Euler(pitchDegrees, yawDegrees, 0) 고정. 좌우 회피에도 각도 불변
     ///   2. lookAtOffset - 앵커(복도 중앙 x=0, smoothedZ) 기준 바라보는 지점
-    ///   3. cameraDistance - 룩앳에서 시선 반대로 물러나는 거리 (직교라 구도 무관, 컬링용)
+    ///   3. 카메라 거리 = EffectiveCameraDistance(). 원근에서는 오쏘와 같은 화면 크기가
+    ///      되는 거리로 자동 대체된다 (cameraDistance는 오쏘 전용)
     ///   4. positionOffsetLocal - 시선 로컬축 평행이동 (화면 구도 시프트, 시선 불변 -
     ///      플레이어를 화면 비중심에 두는 용도)
     /// z는 SmoothDamp로 약간 늦게, 전진 전용 래칫(후퇴해도 카메라는 물러나지 않음).
-    /// 포즈/투영은 매 프레임 재계산 - 인스펙터 튜닝 즉시 반영. orthographic을 강제하므로
-    /// 프리팹 카메라가 원근으로 남아 있어도 아이소로 보정된다.
-    /// 벨트스크롤 후방 한계(BackLimitZ)는 ViewportPointToRay 기반 - 직교에서도 유효.
+    /// 포즈/투영/클립 평면은 매 프레임 재계산 - 인스펙터 튜닝 즉시 반영. 프리팹 카메라
+    /// 값이 어긋나 있어도 리그 기준으로 보정된다.
+    /// 벨트스크롤 후방 한계(BackLimitZ)는 ViewportPointToRay 기반 - 두 투영 모두 유효.
     /// 입력축(조작)은 카메라 forward를 지면 투영해 화면 기준으로 자동 정렬 - 조작
     /// 로직(PlayerController)은 불변, 각도만 새 카메라를 따른다 (사용자 지시: 조작 유지).
+    /// 주의: 원근 후퇴량만큼 카메라 기준 후처리 값(LUT 포그 distanceRange, DOF
+    /// focusDistance)도 함께 밀어야 한다 - 눈 깊이가 통째로 커진다.
     /// </summary>
     [ExecuteAlways]
     public sealed class FollowCamera : MonoBehaviour
     {
+        // FOV가 0에 붕괴하면 tan(fov/2)가 0이 되어 거리가 무한이 된다
+        const float MinFieldOfView = 1f;
+        const float MaxFieldOfView = 170f;
+
+        // 유니티 카메라가 허용하는 최소 근접 클립
+        const float MinNearClip = 0.01f;
+
         public Transform target;
 
-        [Header("아이소메트릭 (웹 프로토타입 이식, ADR-0008). 2:1 픽셀 아이소 = pitch 30 / yaw 45")]
-        public bool orthographic = true;
+        [Header("직교 투영. false = 초망원 원근 (기본, 사용자 지시 - 오쏘와 거의 같은 룩)")]
+        public bool orthographic = false;
+
+        [Header("원근 수직 FOV (도). 작을수록 오쏘에 가깝고 카메라가 더 멀어진다 (15~20 권장)")]
+        [Range(MinFieldOfView, 60f)] public float fieldOfView = 18f;
 
         [Header("카메라 회전 (고정). pitch = 내려보는 각, yaw = 수평 회전")]
         public float pitchDegrees = 30f;
@@ -34,14 +51,22 @@ namespace Scavenger.Player
         // +45로 두면 좌우가 반전돼 왼쪽 위로 간다 (사용자 지시로 -45 확정)
         public float yawDegrees = -45f;
 
-        [Header("직교 크기 (줌). 클수록 넓게(멀리) 보임 = 웹 zoom 반비례")]
+        [Header("프레이밍 크기 = 화면 절반 높이 (줌). 클수록 넓게 보임 = 웹 zoom 반비례. "
+                + "원근에서도 이 크기를 유지하도록 카메라 거리가 자동 계산된다")]
         public float orthographicSize = 12f;
 
         [Header("룩앳 지점: 앵커(복도 중앙, smoothedZ) 기준 월드축. 바라보는 지점")]
         public Vector3 lookAtOffset = new Vector3(0f, 1.2f, 4f);
 
-        [Header("카메라 거리: 룩앳에서 시선 반대로 물러나는 거리 (직교는 구도 무관, 컬링용)")]
+        [Header("[직교 전용] 카메라 거리: 룩앳에서 시선 반대로 물러나는 거리 (구도 무관, 컬링용). "
+                + "원근에서는 프레이밍 크기와 FOV로 계산한 거리가 대신 쓰인다")]
         public float cameraDistance = 24f;
+
+        [Header("[직교 기준] 클립 평면. 원근에서는 후퇴한 거리만큼 함께 밀어 "
+                + "직교가 보던 월드 깊이 구간을 그대로 유지한다")]
+        public float orthoNearClip = 0.1f;
+
+        public float orthoFarClip = 90f;
 
         [Header("카메라 포지션 보정: 시선 로컬축 (구도 시프트 - 플레이어를 화면 비중심에)")]
         public Vector3 positionOffsetLocal = new Vector3(0f, 0f, 0f);
@@ -171,6 +196,32 @@ namespace Scavenger.Player
         }
 
         /// <summary>
+        /// 이번 프레임에 실제로 쓰는 카메라 거리. 원근에서는 프레이밍 크기를 그대로
+        /// 재현하는 거리로 대체되므로 cameraDistance보다 훨씬 크다 (초망원 = 멀리서 좁게).
+        /// </summary>
+        public float EffectiveCameraDistance()
+        {
+            if (orthographic)
+                return cameraDistance;
+
+            return MatchedPerspectiveDistance(orthographicSize, fieldOfView);
+        }
+
+        /// <summary>
+        /// 직교 카메라의 화면 절반 높이(orthoSize)를 원근 카메라가 그대로 재현하는 거리.
+        /// half = d * tan(fov/2) 이므로 d = orthoSize / tan(fov/2).
+        /// FOV는 수직 기준이라 종횡비와 무관하게 가로도 함께 일치한다.
+        /// (정적 순수 함수 - EditMode 테스트 대상)
+        /// </summary>
+        public static float MatchedPerspectiveDistance(float orthoSize, float fov)
+        {
+            float clampedFov = Mathf.Clamp(fov, MinFieldOfView, MaxFieldOfView);
+            float tangent = Mathf.Tan(clampedFov * 0.5f * Mathf.Deg2Rad);
+
+            return orthoSize / tangent;
+        }
+
+        /// <summary>
         /// 카메라가 룩앳 지점(복도 중앙 x=0) 대비 갖는 (x, y) 오프셋. 시야 클리어런스
         /// (SegmentSpawner)가 배경 가림 판정에 쓴다. 아이소 회전/거리에서 유도.
         /// </summary>
@@ -179,17 +230,22 @@ namespace Scavenger.Player
             Quaternion rotation = Quaternion.Euler(pitchDegrees, yawDegrees, 0f);
             Vector3 forward = rotation * Vector3.forward;
 
+            // 실제 카메라 위치에서 유도해야 가림 판정이 화면과 일치한다. 원근에서는
+            // 카메라가 훨씬 멀어져 시선 밴드가 pitch 각도에 더 가까워진다
+            float distance = EffectiveCameraDistance();
+
             // 카메라 위치 = lookAt - forward*distance. lookAt.x = 0(복도 중앙)이므로
             // 오프셋 = lookAtOffset.xy - forward.xy * distance
-            float x = lookAtOffset.x - forward.x * cameraDistance;
-            float y = lookAtOffset.y - forward.y * cameraDistance;
+            float x = lookAtOffset.x - forward.x * distance;
+            float y = lookAtOffset.y - forward.y * distance;
 
             return new Vector2(x, y);
         }
 
         // 아이소메트릭 포즈 (웹 이식): 회전은 pitch/yaw 고정, 위치는 룩앳 지점에서
-        // 시선 반대 방향으로 cameraDistance만큼 후퇴. 직교 카메라라 거리는 구도에
-        // 영향을 주지 않지만(투영 무한원) 컬링/근접 클립 여유를 위해 물러난다.
+        // 시선 반대 방향으로 후퇴. 직교에서는 거리가 구도에 영향을 주지 않지만
+        // (투영 무한원) 컬링/근접 클립 여유를 위해 물러나고, 원근에서는 거리 자체가
+        // 줌이라 프레이밍 크기를 재현하는 지점까지 멀리 물러난다.
         void ApplyPose()
         {
             EnsureCamera();
@@ -202,7 +258,7 @@ namespace Scavenger.Player
             Vector3 anchor = new Vector3(0f, 0f, smoothedZ);
             Vector3 lookAt = anchor + lookAtOffset;
 
-            Vector3 basePosition = lookAt - forward * cameraDistance;
+            Vector3 basePosition = lookAt - forward * EffectiveCameraDistance();
 
             transform.rotation = rotation;
 
@@ -211,8 +267,8 @@ namespace Scavenger.Player
             transform.position = basePosition + rotation * positionOffsetLocal;
         }
 
-        // 직교/원근 및 줌을 매 포즈마다 강제 - 인스펙터 튜닝 즉시 반영, 프리팹이
-        // 원근으로 남아 있어도 아이소로 보정 (웹 이식 - 원근 왜곡 제거)
+        // 투영/줌/클립 평면을 매 포즈마다 강제 - 인스펙터 튜닝 즉시 반영, 프리팹 카메라
+        // 값이 어긋나 있어도 리그 기준으로 보정된다
         void EnsureCamera()
         {
             if (viewCamera == null)
@@ -224,7 +280,30 @@ namespace Scavenger.Player
             viewCamera.orthographic = orthographic;
 
             if (orthographic)
+            {
                 viewCamera.orthographicSize = orthographicSize;
+                ApplyClipPlanes(0f);
+                return;
+            }
+
+            viewCamera.fieldOfView = Mathf.Clamp(fieldOfView, MinFieldOfView, MaxFieldOfView);
+
+            // 뒤로 뺀 만큼 클립 평면도 함께 밀어, 직교 카메라가 보던 월드 깊이 구간을
+            // 그대로 유지한다 (사용자 지시 - 오쏘 기준 카메라와 위치 일치)
+            ApplyClipPlanes(EffectiveCameraDistance() - cameraDistance);
+        }
+
+        // 직교 기준 클립 평면을 pullback만큼 밀어 적용.
+        // 근접을 최소값으로 먼저 내려두는 이유: 이전 프레임의 근접이 새 원거리보다
+        // 뒤에 있으면(모드 전환 직후) 대입 순서 때문에 구간이 뒤집힌다
+        void ApplyClipPlanes(float pullback)
+        {
+            float nearPlane = Mathf.Max(MinNearClip, orthoNearClip + pullback);
+            float farPlane = Mathf.Max(nearPlane + 1f, orthoFarClip + pullback);
+
+            viewCamera.nearClipPlane = MinNearClip;
+            viewCamera.farClipPlane = farPlane;
+            viewCamera.nearClipPlane = nearPlane;
         }
     }
 }

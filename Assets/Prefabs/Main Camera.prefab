@@ -67,10 +67,10 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.1
-  far clip plane: 90
-  field of view: 60
-  orthographic: 1
+  near clip plane: 51.8656
+  far clip plane: 141.7656
+  field of view: 18
+  orthographic: 0
   orthographic size: 12
   m_Depth: 0
   m_CullingMask:
@@ -108,12 +108,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Player.FollowCamera
   target: {fileID: 0}
-  orthographic: 1
+  orthographic: 0
+  fieldOfView: 18
   pitchDegrees: 30
   yawDegrees: -45
   orthographicSize: 12
   lookAtOffset: {x: 0, y: 1.2, z: 4}
   cameraDistance: 24
+  orthoNearClip: 0.1
+  orthoFarClip: 90
   positionOffsetLocal: {x: 0, y: 0, z: 0}
   followSmoothTime: 0.15
   backEdgeViewportY: 0.03

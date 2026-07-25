@@ -214,6 +214,11 @@ Unity 기본 포그 설정과 얽혔다. 여기서는 볼륨 값만으로 계산
 - `ScreenSpacePass`는 씬 컬러 사본 때문에 풀스크린 텍스처 1장이 추가로 잡힌다.
   모바일에서 대역폭이 문제되면 `ForwardMaterial` 모드를 쓴다.
 - `skyDensity = 0`으로 두면 스카이박스를 건드리지 않아 원본과 같은 동작이 된다.
+- **`distanceRange`는 카메라 눈 깊이 기준이라 카메라 거리에 직접 묶인다.**
+  게임 카메라는 초망원 원근(`FollowCamera`, fov 18)이라 오쏘 기준보다 51.7656만큼
+  뒤에 있고, `distanceRange`도 그만큼 밀어(51.7656~171.7656) 같은 구간을 덮는다.
+  `FollowCamera.fieldOfView`를 바꾸면 후퇴량이 바뀌므로 여기도 다시 밀어야 한다
+  (DOF `focusDistance`, 씬 빌트인 포그 start/end도 동일).
 - 렌더러를 Deferred로 바꾸면 `ForwardMaterial`은 불투명 오브젝트에 적용되지 않는다
   (GBuffer 경로로 가고 이 셰이더엔 GBuffer 패스가 없다). 그때는 `ScreenSpacePass`를 쓴다.
 

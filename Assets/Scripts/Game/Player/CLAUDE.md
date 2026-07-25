@@ -30,7 +30,7 @@
   매우무거움/과적, 경계 25/50/75/90%) 후 Motor.SpeedScale 반영. LoadRatio(0..1) 노출.
   배율(heavy/veryHeavy/severe/overloaded)/maxCarryWeight = 프리팹 튜닝, 경계는 코드 상수.
   EvaluateStage(비율)/ResolveSpeedScale/StageLabel = 정적 순수 함수 (EditMode 테스트 대상)
-- FollowCamera.cs: 대각 쿼터뷰~사이드뷰 로우앵글 (ADR-0003) + 벨트스크롤
+- FollowCamera.cs: 아이소 쿼터뷰 (ADR-0008, pitch 30 / yaw -45) + 벨트스크롤
   (ADR-0007 5항): z 추적은 전진 전용 래칫 - 플레이어가 후퇴해도 물러나지 않고,
   BackLimitZ를 Motor.CameraMinZ로 공급해 가시 영역 밖 이탈을 막는다.
   BackLimitZ = 카메라 뷰포트 하단 에지(backEdgeViewportY)의 시선-지면(y=0) 교점 z
@@ -40,7 +40,17 @@
   lookAtOffset(앵커 기준 월드축, 바라보는 지점) -> positionOffsetWorld(룩앳 기준
   월드축, 카메라 위치) -> positionOffsetLocal(시선 로컬축, 회전 확정 후 구도 시프트 -
   시선 방향 불변). followSmoothTime = 지연 추적(SmoothDamp, 0이면 즉시).
-  포즈 매 프레임 재계산 - 플레이 중 튜닝 즉시 반영. 확정값은 코드 기본값에 반영 예정
+  포즈 매 프레임 재계산 - 플레이 중 튜닝 즉시 반영. 확정값은 코드 기본값에 반영 예정.
+  투영 (사용자 지시): 기본은 **초망원 원근** (orthographic = false, fieldOfView 18).
+  거리는 MatchedPerspectiveDistance = orthographicSize / tan(fov/2)로 자동 계산되어
+  오쏘와 화면 크기가 같다 (fov 18 / size 12 -> 거리 75.77). cameraDistance는 오쏘 전용.
+  클립 평면도 FollowCamera가 소유 - orthoNearClip/orthoFarClip(0.1 / 90)을 후퇴량만큼
+  밀어 오쏘가 보던 월드 깊이 구간을 유지한다 (fov 18 -> 51.87 / 141.77).
+  CameraOffsetXY(배경 가림 판정)도 실제 후퇴 거리를 쓴다 - 카메라가 멀어지면
+  시선 밴드가 pitch 각도에 더 가까워지므로 판정도 함께 따라가야 한다.
+  **fov를 바꾸면 후퇴량이 바뀌므로 카메라 기준 후처리 값도 함께 밀어야 한다**:
+  LUT 포그 distanceRange, DOF focusDistance, (활성화 시) URP m_ShadowDistance.
+  현재 값은 fov 18 기준 후퇴량 51.7656으로 맞춰져 있다
 - PlayerStepAnimator.cs: 연속 이동용 워크 밥 (ADR-0006 개편). 이동 중 |sin| 홉 반복 +
   공중 스트레치, 정지 시 착지 스쿼시. 낙하 중 연출 정지. Visual 자식만 조작.
   bobHeight/bobFrequency/airStretch/landSquash = 인스펙터 튜닝 지점

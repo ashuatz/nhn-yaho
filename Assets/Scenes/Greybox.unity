@@ -202,7 +202,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 50553514389607041, guid: 1e757327d6accc442a648b5130f49dff, type: 3}
       propertyPath: buildBackgroundBlocks
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 928084745666333280, guid: 1e757327d6accc442a648b5130f49dff, type: 3}
       propertyPath: m_Name
@@ -342,15 +342,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2790198002836546442, guid: 50f730eeb7b9cdf4e95bb7a401f91187, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 14.696939
+      value: 46.396408
       objectReference: {fileID: 0}
     - target: {fileID: 2790198002836546442, guid: 50f730eeb7b9cdf4e95bb7a401f91187, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 13.199999
+      value: 39.082504
       objectReference: {fileID: 0}
     - target: {fileID: 2790198002836546442, guid: 50f730eeb7b9cdf4e95bb7a401f91187, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -9.196938
+      value: -40.896404
       objectReference: {fileID: 0}
     - target: {fileID: 2790198002836546442, guid: 50f730eeb7b9cdf4e95bb7a401f91187, type: 3}
       propertyPath: m_LocalRotation.w
@@ -390,7 +390,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7701882751091407557, guid: 50f730eeb7b9cdf4e95bb7a401f91187, type: 3}
       propertyPath: orthographic
-      value: 1
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7701882751091407557, guid: 50f730eeb7b9cdf4e95bb7a401f91187, type: 3}
+      propertyPath: far clip plane
+      value: 141.76501
+      objectReference: {fileID: 0}
+    - target: {fileID: 7701882751091407557, guid: 50f730eeb7b9cdf4e95bb7a401f91187, type: 3}
+      propertyPath: near clip plane
+      value: 51.865013
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
