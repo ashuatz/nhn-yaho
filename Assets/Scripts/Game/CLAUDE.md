@@ -7,13 +7,15 @@
 
 | 폴더 | 네임스페이스 | 역할 |
 |------|--------------|------|
-| Run/ | Scavenger.Run | 런 상태 머신, 숨김 타이머, 시드/깊이, 정산 |
+| Run/ | Scavenger.Run | 런 상태 머신, 제한 시간, 시드/깊이, 정산 |
 | Debug/ | Scavenger.Diagnostics | 디버그 대시보드 (Debug 네임스페이스는 UnityEngine.Debug와 충돌하여 회피) |
-| Player/ | Scavenger.Player | (S2) 상태 기반 이동 |
-| Loot/ | Scavenger.Loot | (S3) 루팅, 인벤토리, 스태시 |
-| Segment/ | Scavenger.Segment | (S2/S5) 구간 생성, 선택지, 거리 신호 |
-| Obstacle/ | Scavenger.Obstacle | (S4) 폭탄, 밀기 트랩, 낙하물 존(RockfallZone) |
-| UI/ | Scavenger.UI | (S3+) 플레이어 HUD - M5-1부터 uGUI (HudCanvas 프리팹) |
+| Player/ | Scavenger.Player | 상태 기반 이동, 체력, 무게 페널티, 카메라 |
+| Loot/ | Scavenger.Loot | 드랍 아이템, 인벤토리(등급 합성), 스태시 |
+| Field/ | Scavenger.Field | 블록/존/필드 규격, 존 절차 생성, 바닥 제거 (기준 문서: 필드 규칙 및 절차) |
+| Segment/ | Scavenger.Segment | 배경 장식 블록, 조도, 스테이지 끝 웨이포인트 |
+| UI/ | Scavenger.UI | 플레이어 HUD (uGUI, HudCanvas 프리팹) |
+
+기믹(장애물) 폴더는 현재 없다 - 기믹 문서 확정 후 재도입 (ADR-0009).
 
 ## 루트 파일
 
@@ -25,7 +27,7 @@
 ## 씬 구성 (프리팹 기반)
 
 - 시스템은 전부 Assets/Prefabs/ 프리팹으로 관리: Main Camera / Player / RunSystems /
-  SegmentSpawner / GameFlow / HudCanvas (M5-1 uGUI). 사용자가 프리팹을 직접 수정해 튜닝한다.
+  SegmentSpawner(= FieldSpawner 상주) / GameFlow / HudCanvas. 사용자가 프리팹을 직접 수정해 튜닝한다.
 - Scavenger > Setup Greybox Scene = 프리팹 인스턴스 배치 + 참조 배선 + 라이트/포그.
   프리팹이 없으면 기본 템플릿으로 1회 생성, 있으면 절대 덮어쓰지 않음
   (Scavenger > Ensure Prefabs로 프리팹만 생성 가능).

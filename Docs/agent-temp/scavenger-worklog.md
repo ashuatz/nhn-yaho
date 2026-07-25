@@ -5,6 +5,67 @@
 
 ---
 
+## 2026-07-25 - 기획 문서 기준 재정비: 존 단위 필드 + 기믹 전면 제거 (ADR-0009)
+
+사용자 지시: 문서(필드 규칙 및 절차 -> 파밍 아이템 및 포인트) 기준으로 진행,
+현재 있는 기믹(바닥 무너짐 등)은 빼도 됨.
+
+### 착수 전 발견 (브랜치 상태 문제)
+
+- 머지 충돌 잔재 4개 파일이 Assets에 남아 있었다
+  (SegmentSpawner.Features_BACKUP/BASE/LOCAL/REMOTE_824.cs).
+  BACKUP에 충돌 마커(`<<<<<<<`)가 그대로 있어 Unity 컴파일이 깨진 상태였음. 삭제
+- PlayerStamina도 머지 후 API 불일치(PlayerMotor.StaminaScale /
+  CarryLoadStage.SeverelyOverloaded 부재)로 컴파일 불가 + 배선/표시 없는 고아 상태
+
+### 완료 (0단계: 정리)
+
+- 기믹 9종 삭제: 폭탄 / 밀기 트랩 / 땅 꺼짐 / 낙하물 / 돌진 적 / 기둥 붕괴 /
+  바닥 장판 / 미사일 폭격 / 굴러오는 블록 (Obstacle/ 폴더 제거)
+- 함께 삭제: DangerGrid(기믹 예고 전용), FloorBreaker, CheckpointZone,
+  ChoiceNode, SignalEmitter, DepthCurve, CollapseFront,
+  SegmentSpawner 3분할 + SegmentPath + SegmentDefinition + FloorStrip + SinkDebris
+- PlayerStamina 삭제 (마일스톤 문서 4.2에서 "별도 문서 예정"으로 유보된 항목)
+- 삭제 시스템의 테스트 2종 제거 (DangerGridTests / DepthCurveTests)
+
+### 완료 (1단계: 필드)
+
+- Field/ 신설 - 문서 용어(블록/존/필드)와 코드 용어 일치
+  - ZoneDefinition: 블록 1x1 / 존 25 x 7 / 스테이지 존 개수 min-max(6~9) /
+    바닥 제거 시작 거리 6칸 / 흔들림 시간 1.2s / 존 가치 예산 60~110 /
+    드랍 생성 간격 2. lengthMeters·corridorHalfWidth는 블록 수에서 유도
+  - FloorRow: 존 너비 x 1블록 = 제거 단위. 정상 -> 제거 예정(흔들림) -> 제거(낙하).
+    Pending은 아직 밟히는 마지막 경고, Falling 시작에 콜라이더 off
+  - Zone: 행 목록 소유, UpdateRemoval로 기준선 뒤 행 전이, AttachToRow로 요소 부착
+  - FieldSpawner: 스테이지 존 개수 확정 + 존 체인 3개 유지(직전/현재/다음) +
+    제거 기준선(플레이어 뒤 6칸, 전진 전용 래칫) -> PlayerMotor.MinZ 공급
+  - FieldSpawner.Drops: 존 예산 안에서 드랍 배치 (가치 값 = 예산 소비량,
+    생성 간격 준수), 마지막 존 끝에 탈출/다음 스테이지 웨이포인트
+- 재배선: GameFlow(FieldSpawner/ZoneDefinition), GreyboxSceneSetup 프리팹 템플릿,
+  HudController(진행도 = StageProgress01, 붕괴 경고 = 제거 기준선 근접),
+  CameraShake(기준선 근접 트레머), RunDebugDashboard(기준선/존 표시),
+  SegmentEnvironment + EnvironmentAuthoringWindow(ZoneDefinition으로 시그니처 변경)
+- 검증: 런타임/에디터/EditMode 테스트 3개 어셈블리 컴파일 0 에러
+  (csproj가 stale해서 실제 파일 목록으로 보정 후 빌드 - Unity가 재생성하면 원복됨)
+
+### 미결 (사용자 조치 필요)
+
+- Unity에서 Scavenger > Setup Greybox Scene 1회 재실행 필요:
+  스포너 프리팹의 SegmentSpawner 컴포넌트가 FieldSpawner로 교체됨.
+  재실행 전에는 씬의 스포너 참조가 끊긴 상태 (missing script)
+- EditMode 테스트 실행 미확인 (Unity MCP 연결 끊김 - 이번 세션 실행 불가)
+
+### 다음 작업 (마일스톤 문서 순서)
+
+- 2단계 파밍 포인트: 포인트 소켓/오브젝트 스팟 프리팹 규격, 상단1·하단2·3+랜덤,
+  안전지대(기믹 면제 + 낙사 없음), 소켓 좌표 기준 제거 + 흔들림 시작 거리
+- 3단계 아이템 오브젝트: 종류(상자/항아리) x 등급, 파밍 포인트 등급별 생성 확률,
+  상호작용(버튼 1회 시작 / 이동·낙하 시 중단), 아이템 그룹 합산 확률 추첨 1개
+- 4단계 가방 보강: 슬롯 한도, 버리기(압축 안 된 것 우선), 가방 정리(압축 2단계,
+  파밍 포인트에서만, 이동/피해 시 중단)
+
+---
+
 ## 2026-07-22 (8) - 적/기둥/체크포인트/체력·스테미나/가방 HUD/길폭 1.5배
 
 사용자 지시 배치 2탄 (플레이테스트 병행 - 씬 재구성은 플레이 종료 대기).
