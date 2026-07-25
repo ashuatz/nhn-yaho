@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Scavenger.ArtTools;
 using Scavenger.Field;
 using Scavenger.Player;
 using Scavenger.Segment;
@@ -42,11 +44,21 @@ namespace Scavenger.EditorTools
             return authoring.GetComponentsInChildren<MeshRenderer>(true).Length;
         }
 
+        public static EnvironmentAuthoring Build(ZoneDefinition definition, int seed, int zoneCount)
+        {
+            return Build(definition, seed, zoneCount, useTrimSheetBlocks: false, TrimSheetEnvBlocks.DefaultEnvCellSpan);
+        }
+
         /// <summary>
         /// 배경 블록을 실제 오브젝트로 생성한다. 기존 사전 배치는 먼저 지운다.
         /// </summary>
+        /// <param name="useTrimSheetBlocks">
+        /// true면 단색 프리미티브 큐브 대신 트림시트 블록 프리팹을 인스턴스화한다.
+        /// 크기는 셀 격자에 스냅되고 크기별 메시가 재사용된다.
+        /// </param>
         /// <returns>생성된 마커. 사용자가 취소하면 null.</returns>
-        public static EnvironmentAuthoring Build(ZoneDefinition definition, int seed, int zoneCount)
+        public static EnvironmentAuthoring Build(
+            ZoneDefinition definition, int seed, int zoneCount, bool useTrimSheetBlocks, float trimSheetCellSpan)
         {
             ZoneDefinition activeDefinition = definition;
 
@@ -56,6 +68,11 @@ namespace Scavenger.EditorTools
             int clampedZoneCount = Mathf.Clamp(zoneCount, MinZoneCount, MaxZoneCount);
 
             if (!ConfirmLargeBuild(activeDefinition, clampedZoneCount))
+                return null;
+
+            TrimSheetBlockSource trimSheetSource = default;
+
+            if (useTrimSheetBlocks && !TrimSheetBlockSource.TryCreate(trimSheetCellSpan, out trimSheetSource))
                 return null;
 
             Clear();
@@ -79,6 +96,12 @@ namespace Scavenger.EditorTools
                     chunk.transform.SetParent(root.transform, false);
                     chunk.transform.localPosition = new Vector3(0f, 0f, i * activeDefinition.lengthMeters);
 
+                    if (useTrimSheetBlocks)
+                    {
+                        trimSheetSource.BuildChunk(chunk.transform, activeDefinition, rng, clearance);
+                        continue;
+                    }
+
                     SegmentEnvironment.BuildGameObjects(chunk.transform, activeDefinition, rng, clearance);
                 }
             }
@@ -86,6 +109,9 @@ namespace Scavenger.EditorTools
             {
                 EditorUtility.ClearProgressBar();
             }
+
+            if (useTrimSheetBlocks)
+                trimSheetSource.ReportAndFlush();
 
             authoring.coveredFromZ = 0f;
             authoring.coveredToZ = clampedZoneCount * activeDefinition.lengthMeters;
@@ -145,6 +171,119 @@ namespace Scavenger.EditorTools
                 "배경 블록 생성",
                 $"존 {zoneIndex + 1} / {zoneCount}",
                 (float)zoneIndex / zoneCount);
+        }
+
+        /// <summary>
+        /// 트림시트 블록 프리팹으로 배경을 채우는 백엔드.
+        ///
+        /// <see cref="SegmentEnvironment.GenerateBlocks"/>가 낸 데이터를 그대로 소비한다 -
+        /// 배치 규칙(클리어런스, 팔레트, 레이어)은 건드리지 않고 무엇을 인스턴스화할지만 바꾼다.
+        /// </summary>
+        struct TrimSheetBlockSource
+        {
+            GameObject prefab;
+            TrimSheetDefinition definition;
+            float cellSpan;
+            int instanceCount;
+            long vertexCount;
+
+            public static bool TryCreate(float cellSpan, out TrimSheetBlockSource source)
+            {
+                source = default;
+
+                TrimSheetDefinition definition = TrimSheetAssets.EnsureStoneDefinition();
+
+                if (definition == null || !definition.IsReady())
+                {
+                    Debug.LogError("[TrimSheet] 규격 에셋이 준비되지 않았다. "
+                                   + "Scavenger > Trim Sheet > Setup Stone Atlas Assets을 먼저 실행한다.");
+
+                    return false;
+                }
+
+                GameObject prefab = TrimSheetEnvBlocks.EnsurePrefab();
+
+                if (prefab == null)
+                    return false;
+
+                TrimSheetEnvBlocks.BeginBuild();
+
+                source = new TrimSheetBlockSource
+                {
+                    prefab = prefab,
+                    definition = definition,
+                    cellSpan = cellSpan,
+                };
+
+                return true;
+            }
+
+            public void BuildChunk(
+                Transform chunk, ZoneDefinition definition2, System.Random rng, SightClearance clearance)
+            {
+                List<EnvironmentBlock> blocks = SegmentEnvironment.GenerateBlocks(definition2, rng, clearance);
+
+                foreach (EnvironmentBlock block in blocks)
+                    PlaceBlock(chunk, block);
+            }
+
+            void PlaceBlock(Transform chunk, EnvironmentBlock block)
+            {
+                Matrix4x4 matrix = block.LocalMatrix;
+                Vector3 scale = matrix.lossyScale;
+
+                Mesh mesh = TrimSheetEnvBlocks.GetOrBakeSnappedMesh(
+                    definition, scale, cellSpan, out Vector3 snappedSize);
+
+                if (mesh == null)
+                    return;
+
+                GameObject instance = PrefabUtility.InstantiatePrefab(prefab, chunk) as GameObject;
+
+                if (instance == null)
+                    return;
+
+                instance.name = "EnvBlock";
+
+                // 스냅된 크기가 메시에 구워져 있으므로 스케일은 1로 둔다.
+                // 여기서 스케일을 다시 걸면 텍셀 밀도가 어긋난다.
+                instance.transform.localPosition = matrix.GetColumn(3);
+                instance.transform.localRotation = matrix.rotation;
+                instance.transform.localScale = Vector3.one;
+
+                // 피벗이 중심이라 스냅으로 크기가 바뀌어도 중심은 그대로 유지된다.
+                // 바닥선을 맞추고 싶으면 여기서 y를 (snapped.y - scale.y) * 0.5f 만큼 올린다.
+                MeshFilter filter = instance.GetComponent<MeshFilter>();
+
+                if (filter != null)
+                    filter.sharedMesh = mesh;
+
+                MeshRenderer renderer = instance.GetComponent<MeshRenderer>();
+
+                if (renderer != null)
+                {
+                    Color paletteColor = SegmentEnvironment.Palette[block.PaletteIndex];
+                    renderer.sharedMaterial = TrimSheetEnvBlocks.GetPaletteMaterial(
+                        definition, block.PaletteIndex, paletteColor);
+                }
+
+                instanceCount++;
+                vertexCount += mesh.vertexCount;
+            }
+
+            /// <summary>
+            /// 정점 총량을 남긴다. 트림시트 블록은 프리미티브 큐브(24정점)보다 훨씬 무거워
+            /// 조용히 넘어가면 씬이 왜 무거워졌는지 알 수 없다.
+            /// </summary>
+            public void ReportAndFlush()
+            {
+                TrimSheetEnvBlocks.FlushBuild();
+
+                Debug.Log(
+                    $"[TrimSheet] 배경 블록 {instanceCount}개 배치, 정점 {vertexCount:N0}개, "
+                    + $"새로 구운 크기별 메시 {TrimSheetEnvBlocks.BakedThisSession}종 "
+                    + $"(셀 {cellSpan:0.##}m). 무거우면 셀 크기를 키운다.");
+            }
         }
     }
 }

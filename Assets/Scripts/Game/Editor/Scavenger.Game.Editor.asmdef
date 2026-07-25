@@ -3,6 +3,7 @@
     "rootNamespace": "Scavenger.EditorTools",
     "references": [
         "Scavenger.Game",
+        "Scavenger.Art.Editor",
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.RenderPipelines.Core.Runtime",
         "UnityEngine.UI"

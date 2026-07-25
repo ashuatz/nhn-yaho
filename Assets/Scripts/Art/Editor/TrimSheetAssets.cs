@@ -21,10 +21,14 @@ namespace Scavenger.ArtTools
         public const string DefinitionPath = "Assets/Art/TrimSheets/TrimSheet_Stone_01.asset";
         public const string MeshFolder = "Assets/Art/Meshes/TrimSheet";
 
+        /// <summary>팔레트 틴트 머티리얼 폴더 (배경 블록용).</summary>
+        public const string PaletteMaterialFolder = "Assets/Materials/Greybox/TrimSheetEnv";
+
         /// <summary>깨끗한 셀 대비 크랙 셀이 뽑힐 상대 가중치. 손상은 드문드문.</summary>
         const float CrackedCellWeight = 0.3f;
 
         static readonly int BaseMapId = Shader.PropertyToID("_BaseMap");
+        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
         /// <summary>
         /// 돌 아틀라스용 규격 에셋을 보장한다. 이미 있으면 사용자가 만진 값
@@ -230,12 +234,58 @@ namespace Scavenger.ArtTools
         /// </summary>
         public static Mesh SaveMesh(Mesh mesh, string meshName)
         {
+            return SaveMesh(mesh, meshName, MeshFolder);
+        }
+
+        /// <summary>
+        /// 팔레트 색을 물린 트림시트 머티리얼. 배경 블록은 깊이 구분을 팔레트 색으로 하므로
+        /// 트림시트 텍스처를 쓰면서도 색 단계를 유지해야 한다
+        /// (단색 머티리얼 하나로 통일하면 근경과 원경이 붙어 보인다).
+        /// </summary>
+        public static Material EnsurePaletteMaterial(Material baseMaterial, int paletteIndex, Color color)
+        {
+            if (baseMaterial == null)
+                return null;
+
+            EnsureFolder(PaletteMaterialFolder);
+
+            string path = $"{PaletteMaterialFolder}/TrimSheetEnv_{paletteIndex:00}.mat";
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+
+            if (material == null)
+            {
+                string basePath = AssetDatabase.GetAssetPath(baseMaterial);
+
+                if (!AssetDatabase.CopyAsset(basePath, path))
+                {
+                    Debug.LogError($"[TrimSheet] 팔레트 머티리얼 복사 실패: {basePath} -> {path}");
+                    return null;
+                }
+
+                AssetDatabase.ImportAsset(path);
+                material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            }
+
+            if (material == null)
+                return null;
+
+            if (material.GetColor(BaseColorId) != color)
+            {
+                material.SetColor(BaseColorId, color);
+                EditorUtility.SetDirty(material);
+            }
+
+            return material;
+        }
+
+        public static Mesh SaveMesh(Mesh mesh, string meshName, string folder)
+        {
             if (mesh == null)
                 return null;
 
-            EnsureFolder(MeshFolder);
+            EnsureFolder(folder);
 
-            string path = $"{MeshFolder}/{meshName}.asset";
+            string path = $"{folder}/{meshName}.asset";
             Object occupant = AssetDatabase.LoadMainAssetAtPath(path);
 
             // 메시가 아닌 에셋이 그 경로에 있으면 CreateAsset이 통째로 날려버린다.

@@ -151,6 +151,32 @@
   - UIElements 타입 이름이 `UnityEditor.UIElements`와 `UnityEngine.UIElements` 양쪽에 있어
     `ObjectField` / `Vector3Field`는 using 별칭으로 못박았다 (CS0104 방지)
 
+## 배경 사전 배치 연동 (Env Authoring)
+
+`Scavenger > Environment Authoring`의 "트림시트 블록 사용"을 켜면 배경 블록이
+프리미티브 큐브 대신 `Assets/Prefabs/Env/TrimSheetBlock.prefab` 인스턴스로 배치된다.
+
+배치 규칙(클리어런스 / 팔레트 / 레이어)은 건드리지 않는다.
+`SegmentEnvironment.GenerateBlocks`가 낸 데이터를 그대로 소비하고
+**무엇을 인스턴스화할지만** 바꾼다 (`BackgroundBlockBuilder.TrimSheetBlockSource`).
+
+핵심 두 가지:
+
+- **크기를 셀 격자에 스냅하고 크기별 메시를 굽는다** (`TrimSheetEnvBlocks`).
+  배경 블록은 스케일이 임의값(3.7 x 12.4 x 2.1 등)이라 프리팹 하나를 스케일하면
+  텍셀 밀도가 블록마다 달라져 트림시트를 쓰는 의미가 사라진다.
+  스냅된 크기가 같은 블록은 같은 메시를 공유하므로 에셋은 등장한 크기 종류만큼만 생긴다
+  (`Assets/Art/Meshes/TrimSheet/Env/Env_Block_{x}x{y}x{z}.asset`).
+  인스턴스의 `localScale`은 반드시 1이다.
+- **팔레트 색을 틴트 머티리얼로 유지한다** (`TrimSheetAssets.EnsurePaletteMaterial`).
+  배경의 깊이 구분이 팔레트 8색이라 단색 머티리얼 하나로 통일하면 근경과 원경이 붙어 보인다.
+  `Assets/Materials/Greybox/TrimSheetEnv/TrimSheetEnv_NN.mat`
+
+배경 셀 기본값은 **1m** (`DefaultEnvCellSpan`) - 히어로 블록 0.5m보다 거칠다.
+배경은 멀리 있고, 셀이 작으면 큰 블록 하나가 수천 쿼드가 된다.
+생성 후 콘솔에 인스턴스 수 / 정점 총량 / 새로 구운 메시 종류를 남긴다
+(프리미티브 큐브는 블록당 24정점이라 차이가 크다 - 조용히 넘어가면 안 된다).
+
 ## 사용 순서
 
 1. `Scavenger > Trim Sheet > Cube Authoring` 창을 연다
