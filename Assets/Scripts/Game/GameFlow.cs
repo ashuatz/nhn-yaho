@@ -49,7 +49,13 @@ namespace Scavenger
             fieldSpawner.Configure(zoneDefinition, lootCatalog);
             fieldSpawner.SetViewCamera(followCamera);
             fieldSpawner.Track(player);
-            player.Motor.corridorHalfWidth = zoneDefinition.corridorHalfWidth;
+            // 존 너비가 곧 보행 가능 폭이므로, 캐릭터 반경만큼 안쪽으로 클램프한다 -
+            // 반폭과 같게 두면 캡슐 절반이 바닥 밖으로 걸친다
+            CharacterController playerController = player.GetComponent<CharacterController>();
+            float bodyRadius = playerController != null ? playerController.radius : 0f;
+
+            player.Motor.corridorHalfWidth = Mathf.Max(
+                0.5f, zoneDefinition.corridorHalfWidth - bodyRadius);
 
             // uGUI HUD (M5-1)는 HudCanvas 프리팹으로 씬에 배치된다.
             // 런타임 생성 금지 규약 - 없으면 경고만 (씬 재구성 안내)

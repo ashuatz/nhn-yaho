@@ -74,46 +74,100 @@ namespace Scavenger.EditorTools
             EnsurePrefab(GameFlowPrefabPath, BuildGameFlowTemplate);
             EnsurePrefab(HudCanvasPrefabPath, HudCanvasTemplate.Build);
 
-            RemoveLegacyImguiFromGameFlowPrefab();
+            RepairPrefabs();
 
             AssetDatabase.SaveAssets();
         }
 
-        // M5-1 uGUI 전환: 기존 GameFlow 프리팹에 남은 IMGUI HUD 잔재 정리 -
-        // 삭제된 HudOverlay(missing script)와 캔버스로 이사한 VirtualJoystick 제거
-        static void RemoveLegacyImguiFromGameFlowPrefab()
+        /// <summary>
+        /// 기존 프리팹 제자리 수리. 삭제된 스크립트 참조(missing script)를 걷어내고
+        /// 교체된 시스템 컴포넌트를 보강한다 - 사용자가 튜닝한 값은 보존된다.
+        /// EnsurePrefab이 기존 프리팹을 덮어쓰지 않으므로 이 경로가 마이그레이션을 담당.
+        /// </summary>
+        [MenuItem("Scavenger/Repair Prefabs")]
+        public static void RepairPrefabs()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(GameFlowPrefabPath);
+            string[] paths =
+            {
+                CameraPrefabPath, PlayerPrefabPath, RunSystemsPrefabPath,
+                SpawnerPrefabPath, GameFlowPrefabPath, HudCanvasPrefabPath,
+            };
+
+            foreach (string path in paths)
+                RepairPrefab(path);
+
+            AssetDatabase.SaveAssets();
+        }
+
+        static void RepairPrefab(string path)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
             if (prefab == null)
                 return;
 
-            GameObject contents = PrefabUtility.LoadPrefabContents(GameFlowPrefabPath);
+            GameObject contents = PrefabUtility.LoadPrefabContents(path);
 
             // 예외가 나도 반드시 언로드 - 프리팹 스테이지 잔존 방지 (Codex 교차 검토)
             try
             {
-                int removedCount = 0;
+                int changes = 0;
 
+                // 삭제된 시스템(PlayerStamina / CollapseFront / DangerGrid /
+                // SegmentSpawner / HudOverlay 등)이 남긴 missing script 정리
                 foreach (Transform child in contents.GetComponentsInChildren<Transform>(true))
-                    removedCount += GameObjectUtility.RemoveMonoBehavioursWithMissingScript(child.gameObject);
+                    changes += GameObjectUtility.RemoveMonoBehavioursWithMissingScript(child.gameObject);
 
-                foreach (VirtualJoystick joystick in contents.GetComponentsInChildren<VirtualJoystick>(true))
+                // 조이스틱은 M5-1에서 HudCanvas 프리팹으로 이사했다
+                if (path == GameFlowPrefabPath)
                 {
-                    Object.DestroyImmediate(joystick, true);
-                    removedCount += 1;
+                    foreach (VirtualJoystick joystick in contents.GetComponentsInChildren<VirtualJoystick>(true))
+                    {
+                        Object.DestroyImmediate(joystick, true);
+                        changes += 1;
+                    }
                 }
 
-                if (removedCount > 0)
-                {
-                    PrefabUtility.SaveAsPrefabAsset(contents, GameFlowPrefabPath);
-                    UnityEngine.Debug.Log($"[Setup] GameFlow 프리팹에서 구 IMGUI 컴포넌트 {removedCount}개 제거");
-                }
+                // 존 생성기 교체 (ADR-0009) - 구 SegmentSpawner 자리를 FieldSpawner가 받는다
+                if (path == SpawnerPrefabPath)
+                    changes += EnsureSpawnerComponents(contents);
+
+                if (changes == 0)
+                    return;
+
+                PrefabUtility.SaveAsPrefabAsset(contents, path);
+                UnityEngine.Debug.Log($"[Setup] 프리팹 수리: {path} (변경 {changes}건)");
             }
             finally
             {
                 PrefabUtility.UnloadPrefabContents(contents);
             }
+        }
+
+        // 스포너 프리팹에 필요한 컴포넌트를 보강한다 (없을 때만 추가 - 튜닝 보존)
+        static int EnsureSpawnerComponents(GameObject contents)
+        {
+            int added = 0;
+
+            if (contents.GetComponent<EnvironmentRenderer>() == null)
+            {
+                contents.AddComponent<EnvironmentRenderer>();
+                added += 1;
+            }
+
+            if (contents.GetComponent<Field.FieldSpawner>() == null)
+            {
+                contents.AddComponent<Field.FieldSpawner>();
+                added += 1;
+            }
+
+            if (contents.GetComponent<DepthLighting>() == null)
+            {
+                contents.AddComponent<DepthLighting>();
+                added += 1;
+            }
+
+            return added;
         }
 
         static void EnsurePrefab(string path, System.Func<GameObject> buildTemplate)
