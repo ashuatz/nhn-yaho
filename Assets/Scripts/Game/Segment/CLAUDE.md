@@ -8,8 +8,10 @@
 ## 파일 목차
 
 - SegmentEnvironment.cs: 배경 PCG 데이터 생성기 (ADR-0003/0004/0005).
-  GenerateBlocks(ZoneDefinition, rng, clearance) = 인스턴스 블록(행렬 + 팔레트 8색
-  + 웨이브/위상) 생성. GameObject를 만들지 않는다 (웹 호환 인스턴싱).
+  GenerateBlocks(ZoneDefinition, rng, clearance[, segmentLength]) = 인스턴스 블록
+  (행렬 + 팔레트 8색 + 웨이브/위상) 생성. GameObject를 만들지 않는다 (웹 호환 인스턴싱).
+  segmentLength를 넘기지 않으면 존 길이 - 존보다 짧은 세그먼트(존 사이 구간)는
+  반드시 실제 길이를 넘겨야 한다 (안 넘기면 다음 세그먼트 배경과 겹쳐 그려진다).
   좌우 비대칭: CameraSide(clearance) 쪽은 계단식 하강 지형 + 침강 중경/원경
   (발판 가림 금지), 반대쪽은 럽블 능선 + 상부층 + 솟는 스카이라인.
   BuildGameObjects = 사전 배치(손 편집) 전용 GO 백엔드 - 바닥은 만들지 않는다.
@@ -26,9 +28,11 @@
   사전 배치만 쓰려면 buildBackgroundBlocks를 꺼야 한다 (양쪽 UI가 경고로 안내).
 - DepthLighting.cs: 깊이별 조도 (M4-2). RunStarted/DepthChanged 구독,
   씬 베이스 라이팅 캡처 후 배율만 적용. minAmbientFactor/minLightFactor = 시인성 가드
-- ExtractionWaypoint.cs: 스테이지 끝 웨이포인트 (ADR-0008). Extract = 탈출(정산),
-  Advance = 다음 스테이지. 밟으면 1회 자동 발동 (선택 UI 없음).
-  배치와 시각은 Field/FieldSpawner.Drops.cs의 BuildStageExit이 소유
+- ExtractionWaypoint.cs: 탈출 웨이포인트 (ADR-0008). 존과 존 사이 구간에 1개.
+  밟으면 1회 자동 탈출(정산) - 선택 UI 없음.
+  진행(Advance)은 웨이포인트가 아니다 (사용자 지시 2026-07-25): 밟지 않고 걸어서
+  구간을 통과하는 것이 곧 다음 스테이지이며, 감지와 깊이 증가는 Field/FieldSpawner가
+  담당한다. 배치와 시각은 Field/FieldSpawner.Drops.cs의 BuildJunctionWaypoint가 소유
 
 ## 규칙
 

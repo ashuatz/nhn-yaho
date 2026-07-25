@@ -4,18 +4,37 @@
 
 ## 파일 목차
 
-- LootDefinition.cs: ScriptableObject (id/가치/tier/홀드 시간/무게/shortDescription).
-  id는 스태시 안정 키 - 배포 후 변경 금지. static TierColor(tier) = 표시 색 단일 소스
+- LootDefinition.cs: 아이템 정의 SO = 드랍 문서 9.1 아이템 정의 컬럼의 코드 대응물.
+  id(스태시 안정 키 - 배포 후 변경 금지) / displayName / shortDescription /
+  value(가치 = 존 예산 소비량) / tier(**등급 1~4 = 일반·희귀·영웅·전설**) /
+  holdSeconds / weight / sortPriority(가방 정렬·압축 순서) /
+  compressedWeight1·2(압축 무게) / compressSeconds / mergeCount(합성 N, 0 = 전역 기본) /
+  spawnZones(등장 존, 비우면 전체).
+  헬퍼: CanSpawnInZone / CompressedWeight(step) / MaxCompressStep /
+  static GradeColor(등급 색 단일 소스 - 흰/파랑/보라/빨강) / GradeName / MaxTier(4).
+  tier는 "종류 구분"이 아니라 아이템 등급이며 합성의 시작 등급이다
+- BagDefinition.cs: 가방 규격 SO = 가방 문서 7.1 가방 컬럼.
+  maxWeight / slotCountDefault(0 = 무제한) / slotCountMax / mergeCountDefault(전역 N).
+  GameFlow가 CarryLoad(무게)와 RunInventory(슬롯·N)에 배선한다 - 두 판정이
+  같은 값을 보게 하는 것이 목적. CreateDefault 폴백
 - LootCatalog.cs: 코드 폴백 카탈로그 3종 (폐지 t1 w1 / 고철 t2 w4 / 금고 t3 w9)
-  + 한 줄 설명 (HUD 라벨용). 정식 에셋 승격은 트랙 B 이후
+  + 한 줄 설명 + 압축/정렬 임시값. 정식 에셋 승격은 트랙 B 이후
 - RunInventory.cs: 순수 클래스 (EditMode 테스트 대상). Add/Clear/TotalValue/TotalWeight,
   (id, 등급) 기준 스택. Add(definition, value, weight) 오버로드 = 조각 지분 획득용
   (LootPickup). TotalWeight는 CarryLoad(Player/)의 과적 판정 입력 (M2-1).
-  등급 합성 (ADR-0008 A안): 같은 (id, 등급) 5개 -> 상위 등급 1개 자동 합성(연쇄,
-  최대 레어). Entry.Grade/Weight/Value 보유, 무게 1개분 압축 + 가치 x6 배수.
+  등급 합성 (드랍 3장 / 파밍 4.2): 같은 (id, 등급) N개 -> 상위 등급 1개 자동 합성
+  (연쇄, **전설(4)에서 정지**). 시작 등급 = 아이템 tier.
+  N = 아이템 mergeCount, 0이면 Configure로 받은 전역 기본값 (기본 5).
+  Entry.Grade(1~4)/Weight/Value 보유, 무게 1개분 압축 + 가치 x6 배수.
+  Configure(slotCapacity, mergeCountDefault) / HasSlotFor(definition) / UsedSlots =
+  슬롯 한도 (가방 2.1). 슬롯 하나 = (id, 등급) 스택 하나이므로 같은 칸에 쌓이는
+  획득은 슬롯을 쓰지 않는다. 무게 초과 판정은 CarryLoad 소유 - 여기선 슬롯만 본다.
   스태시 저장은 등급 미인식 - BankedCounts(id별 실물 총 획득 개수, 합성 전 원본)를
   별도 누적해 RunSettlement.BankInventory가 참조 (아웃게임 창고 설계 불변)
-- LootSpot.cs: 씬 배치물. E 홀드 루팅, 좌우 입력/홀드 해제 = 취소(진행도 리셋).
+- LootSpot.cs: 씬 배치물. 획득 거리 안에 들어오면 자동 수집.
+  획득 제한 2조건 (가방 5장 / 드랍 6.3): 무게 초과 OR 슬롯 초과면 바닥에 남는다.
+  획득 거리는 PlayerController.itemCollectDistance(플레이어 옵션 컬럼)가 정본이고
+  스포너가 주입한다. E 홀드 루팅, 좌우 입력/홀드 해제 = 취소(진행도 리셋).
   static All = 라벨 순회용 레지스트리 / Active = 현재 루팅 중 스팟 (HUD 게이지 참조).
   static PromptTarget = 시작 가능 조건 충족 스팟 (HUD 우하단 키 프롬프트 참조).
   진행 중에도 시작 조건 재검증 (범위 이탈/requiredMinPlayerY 미달 시 취소 - 교차 검토).

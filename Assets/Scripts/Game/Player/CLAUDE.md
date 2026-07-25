@@ -5,7 +5,9 @@
 ## 파일 목차
 
 - PlayerState.cs: 상태 enum (Advancing / Looting / AtChoice / Dead)
-- PlayerController.cs: 상태 소유자 + 입력. 외부 진입점:
+- PlayerController.cs: 상태 소유자 + 입력.
+  itemCollectDistance = 아이템 획득 거리 (드랍 문서 9.3 플레이어 옵션 컬럼.
+  LootSpot 흡수 반경의 정본 - FieldSpawner가 배치 시 주입). 외부 진입점:
   TryBeginLoot / EndLoot, EnterChoice / ExitChoice, Kill, ResetForNewRun,
   SetExternalMoveInput(조이스틱 벡터), SetExternalInteractHeld(모바일 홀드 버튼,
   M5-1 - 키보드 E와 OR 합성). 낙사 판정 (y < -4 -> Kill("fall"))
@@ -25,7 +27,9 @@
   지속 피해는 dps*dt로 매 프레임 호출. 0 이하면 PlayerController.Kill로 사망 위임
   (경로 단일화). HealthChanged/Damaged 이벤트(HUD 바/피격 플래시). maxHealth = 프리팹
   튜닝. ApplyDamage = 정적 순수 함수 (EditMode 테스트 대상). GameFlow가 폴백 보강.
-- CarryLoad.cs: 무게 -> 이동속도 배율 (M2-1, ADR-0008 비율 재작성). RunInventory.
+- CarryLoad.cs: 무게 -> 이동속도 배율 (M2-1, ADR-0008 비율 재작성).
+  Configure(BagDefinition) = 최대 무게를 가방 컬럼에서 주입 (배선되면 프리팹 값을
+  덮어쓴다 - 무게 판정과 획득 제한이 같은 값을 보게). RunInventory.
   TotalWeight를 maxCarryWeight 대비 비율로 환산해 5단계 판정(가벼움/보통/무거움/
   매우무거움/과적, 경계 25/50/75/90%) 후 Motor.SpeedScale 반영. LoadRatio(0..1) 노출.
   배율(heavy/veryHeavy/severe/overloaded)/maxCarryWeight = 프리팹 튜닝, 경계는 코드 상수.
