@@ -67,6 +67,9 @@ namespace Scavenger.EditorTools
             if (!AssetDatabase.IsValidFolder(PrefabFolder))
                 AssetDatabase.CreateFolder("Assets", "Prefabs");
 
+            // 필드 리소스 프리팹(존 바닥/파밍 포인트)을 먼저 - 스포너가 참조한다
+            FieldPrefabTemplates.EnsureFieldPrefabs();
+
             EnsurePrefab(CameraPrefabPath, BuildCameraTemplate);
             EnsurePrefab(PlayerPrefabPath, BuildPlayerTemplate);
             EnsurePrefab(RunSystemsPrefabPath, BuildRunSystemsTemplate);
@@ -130,7 +133,10 @@ namespace Scavenger.EditorTools
 
                 // 존 생성기 교체 (ADR-0009) - 구 SegmentSpawner 자리를 FieldSpawner가 받는다
                 if (path == SpawnerPrefabPath)
+                {
                     changes += EnsureSpawnerComponents(contents);
+                    changes += WireFieldSpawnerResources(contents.GetComponent<Field.FieldSpawner>());
+                }
 
                 if (changes == 0)
                     return;
@@ -142,6 +148,75 @@ namespace Scavenger.EditorTools
             {
                 PrefabUtility.UnloadPrefabContents(contents);
             }
+        }
+
+        /// <summary>
+        /// 필드 스포너의 리소스 참조를 배선한다 (비어 있을 때만 - 아트 교체 보존).
+        /// 기준 머티리얼은 Assets/Materials/Greybox/Common.mat, 지형은 Field 프리팹.
+        /// </summary>
+        static int WireFieldSpawnerResources(Field.FieldSpawner spawner)
+        {
+            if (spawner == null)
+                return 0;
+
+            SerializedObject serialized = new SerializedObject(spawner);
+            int assigned = 0;
+
+            assigned += AssignIfEmpty(serialized, "greyboxMaterial", LoadCommonMaterial());
+            assigned += AssignIfEmpty(
+                serialized, "floorTileSet",
+                AssetDatabase.LoadAssetAtPath<Field.FieldTileSet>(FieldPrefabTemplates.TileSetPath));
+            assigned += AssignIfEmpty(
+                serialized, "floorRowPrefab", LoadFieldComponent<Field.FloorRow>(
+                    FieldPrefabTemplates.FloorRowPath));
+            assigned += AssignIfEmpty(
+                serialized, "farmingPointTopPrefab", LoadFieldComponent<Field.FarmingPoint>(
+                    FieldPrefabTemplates.FarmingPointTopPath));
+            assigned += AssignIfEmpty(
+                serialized, "farmingPointBottomPrefab", LoadFieldComponent<Field.FarmingPoint>(
+                    FieldPrefabTemplates.FarmingPointBottomPath));
+
+            if (assigned > 0)
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            return assigned;
+        }
+
+        static int AssignIfEmpty(SerializedObject serialized, string propertyName, Object value)
+        {
+            if (value == null)
+                return 0;
+
+            SerializedProperty property = serialized.FindProperty(propertyName);
+
+            if (property == null || property.objectReferenceValue != null)
+                return 0;
+
+            property.objectReferenceValue = value;
+            return 1;
+        }
+
+        static Material LoadCommonMaterial()
+        {
+            const string commonPath = "Assets/Materials/Greybox/Common.mat";
+
+            Material common = AssetDatabase.LoadAssetAtPath<Material>(commonPath);
+
+            if (common != null)
+                return common;
+
+            // 없으면 그레이박스 기본 톤으로 1회 생성
+            return GreyboxMaterials.Ensure("Common", new Color(0.3f, 0.31f, 0.33f));
+        }
+
+        static T LoadFieldComponent<T>(string prefabPath) where T : Component
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+
+            if (prefab == null)
+                return null;
+
+            return prefab.GetComponent<T>();
         }
 
         // 스포너 프리팹에 필요한 컴포넌트를 보강한다 (없을 때만 추가 - 튜닝 보존)
@@ -280,6 +355,9 @@ namespace Scavenger.EditorTools
 
             // 깊이별 조도 (M4-2). 수치는 프리팹에서 튜닝
             spawnerObject.AddComponent<DepthLighting>();
+
+            // 필드 리소스 참조 배선 (기준 머티리얼 + 존/파밍 포인트 프리팹)
+            WireFieldSpawnerResources(spawnerObject.GetComponent<Field.FieldSpawner>());
 
             return spawnerObject;
         }

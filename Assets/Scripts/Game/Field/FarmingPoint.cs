@@ -31,6 +31,9 @@ namespace Scavenger.Field
     /// </summary>
     public sealed class FarmingPoint : MonoBehaviour
     {
+        [Header("프리팹 자체 규격 (블록, 4~7). 0이면 ZoneDefinition 값을 쓴다")]
+        public float authoredSizeBlocks;
+
         /// <summary>플레이어가 어느 파밍 포인트 안에 있는가 (없으면 null).</summary>
         public static FarmingPoint PlayerInside { get; private set; }
 

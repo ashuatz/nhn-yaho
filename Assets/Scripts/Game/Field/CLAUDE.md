@@ -19,9 +19,24 @@
   Pending은 아직 밟을 수 있는 마지막 경고 구간, Falling 시작과 동시에
   자식 포함 콜라이더 off (위에 있던 것은 낙사). 낙하 후 자체 파괴.
 - Zone.cs: 존 하나 (문서 2.1 (2)). 바닥 행 목록 소유 + 존 범위(StartZ/EndZ) +
-  IsLastZone. UpdateRemoval(기준선, 흔들림 시간) = 기준선 뒤 행을 Pending으로 전환.
+  IsLastZone. Build(BuildContext) 바닥 구성 우선순위:
+  타일셋(노이즈 조합) -> 행 프리팹(단일 메시) -> 코드 큐브 폴백.
+  타일 행은 빈 컨테이너 + 너비만큼 타일이고, 콜라이더는 타일에서 걷어내 행에
+  BoxCollider 하나만 둔다 (타일 수만큼 물리 비용을 늘리지 않는다).
+  UpdateRemoval(기준선, 흔들림 시간) = 기준선 뒤 행을 Pending으로 전환.
   AttachToRow = 요소를 발밑 행의 자식으로 부착 (바닥과 함께 낙하).
   IsFullyRemoved = 남은 행 없음 (스포너가 존 오브젝트 정리).
+- GreyboxPalette.cs: 런타임 생성물의 머티리얼 공급기 (사용자 지시).
+  기준 = Assets/Materials/Greybox/Common.mat, FieldSpawner가 직렬화 참조로 주입.
+  색당 1장만 만들어 돌려쓴다 - 이전에는 오브젝트마다 인스턴스를 떠서 존 하나에
+  수십 장이 생기고 SRP 배칭도 색마다 끊겼다. Apply / ApplyGlow(발광).
+  기준 머티리얼 미주입 시 프리미티브 기본 머티리얼 복제로 폴백
+- FieldTileSet.cs: 존 바닥 타일 구성 SO (사용자 지시: 타일 프리팹 리스트 +
+  노이즈 기반 배치). 타일 목록(가중치) / noiseScale / maxTiltDegrees(1도 미만) /
+  tileSurfaceOffsetY / tileThickness.
+  PickTile = 월드 좌표 펄린 노이즈로 가중치 선택 (같은 타일이 뭉쳐 패치가 생긴다),
+  SampleTilt = 좌표 해시로 타일마다 다른 roll/pitch (yaw는 건드리지 않는다).
+  노이즈 오프셋은 스테이지 진입 시 런 시드에서 1회 뽑는다 - 시드 재현성 유지
 - FieldSpawner.cs: 필드 생성/제거의 단일 경계 (문서 3.1). static Instance.
   StartStage(startZ) = 존 개수 확정 + 현재/다음 존 생성.
   Update = 제거 기준선 갱신 -> 존 체인 유지(최대 3개: 직전/현재/다음) -> 행 제거 전이.
@@ -53,9 +68,29 @@
   BuildStageExit = 마지막 존 끝에 탈출 지점(Extract) / 다음 스테이지(Advance)
   웨이포인트 (웹 이식 룩 - 발광 패드 + 빛 기둥 + 포인트라이트).
 
+## 프리팹 / 데이터 자산 (아트 다듬기 대상)
+
+에디터 메뉴 Scavenger > Ensure Field Prefabs (Setup Greybox Scene에 포함).
+있으면 절대 덮어쓰지 않는다 - 아트가 다듬은 결과가 메뉴 재실행으로 사라지지 않게.
+
+| 자산 | 경로 | 비고 |
+|------|------|------|
+| 바닥 타일 | Assets/Prefabs/Field/Tiles/FloorTile_A~C | 1블록, 콜라이더 없음 (행이 대표) |
+| 타일 구성 | Assets/Settings/FieldTileSet.asset | 목록/가중치/노이즈/기울기 |
+| 단일 메시 행 | Assets/Prefabs/Field/FloorRow.prefab | 타일셋 미사용 시 대안 |
+| 파밍 포인트 | Assets/Prefabs/Field/FarmingPoint_Top / _Bottom | 소켓 원점 + 스팟 마커 |
+
+프리팹 규격 정본은 Docs/agent-temp/아트_협업_스케줄_v0.0.1.md 3장.
+파밍 포인트는 소켓이 원점(0,0,0)이고 +x로 뻗는 형태로 만든다 - 반대편은 코드가
+y축 180도 회전으로 붙인다 (음수 스케일은 콜라이더/노멀이 뒤집혀 금지).
+프리팹이 규격 크기와 다르면 FarmingPoint.authoredSizeBlocks에 선언한다.
+
 ## 규칙
 
-- 배치 난수는 반드시 RunManager.Rng (시드 재현성). 존 개수/예산/좌표 모두 해당
+- 배치 난수는 반드시 RunManager.Rng (시드 재현성). 존 개수/예산/좌표 모두 해당.
+  바닥 타일 선택/기울기는 좌표 기반 노이즈 - 스테이지당 오프셋만 시드에서 뽑는다
+- 런타임 생성물의 머티리얼은 GreyboxPalette 경유 (Common.mat 기반 공유 인스턴스).
+  renderer.material 직접 접근은 개체마다 1장을 만들므로 지양
 - 존/행 생성과 제거는 FieldSpawner 경계 안에서만. 외부에서 Instantiate/Destroy 금지
 - 바닥은 존이 소유한다. 배경 생성기(Segment/SegmentEnvironment)는 장식 블록만 만든다
 - 기믹(장애물)은 현재 전부 제거된 상태 - 기믹 문서 확정 후 별도 폴더에서 재도입
@@ -74,6 +109,7 @@
 
 ## 알려진 한계
 
-- 그레이박스 파밍 포인트가 배경 럽블과 시각적으로 겹칠 수 있다.
-  배경 블록은 콜라이더가 없어 플레이에는 영향 없음. 아트 프리팹 도입 시
-  파밍 포인트 z 범위의 배경 생성을 제외하는 처리를 함께 넣는다
+- 배경 블록 인스턴싱(EnvironmentRenderer)은 현재 기본 비활성이다
+  (FieldSpawner.buildBackgroundBlocks = false). 파밍 포인트가 존 옆으로 뻗어
+  럽블과 겹쳐 보이는 문제 때문에 사용자 지시로 끈 상태.
+  다시 켤 때 파밍 포인트 z 범위의 배경 생성을 제외하는 처리를 함께 넣는다

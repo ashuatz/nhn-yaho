@@ -23,6 +23,16 @@ namespace Scavenger.Field
         /// <summary>씬 단일 인스턴스. 카메라 쉐이크/HUD가 압박 상태를 조회한다.</summary>
         public static FieldSpawner Instance { get; private set; }
 
+        [Header("그레이박스 리소스 (아트 교체 지점 - 프리팹에서 배선)")]
+        [SerializeField] Material greyboxMaterial;
+        [SerializeField] FieldTileSet floorTileSet;
+        [SerializeField] FloorRow floorRowPrefab;
+        [SerializeField] FarmingPoint farmingPointTopPrefab;
+        [SerializeField] FarmingPoint farmingPointBottomPrefab;
+
+        [Header("배경 블록 인스턴싱. 파밍 포인트와 겹쳐 일단 끔 (사용자 지시)")]
+        public bool buildBackgroundBlocks;
+
         public ZoneDefinition Definition { get; private set; }
 
         /// <summary>이 스테이지의 존 개수 (진입 시 확정).</summary>
@@ -82,9 +92,16 @@ namespace Scavenger.Field
         float stageStartZ;
         int builtZoneCount;
 
+        // 바닥 타일 노이즈 오프셋. 스테이지 진입 시 런 시드에서 1회 뽑는다 -
+        // 같은 시드면 같은 바닥 패턴이 재현되고, 스테이지마다는 달라진다
+        Vector2 tileNoiseOrigin;
+
         void OnEnable()
         {
             Instance = this;
+
+            // 런타임 생성물의 기준 머티리얼 (Assets/Materials/Greybox/Common.mat)
+            GreyboxPalette.SetBaseMaterial(greyboxMaterial);
         }
 
         void OnDisable()
@@ -135,6 +152,7 @@ namespace Scavenger.Field
             System.Random rng = run != null && run.Rng != null ? run.Rng : new System.Random(0);
 
             StageZoneCount = Definition.RollZoneCount(rng);
+            tileNoiseOrigin = new Vector2(rng.Next(0, 10000), rng.Next(0, 10000));
             stageStartZ = startZ;
             builtZoneCount = 0;
             CurrentZoneIndex = -1;
@@ -245,7 +263,16 @@ namespace Scavenger.Field
             zoneObject.transform.position = Vector3.zero;
 
             Zone zone = zoneObject.AddComponent<Zone>();
-            zone.Build(Definition, zoneIndex, startZ, isLast);
+
+            zone.Build(
+                new Zone.BuildContext
+                {
+                    Definition = Definition,
+                    TileSet = floorTileSet,
+                    RowPrefab = floorRowPrefab,
+                    NoiseOrigin = tileNoiseOrigin,
+                },
+                zoneIndex, startZ, isLast);
 
             PopulateDrops(zone);
             PopulateFarmingPoints(zone);
@@ -264,9 +291,13 @@ namespace Scavenger.Field
             builtZoneCount = Mathf.Max(builtZoneCount, zoneIndex + 1);
         }
 
-        // 배경 블록은 인스턴스 렌더링 (ADR-0005) - 존 시작 z를 원점으로 등록
+        // 배경 블록은 인스턴스 렌더링 (ADR-0005) - 존 시작 z를 원점으로 등록.
+        // 파밍 포인트가 존 옆으로 뻗어 럽블과 겹치므로 현재는 기본 비활성 (사용자 지시)
         int BuildBackground(float startZ)
         {
+            if (!buildBackgroundBlocks)
+                return 0;
+
             if (environmentRenderer == null)
             {
                 environmentRenderer = GetComponent<EnvironmentRenderer>();

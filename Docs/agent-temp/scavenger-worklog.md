@@ -5,6 +5,49 @@
 
 ---
 
+## 2026-07-25 (3) - 프리팹화 + 머티리얼 통일 + 타일 노이즈 바닥
+
+사용자 지시 3건.
+
+### 완료
+
+- 머티리얼 통일: GreyboxPalette 신설. 런타임 생성물이 모두
+  Assets/Materials/Greybox/Common.mat 기반으로 동작한다 (FieldSpawner 직렬화 주입).
+  색당 1장만 만들어 공유 - 이전에는 오브젝트마다 renderer.material로 인스턴스를 떠서
+  존 하나에 수십 장이 생기고 SRP 배칭도 색마다 끊겼다.
+  발광(탈출 지점 랜드마크)도 같은 캐시를 쓴다
+- 배경 인스턴싱 기본 비활성 (사용자 지시: 파밍 포인트와 겹침).
+  FieldSpawner.buildBackgroundBlocks = false. 켜면 즉시 복귀되는 토글
+- 존/파밍 포인트 프리팹화 (아트 다듬기 대상). Scavenger > Ensure Field Prefabs:
+  - Assets/Prefabs/Field/Tiles/FloorTile_A~C (1블록 타일 3종)
+  - Assets/Settings/FieldTileSet.asset (타일 목록/가중치/노이즈/기울기)
+  - Assets/Prefabs/Field/FloorRow.prefab (단일 메시 행 - 타일셋 대안)
+  - Assets/Prefabs/Field/FarmingPoint_Top / _Bottom (소켓 원점 + 스팟 마커)
+  기존 프리팹은 절대 덮어쓰지 않는다. 스포너 프리팹에 참조 자동 배선(Repair Prefabs)
+- 타일 노이즈 바닥 (사용자 지시): 타일 종류는 월드 좌표 펄린 노이즈로 가중치 선택
+  (같은 타일이 뭉쳐 패치가 생긴다), 타일마다 1도 미만 roll/pitch를 좌표 해시로 부여해
+  격자감을 깬다 (yaw는 유지). 노이즈 오프셋은 스테이지 진입 시 런 시드에서 1회 -
+  같은 시드면 같은 바닥이 재현된다
+- 타일 행의 콜라이더는 행에 BoxCollider 하나로 대표 (타일 7장마다 콜라이더를 두면
+  물리 비용만 늘어난다). 타일 프리팹은 콜라이더 없이 만든다
+
+### 설계 메모
+
+- 파밍 포인트 프리팹 규격: 소켓이 원점(0,0,0)이고 +x로 뻗는다. 반대편은 코드가
+  y축 180도 회전으로 붙인다 - 음수 스케일은 콜라이더/노멀이 뒤집혀 금지
+- 프리팹 크기가 규격과 다르면 FarmingPoint.authoredSizeBlocks에 선언한다.
+  선언이 없으면 ZoneDefinition 값을 안전지대 범위로 쓴다 (범위와 실제 플랫폼이
+  어긋나면 끝 전에 막히거나 허공을 걷는다)
+- 바닥 구성 우선순위: 타일셋 -> 행 프리팹 -> 코드 큐브 폴백.
+  프리팹 미배선 상태에서도 플레이가 되도록 폴백을 남겼다
+
+### 미결
+
+- Unity에서 Setup Greybox Scene 재실행 필요 (필드 프리팹 생성 + 참조 배선 포함)
+- 타일 3종은 색만 다른 그레이박스다. 형태 배리에이션은 아트 작업
+
+---
+
 ## 2026-07-25 (2) - 스테이지 인계 버그 수정 + 파밍 포인트 1차 (2단계)
 
 ### 버그 수정: 탈출/진행 지점에서 발밑 바닥이 사라짐

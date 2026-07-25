@@ -166,7 +166,10 @@ namespace Scavenger.Field
                 Destroy(cubeCollider);
 
             Color tierColor = LootDefinition.TierColor(tier);
-            Tint(cube, tierColor);
+
+            // 공유 머티리얼만 깔아둔다 - LootVisual이 여기서 개체 인스턴스를 떠서
+            // 발광/부유를 얹으므로(개체별 위상), 그 원본이 Common.mat이 되게 하는 역할
+            GreyboxPalette.Apply(cube, tierColor);
 
             LootVisual visual = parent.gameObject.AddComponent<LootVisual>();
             visual.Configure(tierColor);
@@ -273,29 +276,10 @@ namespace Scavenger.Field
             glow.shadows = LightShadows.None;
         }
 
-        // 발광(emissive) 머티리얼 - 인스턴스라 Bloom과 함께 빛난다
+        // 발광(emissive) 머티리얼 - Common.mat 기반 공유 인스턴스 (색당 1장)
         static void ApplyGlowMaterial(GameObject target, Color color)
         {
-            Renderer targetRenderer = target.GetComponent<Renderer>();
-
-            if (targetRenderer == null)
-                return;
-
-            Material material = targetRenderer.material;
-            material.color = color;
-            material.EnableKeyword("_EMISSION");
-            material.SetColor("_EmissionColor", color * 2f);
-            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-        }
-
-        static void Tint(GameObject block, Color color)
-        {
-            Renderer blockRenderer = block.GetComponent<Renderer>();
-
-            if (blockRenderer == null)
-                return;
-
-            blockRenderer.material.color = color;
+            GreyboxPalette.ApplyGlow(target, color, emissionScale: 2f);
         }
     }
 }

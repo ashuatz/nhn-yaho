@@ -31,12 +31,30 @@ namespace Scavenger.Field
         readonly List<FloorRow> rows = new List<FloorRow>();
         int remainingNormalRows;
 
+        /// <summary>존 생성에 필요한 리소스 묶음 (FieldSpawner가 구성).</summary>
+        public struct BuildContext
+        {
+            public ZoneDefinition Definition;
+
+            /// <summary>바닥 타일 구성. 있으면 타일 조합이 최우선.</summary>
+            public FieldTileSet TileSet;
+
+            /// <summary>단일 메시 행 프리팹. 타일셋이 없을 때 사용.</summary>
+            public FloorRow RowPrefab;
+
+            /// <summary>노이즈 오프셋 (런 시드 유래 - 같은 시드면 같은 바닥).</summary>
+            public Vector2 NoiseOrigin;
+        }
+
         /// <summary>
         /// 바닥 행을 만들고 존 범위를 확정한다. startZ는 존의 시작 월드 z.
         /// 행은 z+ 방향으로 blockSize 간격, 존 너비 전체를 덮는다.
+        /// 바닥 구성 우선순위: 타일셋(노이즈 조합) -> 행 프리팹 -> 코드 큐브 폴백.
         /// </summary>
-        public void Build(ZoneDefinition definition, int zoneIndex, float startZ, bool isLastZone)
+        public void Build(BuildContext context, int zoneIndex, float startZ, bool isLastZone)
         {
+            ZoneDefinition definition = context.Definition;
+
             ZoneIndex = zoneIndex;
             IsLastZone = isLastZone;
             StartZ = startZ;
@@ -45,23 +63,91 @@ namespace Scavenger.Field
             float blockSize = definition.blockSize;
             float width = definition.zoneWidthBlocks * blockSize;
 
+            bool useTiles = context.TileSet != null && context.TileSet.HasTiles;
+
             for (int block = 0; block < definition.zoneLengthBlocks; block++)
             {
                 float centerZ = startZ + (block + 0.5f) * blockSize;
 
-                GameObject rowObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                rowObject.name = $"FloorRow_{block:D2}";
-                rowObject.transform.SetParent(transform, true);
-                rowObject.transform.position = new Vector3(0f, -0.1f, centerZ);
-                rowObject.transform.localScale = new Vector3(width, 0.2f, blockSize);
+                FloorRow row;
 
-                Tint(rowObject, FloorColor);
+                if (useTiles)
+                    row = BuildTiledRow(context, block, centerZ, width, blockSize, definition);
+                else if (context.RowPrefab != null)
+                    row = InstantiateRow(context.RowPrefab, block, new Vector3(0f, -0.1f, centerZ));
+                else
+                    row = BuildGreyboxRow(block, new Vector3(0f, -0.1f, centerZ), width, blockSize);
 
-                FloorRow row = rowObject.AddComponent<FloorRow>();
                 rows.Add(row);
             }
 
             remainingNormalRows = rows.Count;
+        }
+
+        /// <summary>
+        /// 타일 조합 행. 행은 빈 컨테이너이고 너비만큼 타일을 깐다.
+        /// 타일 종류는 노이즈로 뭉치게, 기울기는 타일마다 1도 미만으로 흐트러진다.
+        /// 콜라이더는 타일에서 걷어내고 행에 하나만 둔다 - 타일 수만큼 늘리지 않는다.
+        /// </summary>
+        FloorRow BuildTiledRow(
+            BuildContext context, int block, float centerZ, float width, float blockSize,
+            ZoneDefinition definition)
+        {
+            FieldTileSet tileSet = context.TileSet;
+
+            GameObject rowObject = new GameObject($"FloorRow_{block:D2}");
+            rowObject.transform.SetParent(transform, true);
+            rowObject.transform.position = new Vector3(0f, 0f, centerZ);
+
+            for (int lane = 0; lane < definition.zoneWidthBlocks; lane++)
+            {
+                float centerX = -width * 0.5f + (lane + 0.5f) * blockSize;
+
+                GameObject tilePrefab = tileSet.PickTile(centerX, centerZ, context.NoiseOrigin);
+
+                if (tilePrefab == null)
+                    continue;
+
+                Quaternion tilt = tileSet.SampleTilt(centerX, centerZ, context.NoiseOrigin);
+                Vector3 position = new Vector3(centerX, tileSet.tileSurfaceOffsetY, centerZ);
+
+                GameObject tile = Instantiate(tilePrefab, position, tilt, rowObject.transform);
+                tile.name = $"Tile_{lane:D2}";
+
+                // 콜라이더는 행이 하나로 대표한다 (타일마다 두면 물리 비용만 늘어난다)
+                Collider[] tileColliders = tile.GetComponentsInChildren<Collider>();
+
+                foreach (Collider tileCollider in tileColliders)
+                    Destroy(tileCollider);
+            }
+
+            BoxCollider rowCollider = rowObject.AddComponent<BoxCollider>();
+            rowCollider.size = new Vector3(width, tileSet.tileThickness, blockSize);
+            rowCollider.center = new Vector3(0f, tileSet.tileSurfaceOffsetY, 0f);
+
+            return rowObject.AddComponent<FloorRow>();
+        }
+
+        // 프리팹 복제 - 스케일은 프리팹이 소유한다 (아트가 정한 형태를 코드가 덮지 않는다).
+        // 존 규격과 프리팹 크기가 어긋나면 프리팹 쪽을 규격에 맞추는 것이 원칙
+        FloorRow InstantiateRow(FloorRow rowPrefab, int block, Vector3 position)
+        {
+            FloorRow row = Instantiate(rowPrefab, position, Quaternion.identity, transform);
+            row.name = $"FloorRow_{block:D2}";
+            return row;
+        }
+
+        FloorRow BuildGreyboxRow(int block, Vector3 position, float width, float blockSize)
+        {
+            GameObject rowObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            rowObject.name = $"FloorRow_{block:D2}";
+            rowObject.transform.SetParent(transform, true);
+            rowObject.transform.position = position;
+            rowObject.transform.localScale = new Vector3(width, 0.2f, blockSize);
+
+            GreyboxPalette.Apply(rowObject, FloorColor);
+
+            return rowObject.AddComponent<FloorRow>();
         }
 
         /// <summary>
@@ -122,6 +208,12 @@ namespace Scavenger.Field
             feature.SetParent(nearest.transform, true);
         }
 
+        /// <summary>존 바닥 행 목록 (파밍 포인트 등 외부 배치가 참조).</summary>
+        public IReadOnlyList<FloorRow> Rows
+        {
+            get { return rows; }
+        }
+
         /// <summary>런 재시작/스테이지 정리에서 즉시 파괴할 때 사용.</summary>
         public void DestroyImmediateAll()
         {
@@ -131,14 +223,6 @@ namespace Scavenger.Field
             Destroy(gameObject);
         }
 
-        static void Tint(GameObject block, Color color)
-        {
-            Renderer blockRenderer = block.GetComponent<Renderer>();
-
-            if (blockRenderer == null)
-                return;
-
-            blockRenderer.material.color = color;
-        }
+        // 머티리얼은 GreyboxPalette가 공급한다 (Common.mat 기반 공유 인스턴스)
     }
 }

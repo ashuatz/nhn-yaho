@@ -143,17 +143,57 @@ namespace Scavenger.Field
 
             Vector3 socketPosition = new Vector3(sideSign * zoneHalfWidth, 0f, socketZ);
 
+            FarmingPoint prefab = pointType == FarmingPointType.Top
+                ? farmingPointTopPrefab
+                : farmingPointBottomPrefab;
+
+            FarmingPoint point = prefab != null
+                ? InstantiatePointPrefab(prefab, zone, socketPosition, sideSign, pointType, grade)
+                : BuildGreyboxFarmingPoint(zone, socketPosition, sideSign, zoneHalfWidth, socketZ, size, pointType, grade);
+
+            // 아트 프리팹이 자기 규격을 선언하면 그것을 안전지대 범위로 쓴다 -
+            // 프리팹 크기와 판정 범위가 어긋나면 플랫폼 끝 전에 막히거나 허공을 걷는다
+            float effectiveSize = point.authoredSizeBlocks > 0f
+                ? point.authoredSizeBlocks * Definition.blockSize
+                : size;
+
+            point.Initialize(
+                pointType, grade, socketPosition, sideSign, zoneHalfWidth,
+                depth: effectiveSize, length: effectiveSize,
+                shakeStartDistance: Definition.farmingPointShakeStartBlocks * Definition.blockSize);
+        }
+
+        /// <summary>
+        /// 아트 프리팹 배치. 프리팹 규격은 소켓이 원점(0,0,0)이고 +x 방향으로 뻗는 형태.
+        /// 반대편(-x)에는 y축 180도 회전으로 붙인다 - 음수 스케일은 콜라이더/노멀이
+        /// 뒤집히므로 쓰지 않는다.
+        /// </summary>
+        static FarmingPoint InstantiatePointPrefab(
+            FarmingPoint prefab, Zone zone, Vector3 socketPosition, float sideSign,
+            FarmingPointType pointType, FarmingPointGrade grade)
+        {
+            Quaternion rotation = sideSign > 0f
+                ? Quaternion.identity
+                : Quaternion.Euler(0f, 180f, 0f);
+
+            FarmingPoint point = Instantiate(prefab, socketPosition, rotation, zone.transform);
+            point.name = $"FarmingPoint_{pointType}_{grade}";
+
+            return point;
+        }
+
+        // 프리팹 미배선 폴백 - 코드로 그레이박스 지형을 만든다
+        FarmingPoint BuildGreyboxFarmingPoint(
+            Zone zone, Vector3 socketPosition, float sideSign, float zoneHalfWidth,
+            float socketZ, float size, FarmingPointType pointType, FarmingPointGrade grade)
+        {
             GameObject pointObject = new GameObject($"FarmingPoint_{pointType}_{grade}");
             pointObject.transform.SetParent(zone.transform, true);
             pointObject.transform.position = Vector3.zero;
 
             BuildGreyboxPoint(pointObject.transform, grade, sideSign, zoneHalfWidth, socketZ, size);
 
-            FarmingPoint point = pointObject.AddComponent<FarmingPoint>();
-            point.Initialize(
-                pointType, grade, socketPosition, sideSign, zoneHalfWidth,
-                depth: size, length: size,
-                shakeStartDistance: Definition.farmingPointShakeStartBlocks * Definition.blockSize);
+            return pointObject.AddComponent<FarmingPoint>();
         }
 
         /// <summary>
@@ -172,7 +212,7 @@ namespace Scavenger.Field
             platform.transform.position = new Vector3(centerX, -0.1f, socketZ);
             platform.transform.localScale = new Vector3(size, 0.2f, size);
 
-            Tint(platform, ResolveGradeColor(grade));
+            GreyboxPalette.Apply(platform, ResolveGradeColor(grade));
 
             // 포인트 소켓 마커 - 존과 맞닿은 입구. 제거 판정 기준 좌표
             GameObject socket = new GameObject("PointSocket");
@@ -209,7 +249,7 @@ namespace Scavenger.Field
             if (markerCollider != null)
                 Destroy(markerCollider);
 
-            Tint(marker, ResolveGradeColor(grade) * 1.4f);
+            GreyboxPalette.Apply(marker, ResolveGradeColor(grade) * 1.4f);
         }
 
         static Color ResolveGradeColor(FarmingPointGrade grade)
