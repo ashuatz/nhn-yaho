@@ -33,8 +33,7 @@ namespace Scavenger.EditorTools
 
             if (material == null)
             {
-                Shader litShader = Shader.Find("Universal Render Pipeline/Lit");
-                material = new Material(litShader);
+                material = new Material(ResolveLitShader());
                 material.color = color;
 
                 AssetDatabase.CreateAsset(material, path);
@@ -50,6 +49,24 @@ namespace Scavenger.EditorTools
 
             return material;
         }
+
+        /// <summary>
+        /// 새로 만드는 그레이박스 머티리얼의 셰이더. 프로젝트에 LUT 포그용 파생 셰이더
+        /// (Scavenger/Simple Lit)가 있으면 그것을 쓴다 - 기준 머티리얼(Common.mat)이
+        /// 이미 그 셰이더라, URP Lit으로 만들면 프리팹을 다시 구울 때마다 포그가 걸리지 않는
+        /// 머티리얼이 새로 생겨 손으로 되돌려야 한다.
+        /// </summary>
+        static Shader ResolveLitShader()
+        {
+            Shader projectShader = Shader.Find(ProjectLitShaderName);
+
+            if (projectShader != null)
+                return projectShader;
+
+            return Shader.Find("Universal Render Pipeline/Lit");
+        }
+
+        const string ProjectLitShaderName = "Scavenger/Simple Lit";
 
         static string ResolveFolder(string subfolder)
         {
