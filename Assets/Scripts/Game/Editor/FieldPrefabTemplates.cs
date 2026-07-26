@@ -285,6 +285,9 @@ namespace Scavenger.EditorTools
         static GameObject BuildFarmingPoint(
             string prefabName, Color color, float sideSign, float platformY)
         {
+            // 생성 에셋 이름은 "프리팹 이름 + 부위" (FarmingPoint_Top_Platform 등)
+            using GreyboxBlockFactory.Scope scope = GreyboxBlockFactory.UseContext(prefabName);
+
             GameObject root = new GameObject(prefabName);
 
             float platformCenterX = sideSign * (PointStairLength + PointPlatformDepth * 0.5f);
@@ -380,11 +383,15 @@ namespace Scavenger.EditorTools
                 float topY = riser * (step + 0.5f);
                 float centerX = sideSign * (tread * step + tread * 0.5f);
 
+                // 에셋 이름은 단 번호 없이 "Step" - 단마다 색 머티리얼을 따로 만들 이유가 없다
+                // (메시는 단 높이가 달라 크기별로 갈린다)
                 GameObject stepBlock = CreateBlock(
-                    stairs.transform, $"Step_{step:D2}",
+                    stairs.transform, "Step",
                     new Vector3(centerX, (baseY + topY) * 0.5f, gateZ),
                     new Vector3(tread, topY - baseY, PointGateLength),
                     color);
+
+                stepBlock.name = $"Step_{step:D2}";
 
                 // 충돌은 램프가 대표한다 - 단 콜라이더는 걷어낸다
                 Collider stepCollider = stepBlock.GetComponent<Collider>();

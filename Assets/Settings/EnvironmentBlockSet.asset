@@ -1,0 +1,146 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c88c06db988d9a340bc1196826fcb097, type: 3}
+  m_Name: EnvironmentBlockSet
+  m_EditorClassIdentifier: Scavenger.Game::Scavenger.Segment.EnvironmentBlockSet
+  cellSpan: 2
+  maxCellsPerAxis: 12
+  entries:
+  - cells: {x: 1, y: 1, z: 1}
+    mesh: {fileID: 4300000, guid: c7b807841bdd0554099ebeee8bba061a, type: 2}
+  - cells: {x: 1, y: 2, z: 1}
+    mesh: {fileID: 4300000, guid: 6798a3fbe719be844a099cc802f3a106, type: 2}
+  - cells: {x: 2, y: 3, z: 2}
+    mesh: {fileID: 4300000, guid: 45881867154805f458ad22fd949c50c2, type: 2}
+  - cells: {x: 2, y: 4, z: 2}
+    mesh: {fileID: 4300000, guid: be75a03f73f780c409ed993354a3caf6, type: 2}
+  - cells: {x: 3, y: 4, z: 2}
+    mesh: {fileID: 4300000, guid: 3d42ba986fba2d345adcf1487be64933, type: 2}
+  - cells: {x: 1, y: 3, z: 1}
+    mesh: {fileID: 4300000, guid: 2c23dc140a512554d817bc23c54f181a, type: 2}
+  - cells: {x: 3, y: 3, z: 2}
+    mesh: {fileID: 4300000, guid: 5ca23256bdac65a42bc53994d0c0d0ed, type: 2}
+  - cells: {x: 2, y: 5, z: 2}
+    mesh: {fileID: 4300000, guid: 83cd775ee2e00ca4fa0139abab089c89, type: 2}
+  - cells: {x: 2, y: 3, z: 3}
+    mesh: {fileID: 4300000, guid: 10da454111e3a9545a4fb105bfe522d4, type: 2}
+  - cells: {x: 2, y: 4, z: 3}
+    mesh: {fileID: 4300000, guid: 066c795c11c6c294f8262bde106a8135, type: 2}
+  - cells: {x: 2, y: 2, z: 2}
+    mesh: {fileID: 4300000, guid: f3b8242f710f9a34aa06dd29ca4e15e6, type: 2}
+  - cells: {x: 3, y: 5, z: 3}
+    mesh: {fileID: 4300000, guid: 3f42458a10bfa714f9c9448aa469669a, type: 2}
+  - cells: {x: 3, y: 4, z: 3}
+    mesh: {fileID: 4300000, guid: 3de6df9f6f65d9749ba2222531569630, type: 2}
+  - cells: {x: 3, y: 2, z: 2}
+    mesh: {fileID: 4300000, guid: 0ba95c7aa4d4c0c4096e2cf578f050b4, type: 2}
+  - cells: {x: 2, y: 1, z: 3}
+    mesh: {fileID: 4300000, guid: 809a2a5ffe642a1409e0fe945cc81498, type: 2}
+  - cells: {x: 4, y: 9, z: 3}
+    mesh: {fileID: 4300000, guid: 7f7fae452d208e841a329feb7706821c, type: 2}
+  - cells: {x: 4, y: 7, z: 3}
+    mesh: {fileID: 4300000, guid: e90eb67a8ea7f7b408ca9aa698619d08, type: 2}
+  - cells: {x: 3, y: 5, z: 2}
+    mesh: {fileID: 4300000, guid: 162e766a71c756a428b93c2c7f54a44f, type: 2}
+  - cells: {x: 3, y: 7, z: 3}
+    mesh: {fileID: 4300000, guid: 99c4d5637add28743a6bc1c8f55f1cbe, type: 2}
+  - cells: {x: 2, y: 1, z: 4}
+    mesh: {fileID: 4300000, guid: 26a479bef30de7d4985941126bdd3081, type: 2}
+  - cells: {x: 2, y: 5, z: 3}
+    mesh: {fileID: 4300000, guid: cbbca9c0fcebd2146af17573c67eb267, type: 2}
+  - cells: {x: 3, y: 6, z: 3}
+    mesh: {fileID: 4300000, guid: b0aa664b40773794cb5c508473f59644, type: 2}
+  - cells: {x: 3, y: 8, z: 3}
+    mesh: {fileID: 4300000, guid: 91c12e31859cb514892b019211ee8d7c, type: 2}
+  - cells: {x: 3, y: 3, z: 3}
+    mesh: {fileID: 4300000, guid: ba0b182f815aa83429bc61eac53f6eb0, type: 2}
+  - cells: {x: 4, y: 8, z: 3}
+    mesh: {fileID: 4300000, guid: 57cd857086fe5894598ccb7f91a1655e, type: 2}
+  - cells: {x: 5, y: 9, z: 3}
+    mesh: {fileID: 4300000, guid: e6ef698d3efc7e747a4766724a72f49c, type: 2}
+  - cells: {x: 3, y: 9, z: 3}
+    mesh: {fileID: 4300000, guid: efc5ba9604973f94197b04d839112db8, type: 2}
+  - cells: {x: 3, y: 7, z: 4}
+    mesh: {fileID: 4300000, guid: fef18d6312b55ea46964aacf8f2a0015, type: 2}
+  - cells: {x: 4, y: 5, z: 3}
+    mesh: {fileID: 4300000, guid: 64395984ab4fe3245b7676f92b995432, type: 2}
+  - cells: {x: 4, y: 4, z: 3}
+    mesh: {fileID: 4300000, guid: 675f88e5ecc726440b4554bbd9ff829b, type: 2}
+  - cells: {x: 4, y: 8, z: 4}
+    mesh: {fileID: 4300000, guid: 2a09973fab77ac74db95a92445545979, type: 2}
+  - cells: {x: 4, y: 5, z: 4}
+    mesh: {fileID: 4300000, guid: cd8d33ad7f8af8d40ae3a2d388b89ce0, type: 2}
+  - cells: {x: 3, y: 9, z: 4}
+    mesh: {fileID: 4300000, guid: 10150230b95ba084195a14ea98ad8af9, type: 2}
+  - cells: {x: 4, y: 10, z: 3}
+    mesh: {fileID: 4300000, guid: e4c7ba636416f7d4a94b384c70d338e7, type: 2}
+  - cells: {x: 2, y: 2, z: 3}
+    mesh: {fileID: 4300000, guid: 6f5010219549a60439fb2f94ceb3aabf, type: 2}
+  - cells: {x: 4, y: 6, z: 3}
+    mesh: {fileID: 4300000, guid: ba14898effbc70e43aa3bd489b03614a, type: 2}
+  - cells: {x: 4, y: 9, z: 4}
+    mesh: {fileID: 4300000, guid: 53ab776daa0394148978cafd322bfa94, type: 2}
+  - cells: {x: 5, y: 6, z: 3}
+    mesh: {fileID: 4300000, guid: 87b1eb82cefcff74a935a29752067a5e, type: 2}
+  - cells: {x: 4, y: 6, z: 4}
+    mesh: {fileID: 4300000, guid: f42d81a555a3fd641968e0ea70a7aaac, type: 2}
+  - cells: {x: 5, y: 7, z: 3}
+    mesh: {fileID: 4300000, guid: 9d765d4148e0f6b48a40bd432fa9cb9b, type: 2}
+  - cells: {x: 4, y: 7, z: 4}
+    mesh: {fileID: 4300000, guid: c55ae1704f8768548b613338daf4c663, type: 2}
+  - cells: {x: 3, y: 5, z: 4}
+    mesh: {fileID: 4300000, guid: eb4f8f34cd43cdf4e9f6bfea4dc495af, type: 2}
+  - cells: {x: 3, y: 10, z: 3}
+    mesh: {fileID: 4300000, guid: 2a90732120b3e224bb9ac15c6bb08aa0, type: 2}
+  - cells: {x: 3, y: 10, z: 4}
+    mesh: {fileID: 4300000, guid: 6fdf9c141679f6345b6809ceba1351b8, type: 2}
+  - cells: {x: 3, y: 2, z: 3}
+    mesh: {fileID: 4300000, guid: bef20a742d3180f499cd1e2653e88015, type: 2}
+  - cells: {x: 5, y: 5, z: 3}
+    mesh: {fileID: 4300000, guid: 2211ec5e9455e8b4d9536069384472cb, type: 2}
+  - cells: {x: 5, y: 8, z: 4}
+    mesh: {fileID: 4300000, guid: 92b762a41ed8a1b48b9b01d736702e74, type: 2}
+  - cells: {x: 5, y: 8, z: 3}
+    mesh: {fileID: 4300000, guid: 2afab841525764b42837f4384c1315d7, type: 2}
+  - cells: {x: 3, y: 8, z: 4}
+    mesh: {fileID: 4300000, guid: 27ba256c57cc2074db0d17dc8dbb3ff4, type: 2}
+  - cells: {x: 5, y: 9, z: 4}
+    mesh: {fileID: 4300000, guid: 242070b04be1e814b88ed126392c3be0, type: 2}
+  - cells: {x: 5, y: 4, z: 3}
+    mesh: {fileID: 4300000, guid: 64489603b899dec42b069e33a9546fe4, type: 2}
+  - cells: {x: 4, y: 4, z: 4}
+    mesh: {fileID: 4300000, guid: eefa9059f0f644b41a56c85a8fafcfeb, type: 2}
+  - cells: {x: 3, y: 6, z: 4}
+    mesh: {fileID: 4300000, guid: b8fc10b215145134188e75ce41a779db, type: 2}
+  - cells: {x: 5, y: 7, z: 4}
+    mesh: {fileID: 4300000, guid: 03b109d3d5518674b830e14538a3559e, type: 2}
+  - cells: {x: 5, y: 6, z: 4}
+    mesh: {fileID: 4300000, guid: 6da73dd2895ae9945afdb30ed72d8a2e, type: 2}
+  - cells: {x: 3, y: 4, z: 4}
+    mesh: {fileID: 4300000, guid: 645dd377a9018e641be443da51062e6d, type: 2}
+  - cells: {x: 5, y: 5, z: 4}
+    mesh: {fileID: 4300000, guid: d864351fc07d5fd46b0e51eac3dc142e, type: 2}
+  - cells: {x: 5, y: 10, z: 3}
+    mesh: {fileID: 4300000, guid: 3a81c5a6626fca44683b02327fcef034, type: 2}
+  - cells: {x: 5, y: 10, z: 4}
+    mesh: {fileID: 4300000, guid: 9f7f3be509767e24d9d8e86534b69826, type: 2}
+  - cells: {x: 5, y: 4, z: 4}
+    mesh: {fileID: 4300000, guid: 8c5631aa95b1b9942989fd1f461548ef, type: 2}
+  paletteMaterials:
+  - {fileID: 2100000, guid: c79fd727f68ac994eb2c02e7972f40de, type: 2}
+  - {fileID: 2100000, guid: 220828eed8c95074e8f191dfea867bcd, type: 2}
+  - {fileID: 2100000, guid: 6a8f860a1d07d214ebc8cb20433c79f9, type: 2}
+  - {fileID: 2100000, guid: bab223d7d2710304fbf28a3cf59d089f, type: 2}
+  - {fileID: 2100000, guid: 25c37789476e97e458ac271cde359d57, type: 2}
+  - {fileID: 2100000, guid: 57f736c34eb12114d858ef39723f1ac9, type: 2}
+  - {fileID: 2100000, guid: 0bd0fecd99faeed478d982b479508a28, type: 2}
+  - {fileID: 2100000, guid: 9504666856139b34f8c1d8971851b063, type: 2}

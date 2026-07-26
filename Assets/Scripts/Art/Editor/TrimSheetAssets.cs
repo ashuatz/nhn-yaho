@@ -242,10 +242,19 @@ namespace Scavenger.ArtTools
         /// 트림시트 텍스처를 쓰면서도 색 단계를 유지해야 한다
         /// (단색 머티리얼 하나로 통일하면 근경과 원경이 붙어 보인다).
         /// </summary>
-        public static Material EnsurePaletteMaterial(Material baseMaterial, int paletteIndex, Color color)
+        /// <param name="roleName">
+        /// 팔레트가 맡은 역할 (RubbleDark 등). 에셋 이름에 들어간다 -
+        /// 인덱스만 쓰면 어느 레이어의 색인지 파일 이름으로 알 수 없다.
+        /// </param>
+        public static Material EnsurePaletteMaterial(
+            Material baseMaterial, int paletteIndex, string roleName, Color color)
         {
-            return EnsureTintedMaterial(
-                baseMaterial, PaletteMaterialFolder, $"TrimSheetEnv_{paletteIndex:00}", color);
+            string materialName = $"TrimSheetEnv_{paletteIndex:00}";
+
+            if (!string.IsNullOrEmpty(roleName))
+                materialName = $"{materialName}_{roleName}";
+
+            return EnsureTintedMaterial(baseMaterial, PaletteMaterialFolder, materialName, color);
         }
 
         /// <summary>
@@ -281,11 +290,24 @@ namespace Scavenger.ArtTools
             if (material == null)
                 return null;
 
+            bool changed = false;
+
             if (material.GetColor(BaseColorId) != color)
             {
                 material.SetColor(BaseColorId, color);
-                EditorUtility.SetDirty(material);
+                changed = true;
             }
+
+            // 배경은 Graphics.RenderMeshInstanced로 그린다 - 인스턴싱이 꺼져 있으면
+            // 드로우가 예외로 죽는다 (실제로 배경이 통째로 사라졌다)
+            if (!material.enableInstancing)
+            {
+                material.enableInstancing = true;
+                changed = true;
+            }
+
+            if (changed)
+                EditorUtility.SetDirty(material);
 
             return material;
         }

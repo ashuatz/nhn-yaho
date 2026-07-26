@@ -46,6 +46,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dbff1d9cfdfca594396ba8ad089fbe65, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Segment.EnvironmentRenderer
+  blockSet: {fileID: 11400000, guid: 219c43745db2d4646ae460a924c5a033, type: 2}
   instanceMesh: {fileID: 0}
   baseMaterial: {fileID: 2100000, guid: 15ac3feb7e8b93a40bdcf151331c5c55, type: 2}
   animate: 1

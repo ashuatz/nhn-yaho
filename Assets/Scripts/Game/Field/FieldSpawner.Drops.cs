@@ -189,6 +189,51 @@ namespace Scavenger.Field
             visual.Configure(tierColor);
         }
 
+        // -- 가방에서 버리기 (사용자 지시 2026-07-26: 드래그앤드롭) ---------------
+
+        /// <summary>
+        /// 가방에서 버린 아이템을 월드에 놓는다. 배치 경계가 이 컴포넌트이므로
+        /// HUD가 직접 Instantiate하지 않고 여기를 부른다 (필드 규칙: 생성은 스포너만).
+        ///
+        /// 놓인 아이템은 다시 주울 수 있고(등급/몫 유지), 발밑 바닥 행에 붙어
+        /// 바닥과 함께 낙하한다 - 사라진 바닥 위에 아이템만 뜨지 않게.
+        /// </summary>
+        public LootSpot DropBagItem(RunInventory.DroppedItem item, Vector3 worldPosition)
+        {
+            if (!item.IsValid)
+                return null;
+
+            GameObject spotObject = new GameObject($"DroppedItem_{item.Definition.id}");
+            spotObject.transform.SetParent(transform, true);
+            spotObject.transform.position = worldPosition;
+
+            LootSpot spot = spotObject.AddComponent<LootSpot>();
+            spot.InitializeDropped(item, ResolveCollectRadius());
+
+            // 표시는 등급 색 (합성해 올린 등급이 눈에 보이게)
+            BuildDropVisual(spotObject.transform, item.Grade);
+
+            AttachToFloorAt(spotObject.transform, worldPosition.z);
+
+            return spot;
+        }
+
+        // 그 z의 세그먼트를 찾아 바닥 행에 부착한다. 세그먼트 밖이면 스포너 자식으로 둔다
+        void AttachToFloorAt(Transform target, float worldZ)
+        {
+            foreach (FieldSegment segment in aliveSegments)
+            {
+                if (segment.Zone == null)
+                    continue;
+
+                if (worldZ < segment.StartZ || worldZ >= segment.EndZ)
+                    continue;
+
+                segment.Zone.AttachToRow(target);
+                return;
+            }
+        }
+
         // -- 존 사이 구간: 탈출 지점 (웹 이식, ADR-0008) ------------------------
 
         /// <summary>

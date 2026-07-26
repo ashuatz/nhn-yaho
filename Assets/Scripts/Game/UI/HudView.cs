@@ -37,6 +37,12 @@ namespace Scavenger.UI
         // 가방 칸이 없을 때(무제한 구성) 보여줄 칸 수
         const int UnlimitedSlotDisplayCount = 8;
 
+        // 버린 아이템이 놓이는 거리 (m). 발밑 조금 앞
+        const float DropForwardDistance = 0.9f;
+
+        // 드래그 잔상 크기의 절반 (px) - 포인터를 잔상 중앙에 맞춘다
+        const float GhostHalfSize = 22f;
+
         UIDocument document;
         VisualElement root;
 
@@ -48,6 +54,8 @@ namespace Scavenger.UI
         VisualElement gaugeBox;
         VisualElement gaugeFill;
         Label gaugeText;
+        VisualElement bagPanel;
+        VisualElement dragGhost;
         Label timerText;
         Label healthText;
         Label loadText;
@@ -137,6 +145,10 @@ namespace Scavenger.UI
             gaugeBox = root.Q<VisualElement>("bottom-center");
             gaugeFill = root.Q<VisualElement>("loot-gauge-fill");
             gaugeText = root.Q<Label>("loot-gauge-text");
+
+            // 가방 버리기 (드래그앤드롭) - 슬롯을 가방 밖으로 끌어내면 떨어뜨린다
+            bagPanel = root.Q<VisualElement>("bag-panel");
+            dragGhost = root.Q<VisualElement>("drag-ghost");
 
             timerText = root.Q<Label>("timer-text");
             healthText = root.Q<Label>("health-text");
@@ -504,7 +516,11 @@ namespace Scavenger.UI
             {
                 VisualElement slot = new VisualElement();
                 slot.AddToClassList("bag-slot");
-                slot.pickingMode = PickingMode.Ignore;
+
+                // 버리기 드래그를 받으려면 픽킹이 켜져 있어야 한다.
+                // 가방은 우하단 작은 영역이라 게임 클릭을 크게 가리지 않는다
+                slot.pickingMode = PickingMode.Position;
+                RegisterSlotDrag(slot, i);
 
                 VisualElement icon = new VisualElement();
                 icon.AddToClassList("bag-slot-icon");
@@ -592,6 +608,202 @@ namespace Scavenger.UI
                 color.a = 0.5f;
 
             return color;
+        }
+
+        // -- 가방 버리기 (드래그앤드롭, 사용자 지시 2026-07-26) -------------------
+
+        // 끌고 있는 슬롯 번호와 포인터. -1이면 드래그 중이 아니다
+        int draggingSlot = -1;
+        int draggingPointer = -1;
+
+        // 끌기 시작한 아이템의 정체. 드래그 도중에도 자동 수집/합성으로 슬롯 순서가
+        // 바뀔 수 있어, 번호만 믿으면 엉뚱한 아이템을 버리게 된다
+        string draggingId;
+        int draggingGrade;
+
+        /// <summary>
+        /// 슬롯을 가방 밖으로 끌어내면 발밑에 떨어뜨린다. 떨어진 아이템은 다시 주울 수
+        /// 있고 등급/몫을 유지한다 (가방 문서 6장의 "버리기"를 드래그로 구현).
+        ///
+        /// 포인터 캡처를 쓰는 이유는 조이스틱과 같다 - 캡처가 멀티터치 추적을 대신한다.
+        /// </summary>
+        void RegisterSlotDrag(VisualElement slot, int slotIndex)
+        {
+            slot.RegisterCallback<PointerDownEvent>(evt => BeginSlotDrag(evt, slot, slotIndex));
+            slot.RegisterCallback<PointerMoveEvent>(OnSlotDragMove);
+            slot.RegisterCallback<PointerUpEvent>(evt => EndSlotDrag(evt, slot));
+
+            // 캡처가 풀리면(창 밖 등) 드래그도 끝난다 - 잔상이 남지 않게
+            slot.RegisterCallback<PointerCaptureOutEvent>(_ => ClearSlotDrag());
+        }
+
+        void BeginSlotDrag(PointerDownEvent evt, VisualElement slot, int slotIndex)
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.StateMachine.Current != RunState.Running)
+                return;
+
+            if (slotIndex >= run.Inventory.Entries.Count)
+                return;
+
+            RunInventory.Entry entry = run.Inventory.Entries[slotIndex];
+
+            draggingSlot = slotIndex;
+            draggingPointer = evt.pointerId;
+            draggingId = entry.Definition.id;
+            draggingGrade = entry.Grade;
+
+            slot.CapturePointer(evt.pointerId);
+
+            ShowDragGhost(entry, evt.position);
+
+            evt.StopPropagation();
+        }
+
+        void OnSlotDragMove(PointerMoveEvent evt)
+        {
+            if (draggingSlot < 0 || evt.pointerId != draggingPointer)
+                return;
+
+            MoveDragGhost(evt.position);
+
+            evt.StopPropagation();
+        }
+
+        void EndSlotDrag(PointerUpEvent evt, VisualElement slot)
+        {
+            if (draggingSlot < 0 || evt.pointerId != draggingPointer)
+                return;
+
+            int slotIndex = ResolveDraggingSlot();
+            bool outsideBag = IsOutsideBag(evt.position);
+
+            slot.ReleasePointer(evt.pointerId);
+            ClearSlotDrag();
+
+            evt.StopPropagation();
+
+            // 가방 안에서 놓으면 취소 (자리 이동은 아직 없다)
+            if (!outsideBag)
+                return;
+
+            DropSlot(slotIndex);
+        }
+
+        /// <summary>
+        /// 끌기 시작한 아이템이 지금 몇 번 슬롯인지 다시 찾는다. 드래그 도중의
+        /// 자동 수집/합성으로 순서가 바뀌었으면 번호가 어긋난다 - 못 찾으면 -1.
+        /// </summary>
+        int ResolveDraggingSlot()
+        {
+            RunManager run = RunManager.Instance;
+
+            if (run == null || draggingId == null)
+                return -1;
+
+            var entries = run.Inventory.Entries;
+
+            if (draggingSlot >= 0 && draggingSlot < entries.Count)
+            {
+                RunInventory.Entry atSlot = entries[draggingSlot];
+
+                if (atSlot.Definition.id == draggingId && atSlot.Grade == draggingGrade)
+                    return draggingSlot;
+            }
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (entries[i].Definition.id == draggingId && entries[i].Grade == draggingGrade)
+                    return i;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// 슬롯 하나를 월드로 내보낸다. 월드에 놓지 못하면 가방으로 되돌린다 -
+        /// 인벤토리에서 뺀 뒤 놓기에 실패하면 아이템이 증발한다.
+        /// </summary>
+        void DropSlot(int slotIndex)
+        {
+            if (slotIndex < 0)
+                return;
+
+            RunManager run = RunManager.Instance;
+
+            if (run == null || run.StateMachine.Current != RunState.Running)
+                return;
+
+            if (!run.Inventory.TryDropOne(slotIndex, out RunInventory.DroppedItem item))
+                return;
+
+            Field.FieldSpawner field = Field.FieldSpawner.Instance;
+
+            if (field == null || player == null)
+            {
+                run.Inventory.Restore(item);
+                return;
+            }
+
+            if (field.DropBagItem(item, ResolveDropPosition()) == null)
+                run.Inventory.Restore(item);
+        }
+
+        // 발밑 조금 앞. 자동 수집이 되빨아들이지 않는 것은 LootSpot의 재무장 규칙이 맡는다
+        Vector3 ResolveDropPosition()
+        {
+            Vector3 position = player.transform.position;
+
+            return new Vector3(position.x, position.y, position.z + DropForwardDistance);
+        }
+
+        void ShowDragGhost(RunInventory.Entry entry, Vector2 pointerPosition)
+        {
+            if (dragGhost == null)
+                return;
+
+            dragGhost.style.backgroundColor =
+                new StyleColor(LootDefinition.GradeColor(entry.Grade));
+
+            SetVisible(dragGhost, true);
+            MoveDragGhost(pointerPosition);
+        }
+
+        void MoveDragGhost(Vector2 pointerPosition)
+        {
+            if (dragGhost == null)
+                return;
+
+            dragGhost.style.left = pointerPosition.x - GhostHalfSize;
+            dragGhost.style.top = pointerPosition.y - GhostHalfSize;
+
+            if (IsOutsideBag(pointerPosition))
+                dragGhost.AddToClassList("drag-ghost--drop");
+            else
+                dragGhost.RemoveFromClassList("drag-ghost--drop");
+        }
+
+        void ClearSlotDrag()
+        {
+            draggingSlot = -1;
+            draggingPointer = -1;
+            draggingId = null;
+            draggingGrade = 0;
+
+            if (dragGhost == null)
+                return;
+
+            dragGhost.RemoveFromClassList("drag-ghost--drop");
+            SetVisible(dragGhost, false);
+        }
+
+        bool IsOutsideBag(Vector2 pointerPosition)
+        {
+            if (bagPanel == null)
+                return true;
+
+            return !bagPanel.worldBound.Contains(pointerPosition);
         }
 
         // -- 입력 (상호작용 홀드) ---------------------------------------------

@@ -136,6 +136,9 @@ namespace Scavenger.EditorTools
 
         static GameObject BuildTemplate(Template template)
         {
+            // 생성 에셋 이름은 "프리팹 이름 + 부위" (ItemObject_Box_Hero_Body 등)
+            using GreyboxBlockFactory.Scope scope = GreyboxBlockFactory.UseContext(template.Name);
+
             GameObject root = new GameObject(template.Name);
 
             Color color = ResolveGradeColor(template.Grade);
@@ -217,7 +220,7 @@ namespace Scavenger.EditorTools
             // 곡면을 타고 계속 밀려난다 (실제로 상호작용 사거리 밖까지 밀려났다).
             // 시각만 원기둥으로 두고 충돌은 상자로 대신한다
             RemoveCollider(body);
-            AssignMaterial(body, color);
+            AssignMaterial(body, "Body", color);
 
             GameObject bodyCollider = new GameObject("BodyCollider");
             bodyCollider.transform.SetParent(parent, false);
@@ -233,7 +236,7 @@ namespace Scavenger.EditorTools
             neck.transform.localPosition = new Vector3(0f, JarHeight, 0f);
 
             RemoveCollider(neck);
-            AssignMaterial(neck, color * 0.85f);
+            AssignMaterial(neck, "Neck", color * 0.85f);
 
             GameObject lid = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             lid.name = "Lid";
@@ -242,7 +245,7 @@ namespace Scavenger.EditorTools
             lid.transform.localPosition = new Vector3(0f, JarHeight + 0.12f, 0f);
 
             RemoveCollider(lid);
-            AssignMaterial(lid, color * 1.3f);
+            AssignMaterial(lid, "Lid", color * 1.3f);
 
             AddGradeGlow(parent, grade, JarHeight);
 
@@ -289,15 +292,19 @@ namespace Scavenger.EditorTools
             return NormalColor;
         }
 
-        static void AssignMaterial(GameObject target, Color color)
+        /// <summary>
+        /// 원기둥 부위(항아리)의 머티리얼. 블록 팩토리와 같은 이름 규칙을 쓴다 -
+        /// 에셋 이름만 보고 어느 프리팹의 어느 부위인지 알 수 있어야 한다.
+        /// 디스크 에셋만 프리팹에 물린다 (인메모리는 리로드 후 마젠타).
+        /// </summary>
+        static void AssignMaterial(GameObject target, string partName, Color color)
         {
             Renderer targetRenderer = target.GetComponent<Renderer>();
 
             if (targetRenderer == null)
                 return;
 
-            // 디스크 에셋 머티리얼만 프리팹에 물린다 (인메모리는 리로드 후 마젠타)
-            targetRenderer.sharedMaterial = GreyboxMaterials.EnsureForColor(color);
+            targetRenderer.sharedMaterial = GreyboxBlockFactory.EnsureMaterial(partName, color);
         }
 
         static void RemoveCollider(GameObject target)

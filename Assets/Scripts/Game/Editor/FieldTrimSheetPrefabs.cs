@@ -82,11 +82,12 @@ namespace Scavenger.EditorTools
 
             // 교체는 반드시 되돌린다 - 남으면 이후의 다른 프리팹까지 트림시트로 나온다.
             // 이전 값을 저장했다 되돌리는 이유는 중첩 호출 대비 (Codex 교차 검토 지적)
-            System.Func<Vector3, Color, GameObject> previousSource = GreyboxBlockFactory.Source;
+            System.Func<string, Vector3, Color, GameObject> previousSource = GreyboxBlockFactory.Source;
 
             try
             {
-                GreyboxBlockFactory.Source = (size, color) => CreateBlock(definition, size, color);
+                GreyboxBlockFactory.Source =
+                    (assetName, size, color) => CreateBlock(definition, assetName, size, color);
 
                 FieldPrefabTemplates.RebuildFloorPrefabsNow();
                 FieldPrefabTemplates.RebuildFarmingPointPrefabsNow();
@@ -110,10 +111,12 @@ namespace Scavenger.EditorTools
         /// 블록 하나를 트림시트 메시로 만든다. 크기는 메시에 구워지므로 스케일은 1이다
         /// (스케일을 걸면 텍셀 밀도가 블록마다 달라져 트림시트를 쓰는 의미가 사라진다).
         /// </summary>
-        static GameObject CreateBlock(TrimSheetDefinition definition, Vector3 size, Color color)
+        /// <param name="assetName">용도 이름 (예: FarmingPoint_Top_Platform). 에셋 이름이 된다.</param>
+        static GameObject CreateBlock(
+            TrimSheetDefinition definition, string assetName, Vector3 size, Color color)
         {
             Vector3 clamped = TrimSheetCubeMesh.ClampSize(size);
-            Mesh mesh = GetOrBakeMesh(definition, clamped, color);
+            Mesh mesh = GetOrBakeMesh(definition, assetName, clamped);
 
             // 굽기에 실패하면 null - 팩토리가 프리미티브 큐브로 되돌아간다
             if (mesh == null)
@@ -125,7 +128,7 @@ namespace Scavenger.EditorTools
             filter.sharedMesh = mesh;
 
             MeshRenderer renderer = block.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = EnsureTintedMaterial(definition, color);
+            renderer.sharedMaterial = EnsureTintedMaterial(definition, assetName, color);
 
             blockCount += 1;
             vertexCount += mesh.vertexCount;
@@ -134,13 +137,13 @@ namespace Scavenger.EditorTools
         }
 
         /// <summary>
-        /// (크기, 색) 조합별 메시. 색을 키에 넣는 이유는 같은 크기라도 배리에이션
-        /// (바닥 타일 A/B/C)이 서로 다른 셀 배치를 갖게 하기 위함이다 -
-        /// 시드를 색에서 뽑으므로 같은 색이면 항상 같은 모양이 재현된다.
+        /// 용도별 메시. 이름은 "쓰이는 자리 + 크기"라서 에셋만 보고 어디에 붙는지 안다
+        /// (사용자 지시 2026-07-26). 같은 자리에 같은 크기면 한 장을 공유하고,
+        /// 시드도 이름에서 뽑으므로 다시 구워도 같은 모양이 재현된다.
         /// </summary>
-        static Mesh GetOrBakeMesh(TrimSheetDefinition definition, Vector3 size, Color color)
+        static Mesh GetOrBakeMesh(TrimSheetDefinition definition, string assetName, Vector3 size)
         {
-            string meshName = ResolveMeshName(size, color);
+            string meshName = ResolveMeshName(assetName, size);
 
             // 재생성 1회 안에서만 공유한다. 디스크에 있다고 재사용하면 셀 크기나
             // 빌더 로직을 바꿔도 기존 메시가 그대로 남는다 (Codex 교차 검토 지적) -
@@ -156,7 +159,7 @@ namespace Scavenger.EditorTools
                 randomRotation = true,
                 shapeJitter = TrimSheetCubeBuilder.DefaultShapeJitter,
                 shapePress = TrimSheetCubeBuilder.DefaultShapePress,
-                seed = ResolveSeed(size, color),
+                seed = StableHash(meshName),
             };
 
             Mesh baked = TrimSheetCubeMesh.Build(definition, options);
@@ -175,12 +178,11 @@ namespace Scavenger.EditorTools
             return saved;
         }
 
-        static Material EnsureTintedMaterial(TrimSheetDefinition definition, Color color)
+        static Material EnsureTintedMaterial(
+            TrimSheetDefinition definition, string assetName, Color color)
         {
-            string hex = ColorUtility.ToHtmlStringRGB(color);
-
             Material tinted = TrimSheetAssets.EnsureTintedMaterial(
-                definition.material, MaterialFolder, $"TrimSheetField_{hex}", color);
+                definition.material, MaterialFolder, assetName, color);
 
             if (tinted != null)
                 return tinted;
@@ -188,23 +190,14 @@ namespace Scavenger.EditorTools
             return definition.material;
         }
 
-        // 이름이 곧 에셋 경로다. 크기는 cm 단위 정수로 적어 파일명이 흔들리지 않게 한다
-        static string ResolveMeshName(Vector3 size, Color color)
+        // 이름이 곧 에셋 경로다. 용도 뒤에 크기(cm)를 붙여 같은 자리의 다른 치수를 구분한다
+        static string ResolveMeshName(string assetName, Vector3 size)
         {
             int x = Mathf.RoundToInt(size.x * 100f);
             int y = Mathf.RoundToInt(size.y * 100f);
             int z = Mathf.RoundToInt(size.z * 100f);
 
-            return $"Field_{x}x{y}x{z}_{ColorUtility.ToHtmlStringRGB(color)}";
-        }
-
-        static int ResolveSeed(Vector3 size, Color color)
-        {
-            int sizeHash = Mathf.RoundToInt(size.x * 100f) * 73856093
-                           ^ Mathf.RoundToInt(size.y * 100f) * 19349663
-                           ^ Mathf.RoundToInt(size.z * 100f) * 83492791;
-
-            return sizeHash ^ StableHash(ColorUtility.ToHtmlStringRGB(color));
+            return $"{assetName}_{x}x{y}x{z}";
         }
 
         // string.GetHashCode는 실행마다 값이 달라질 수 있다 - 같은 경로에 다시 구웠을 때

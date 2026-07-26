@@ -68,6 +68,11 @@
             <engine:Button name="interact-button" class="interact-button" text="상호작용" />
         </engine:VisualElement>
 
+        <!-- 가방에서 끌어낸 아이템의 잔상 (드래그 중에만 보인다) -->
+        <engine:VisualElement name="drag-ghost" class="drag-ghost" picking-mode="Ignore">
+            <engine:Label name="drag-ghost-label" class="drag-ghost-label" text="버리기" />
+        </engine:VisualElement>
+
         <!-- 런 종료 결과 -->
         <engine:VisualElement name="result-panel" class="result-panel">
             <engine:Label name="result-title" class="result-title" text="" />

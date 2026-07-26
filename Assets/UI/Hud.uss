@@ -361,6 +361,51 @@
     background-color: rgba(32, 127, 116, 0.95);
 }
 
+/* -- 가방 드래그 (버리기) ---------------------------------------------- */
+
+/* 끌고 있는 아이템의 잔상. 위치는 코드가 포인터에 맞춘다 */
+.drag-ghost {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    display: none;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgba(232, 232, 226, 0.9);
+    border-right-color: rgba(232, 232, 226, 0.9);
+    border-top-color: rgba(232, 232, 226, 0.9);
+    border-bottom-color: rgba(232, 232, 226, 0.9);
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    opacity: 0.85;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* 가방 밖 - 놓으면 버려진다 */
+.drag-ghost--drop {
+    border-left-color: rgba(224, 69, 61, 0.95);
+    border-right-color: rgba(224, 69, 61, 0.95);
+    border-top-color: rgba(224, 69, 61, 0.95);
+    border-bottom-color: rgba(224, 69, 61, 0.95);
+}
+
+.drag-ghost-label {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(255, 208, 208);
+    margin-bottom: -16px;
+    display: none;
+}
+
+.drag-ghost--drop .drag-ghost-label {
+    display: flex;
+}
+
 /* -- 결과 패널 -------------------------------------------------------- */
 
 .result-panel {

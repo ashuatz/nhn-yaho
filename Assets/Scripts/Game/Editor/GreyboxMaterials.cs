@@ -15,27 +15,55 @@ namespace Scavenger.EditorTools
 
         public static Material Ensure(string materialName, Color color)
         {
-            EnsureFolder();
+            return Ensure(materialName, color, subfolder: null);
+        }
 
-            string path = $"{Folder}/{materialName}.mat";
+        /// <summary>
+        /// 이름으로 머티리얼 에셋을 보장한다. 이름은 **어디에 쓰이는지**를 담아야 한다
+        /// (사용자 지시 2026-07-26: 색상 해시 이름 금지) - 예: FarmingPoint_Top_Platform.
+        /// 색만 다른 같은 용도는 같은 에셋을 재사용하고, 색이 바뀌면 갱신한다.
+        /// </summary>
+        /// <param name="subfolder">Assets/Materials/Greybox 아래 하위 폴더 (없으면 루트).</param>
+        public static Material Ensure(string materialName, Color color, string subfolder)
+        {
+            string folder = ResolveFolder(subfolder);
+            string path = $"{folder}/{materialName}.mat";
+
             Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
 
-            if (material != null)
+            if (material == null)
+            {
+                Shader litShader = Shader.Find("Universal Render Pipeline/Lit");
+                material = new Material(litShader);
+                material.color = color;
+
+                AssetDatabase.CreateAsset(material, path);
                 return material;
+            }
 
-            Shader litShader = Shader.Find("Universal Render Pipeline/Lit");
-            material = new Material(litShader);
-            material.color = color;
+            // 템플릿 색이 바뀌면 따라간다 - 이름이 용도라서 색은 그 용도의 현재 값이다
+            if (material.color != color)
+            {
+                material.color = color;
+                EditorUtility.SetDirty(material);
+            }
 
-            AssetDatabase.CreateAsset(material, path);
             return material;
         }
 
-        /// <summary>색상 기반 자동 이름 (팔레트류 - 같은 색은 같은 에셋 재사용).</summary>
-        public static Material EnsureForColor(Color color)
+        static string ResolveFolder(string subfolder)
         {
-            string hex = ColorUtility.ToHtmlStringRGB(color);
-            return Ensure($"Env_{hex}", color);
+            EnsureFolder();
+
+            if (string.IsNullOrEmpty(subfolder))
+                return Folder;
+
+            string path = $"{Folder}/{subfolder}";
+
+            if (!AssetDatabase.IsValidFolder(path))
+                AssetDatabase.CreateFolder(Folder, subfolder);
+
+            return path;
         }
 
         /// <summary>

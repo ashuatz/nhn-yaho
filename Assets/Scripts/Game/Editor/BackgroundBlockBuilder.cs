@@ -264,7 +264,8 @@ namespace Scavenger.EditorTools
                 {
                     Color paletteColor = SegmentEnvironment.Palette[block.PaletteIndex];
                     renderer.sharedMaterial = TrimSheetEnvBlocks.GetPaletteMaterial(
-                        definition, block.PaletteIndex, paletteColor);
+                        definition, block.PaletteIndex,
+                        SegmentEnvironment.PaletteName(block.PaletteIndex), paletteColor);
                 }
 
                 instanceCount++;

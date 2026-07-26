@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Scavenger.Loot
 {
@@ -166,6 +167,101 @@ namespace Scavenger.Loot
             TotalWeight = 0f;
         }
 
+        // -- 버리기 / 되돌리기 (가방 문서 6장, 사용자 지시 2026-07-26 드래그앤드롭) ----
+
+        /// <summary>
+        /// 가방에서 밖으로 나간 아이템 1개의 몫. 등급까지 들고 나가야
+        /// 다시 주웠을 때 합성 결과(가치/무게)가 사라지지 않는다.
+        /// </summary>
+        public struct DroppedItem
+        {
+            public LootDefinition Definition;
+            public int Grade;
+            public int Value;
+            public float Weight;
+
+            public bool IsValid
+            {
+                get { return Definition != null; }
+            }
+        }
+
+        /// <summary>
+        /// 슬롯(스택)에서 1개를 덜어낸다. 반환값이 월드에 놓을 몫이며,
+        /// 스택이 비면 슬롯도 함께 비운다. 실패하면 false (인벤토리는 그대로).
+        /// </summary>
+        public bool TryDropOne(int slotIndex, out DroppedItem dropped)
+        {
+            dropped = default;
+
+            if (slotIndex < 0 || slotIndex >= entries.Count)
+                return false;
+
+            Entry entry = entries[slotIndex];
+
+            if (entry == null || entry.Count <= 0)
+                return false;
+
+            // 스택 합에서 1개분을 정확히 떼어낸다 (조각 지분 때문에 개당 값이 다를 수 있다)
+            float weight = entry.Weight / entry.Count;
+            int value = (int)System.Math.Round((double)entry.Value / entry.Count);
+
+            dropped = new DroppedItem
+            {
+                Definition = entry.Definition,
+                Grade = entry.Grade,
+                Value = value,
+                Weight = weight,
+            };
+
+            RemoveUnits(entry, 1, weight, value);
+
+            TotalWeight -= weight;
+            TotalValue -= value;
+
+            UnbankOne(dropped.Definition.id);
+
+            return true;
+        }
+
+        /// <summary>
+        /// 버렸던 아이템을 다시 담는다 (등급 유지). 일반 획득과 달리 시작 등급으로
+        /// 되돌리지 않는다 - 합성해 둔 결과를 버렸다 주웠다고 잃으면 안 된다.
+        /// </summary>
+        public void Restore(DroppedItem item)
+        {
+            if (!item.IsValid)
+                return;
+
+            int grade = Mathf.Clamp(item.Grade, 1, LootDefinition.MaxTier);
+
+            TotalValue += item.Value;
+            TotalWeight += item.Weight;
+
+            BankOne(item.Definition.id);
+            AddMerged(item.Definition, grade, item.Weight, item.Value);
+
+            MergeChain(item.Definition.id, grade);
+        }
+
+        /// <summary>
+        /// 이 (아이템, 등급)을 담을 슬롯이 있는가. 버린 아이템을 다시 주울 때는
+        /// 시작 등급이 아니라 들고 나간 등급으로 판정해야 한다.
+        /// </summary>
+        public bool HasSlotFor(LootDefinition definition, int grade)
+        {
+            if (definition == null)
+                return false;
+
+            if (SlotCapacity == UnlimitedSlots)
+                return true;
+
+            if (FindEntry(definition.id, Mathf.Clamp(grade, 1, LootDefinition.MaxTier)) != null)
+                return true;
+
+            return entries.Count < SlotCapacity;
+        }
+
         // 아이템의 시작 등급 = 아이템 등급(tier). 범위를 벗어난 데이터는 클램프
         static int ResolveStartGrade(LootDefinition definition)
         {
@@ -277,6 +373,22 @@ namespace Scavenger.Loot
             }
 
             bankedCounts[id] = 1;
+        }
+
+        // 버리면 실물 획득 개수도 되돌린다 - 다시 주우면 Add가 또 세므로,
+        // 되돌리지 않으면 버리고 줍기를 반복해 창고 개수를 부풀릴 수 있다
+        void UnbankOne(string id)
+        {
+            if (!bankedCounts.TryGetValue(id, out int current))
+                return;
+
+            if (current <= 1)
+            {
+                bankedCounts.Remove(id);
+                return;
+            }
+
+            bankedCounts[id] = current - 1;
         }
 
         Entry FindEntry(string id, int grade)

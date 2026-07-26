@@ -178,7 +178,8 @@ namespace Scavenger.ArtTools
         /// 팔레트 인덱스에 해당하는 틴트 머티리얼. 배경의 깊이 구분이 팔레트 색이라
         /// 트림시트로 바꿔도 색 단계는 유지해야 한다.
         /// </summary>
-        public static Material GetPaletteMaterial(TrimSheetDefinition definition, int paletteIndex, Color color)
+        public static Material GetPaletteMaterial(
+            TrimSheetDefinition definition, int paletteIndex, string roleName, Color color)
         {
             if (definition == null)
                 return null;
@@ -186,7 +187,8 @@ namespace Scavenger.ArtTools
             if (PaletteMaterialCache.TryGetValue(paletteIndex, out Material cached) && cached != null)
                 return cached;
 
-            Material material = TrimSheetAssets.EnsurePaletteMaterial(definition.material, paletteIndex, color);
+            Material material = TrimSheetAssets.EnsurePaletteMaterial(
+                definition.material, paletteIndex, roleName, color);
 
             if (material == null)
                 return definition.material;

@@ -111,8 +111,33 @@ namespace Scavenger.Segment
             new Color(0.07f, 0.09f, 0.13f),   // 7: 원경 스카이라인
         };
 
+        /// <summary>
+        /// 팔레트 인덱스의 역할 이름. 생성되는 머티리얼 에셋 이름에 들어간다
+        /// (사용자 지시 2026-07-26: 색상 해시 이름 대신 어디에 쓰이는지 드러나는 이름).
+        /// </summary>
+        public static readonly string[] PaletteNames =
+        {
+            "RubbleDark",
+            "RubbleMid",
+            "RubbleLight",
+            "UpperStoryA",
+            "UpperStoryB",
+            "Debris",
+            "Midground",
+            "Skyline",
+        };
+
         /// <summary>이 인덱스부터는 원거리 레이어 - 렌더러가 그림자를 끈다.</summary>
         public const int FarPaletteStart = 6;
+
+        /// <summary>팔레트 인덱스 -> 역할 이름 (범위를 벗어나면 인덱스 표기).</summary>
+        public static string PaletteName(int paletteIndex)
+        {
+            if (paletteIndex < 0 || paletteIndex >= PaletteNames.Length)
+                return $"Palette{paletteIndex}";
+
+            return PaletteNames[paletteIndex];
+        }
 
         const float RubbleSliceDepth = 2.2f;
 
@@ -527,7 +552,7 @@ namespace Scavenger.Segment
                 if (cubeCollider != null)
                     RemoveObject(cubeCollider);
 
-                TintGameObject(cube, Palette[block.PaletteIndex]);
+                TintGameObject(cube, block.PaletteIndex);
             }
         }
 
@@ -585,20 +610,22 @@ namespace Scavenger.Segment
             Object.DestroyImmediate(target);
         }
 
-        // SegmentPath(길)도 사용 - 에디트 모드 머티리얼 규칙을 한 곳에 유지
-        internal static void TintGameObject(GameObject block, Color color)
+        // 배경 블록 색칠 (사전 배치/런타임 공용) - 머티리얼 규칙을 한 곳에 유지
+        internal static void TintGameObject(GameObject block, int paletteIndex)
         {
             Renderer blockRenderer = block.GetComponent<Renderer>();
 
             if (blockRenderer == null)
                 return;
 
+            Color color = Palette[Mathf.Clamp(paletteIndex, 0, Palette.Length - 1)];
+
 #if UNITY_EDITOR
             // 에디트 모드(사전 배치)에서는 반드시 디스크 에셋 머티리얼 사용 -
             // 인메모리 머티리얼은 씬 저장 후 참조가 깨져 마젠타가 된다 (실제 발생)
             if (!Application.isPlaying)
             {
-                blockRenderer.sharedMaterial = EnsureEditorMaterialAsset(color);
+                blockRenderer.sharedMaterial = EnsureEditorMaterialAsset(paletteIndex, color);
                 return;
             }
 #endif
@@ -610,16 +637,24 @@ namespace Scavenger.Segment
         }
 
 #if UNITY_EDITOR
-        static Material EnsureEditorMaterialAsset(Color color)
+        /// <summary>
+        /// 사전 배치 배경 블록의 머티리얼. 이름은 팔레트 역할이다
+        /// (Env_00_RubbleDark 등) - 색상 해시 이름은 어디에 쓰이는지 알 수 없다.
+        /// </summary>
+        static Material EnsureEditorMaterialAsset(int paletteIndex, Color color)
         {
+            const string folder = "Assets/Materials/Greybox/Env";
+
             if (!UnityEditor.AssetDatabase.IsValidFolder("Assets/Materials"))
                 UnityEditor.AssetDatabase.CreateFolder("Assets", "Materials");
 
             if (!UnityEditor.AssetDatabase.IsValidFolder("Assets/Materials/Greybox"))
                 UnityEditor.AssetDatabase.CreateFolder("Assets/Materials", "Greybox");
 
-            string hex = ColorUtility.ToHtmlStringRGB(color);
-            string path = $"Assets/Materials/Greybox/Env_{hex}.mat";
+            if (!UnityEditor.AssetDatabase.IsValidFolder(folder))
+                UnityEditor.AssetDatabase.CreateFolder("Assets/Materials/Greybox", "Env");
+
+            string path = $"{folder}/Env_{paletteIndex:00}_{PaletteName(paletteIndex)}.mat";
 
             Material material = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(path);
 

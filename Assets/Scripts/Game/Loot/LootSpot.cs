@@ -35,10 +35,35 @@ namespace Scavenger.Loot
         PlayerController player;
         CarryLoad carryLoad;
 
+        // 가방에서 버린 아이템 (등급/몫 보존). 일반 배치물이면 사용하지 않는다
+        RunInventory.DroppedItem dropped;
+        bool isDropped;
+
+        // 주울 수 있는 상태인가. 버린 직후에는 false이고 반경을 벗어나면 열린다
+        bool armed = true;
+
         public void Initialize(LootDefinition definition, float collectRadius)
         {
             Definition = definition;
             this.collectRadius = collectRadius;
+        }
+
+        /// <summary>
+        /// 가방에서 버린 아이템으로 초기화한다 (사용자 지시 2026-07-26: 드래그앤드롭 버리기).
+        /// 등급과 몫을 그대로 들고 있다가 다시 주우면 되돌린다 - 합성해 둔 결과가
+        /// 버렸다 줍는 것만으로 사라지면 안 된다.
+        ///
+        /// 버린 직후에는 주울 수 없다. 발밑에 놓자마자 자동 수집이 되빨아들이면
+        /// 버리기가 성립하지 않으므로, 플레이어가 수집 반경을 한 번 벗어나야 열린다.
+        /// </summary>
+        public void InitializeDropped(RunInventory.DroppedItem item, float collectRadius)
+        {
+            Definition = item.Definition;
+            this.collectRadius = collectRadius;
+
+            dropped = item;
+            isDropped = true;
+            armed = false;
         }
 
         void OnEnable()
@@ -66,6 +91,13 @@ namespace Scavenger.Loot
                 return;
 
             if (!IsPlayerInRange())
+            {
+                // 버린 아이템은 여기서 열린다 (반경을 한 번 벗어나야 다시 주울 수 있다)
+                armed = true;
+                return;
+            }
+
+            if (!armed)
                 return;
 
             TryCollect();
@@ -94,19 +126,26 @@ namespace Scavenger.Loot
             if (run == null || Definition == null)
                 return;
 
-            float projectedWeight = run.Inventory.TotalWeight + Definition.weight;
+            // 버린 아이템은 나갈 때의 몫으로 되돌아온다 (등급 유지)
+            float weight = isDropped ? dropped.Weight : Definition.weight;
+            float projectedWeight = run.Inventory.TotalWeight + weight;
             float maxWeight = ResolveMaxWeight();
 
             if (projectedWeight > maxWeight)
                 return;
 
             // 슬롯 초과: 같은 (id, 등급) 스택이 없고 빈 슬롯도 없으면 담을 자리가 없다
-            if (!run.Inventory.HasSlotFor(Definition))
+            int grade = isDropped ? dropped.Grade : Definition.tier;
+
+            if (!run.Inventory.HasSlotFor(Definition, grade))
                 return;
 
             collected = true;
 
-            run.Inventory.Add(Definition);
+            if (isDropped)
+                run.Inventory.Restore(dropped);
+            else
+                run.Inventory.Add(Definition);
 
             // HUD 획득 연출 (파티클/토스트) - 위치를 넘겨 가방으로 날아가는 시작점으로
             Collected?.Invoke(Definition, transform.position);
