@@ -8,6 +8,9 @@
 ## 파일 목차
 
 - SegmentEnvironment.cs: 배경 PCG 데이터 생성기 (ADR-0003/0004/0005).
+  PaletteNames / PaletteName(i) = 팔레트 역할 이름 (RubbleDark 등).
+  사전 배치 머티리얼 에셋 이름이 여기서 나온다 (Env_00_RubbleDark.mat -
+  색상 해시 이름은 어디에 쓰이는지 알 수 없다, 사용자 지시 2026-07-26).
   GenerateBlocks(ZoneDefinition, rng, clearance[, segmentLength]) = 인스턴스 블록
   (행렬 + 팔레트 8색 + 웨이브/위상) 생성. GameObject를 만들지 않는다 (웹 호환 인스턴싱).
   segmentLength를 넘기지 않으면 존 길이 - 존보다 짧은 세그먼트(존 사이 구간)는
@@ -17,8 +20,22 @@
   BuildGameObjects = 사전 배치(손 편집) 전용 GO 백엔드 - 바닥은 만들지 않는다.
   SightClearance 구조체 = 카메라 시선 밴드 겹침 판정 (여기 정의).
 - EnvironmentRenderer.cs: Graphics.RenderMeshInstanced 드로우 (ADR-0005, 웹 호환).
-  존 청크 등록/해제(AddChunk/RemoveChunk), 팔레트별 머티리얼, 콜당 1023 분할,
-  청크 바운드 컬링, Wave>0 블록만 동적 그룹으로 사인파 갱신. static Active
+  존 청크 등록/해제(AddChunk/RemoveChunk), 콜당 1023 분할, 청크 바운드 컬링,
+  Wave>0 블록만 동적 배치로 사인파 갱신. static Active.
+  **배치 키는 (메시, 팔레트)** - 트림시트 블록 세트가 배선되면 크기별로 구운 메시를
+  쓰기 때문이다 (셀 2m 기준 청크당 16~21 배치. 측정값이며 팔레트 8색만 쓰던
+  이전과 큰 차이가 없다). 세트가 없거나 인스턴싱이 꺼진 머티리얼이면
+  경고 1회 후 큐브 폴백 - RenderMeshInstanced는 인스턴싱이 꺼져 있으면 예외를 던지고
+  배경이 통째로 사라진다 (실제 발생)
+- EnvironmentBlockSet.cs: 배경 블록 렌더 자산 묶음 (런타임 SO, 사용자 지적 2026-07-26:
+  인스턴싱 배경만 트림시트를 안 쓰고 있었다). 셀 크기(cellSpan, 기본 2m) /
+  축당 셀 상한 / 크기별 구운 메시 / 팔레트 머티리얼.
+  ResolveEntry = 크기를 셀로 스냅해 항목 조회 (없으면 가장 가까운 크기).
+  AlignPosition = 스냅으로 커진 만큼 위치 보정 - **윗면과 복도쪽 면을 유지**한다
+  (위로 자라면 카메라측 지형이 발판을 가리고, 안쪽으로 자라면 통로를 침범한다).
+  굽기: 메뉴 Scavenger > Field Trim Sheet > Bake Background Blocks
+  (Editor/EnvironmentBlockSetBaker - 실제 생성기를 표본 삼아 나오는 크기만 굽는다).
+  cellSpan이 곧 룩/비용 손잡이다: 작을수록 원형에 가깝고 배치 수가 늘어난다
 - EnvironmentAuthoring.cs: 사전 배치 배경 마커. 커버 z 범위 표시용.
   생성 입구 2개 (둘 다 Editor/BackgroundBlockBuilder를 호출 - 로직은 그쪽에만 있다):
   - FieldSpawner 인스펙터의 "실제 객체로 생성" 버튼 (buildBackgroundBlocks 플래그 옆)

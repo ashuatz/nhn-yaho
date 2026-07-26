@@ -116,6 +116,8 @@
   (buildStageZoneIndex. 배치가 생성 시점에 끝나므로 그 값이 유효하다).
   획득 거리는 PlayerController.itemCollectDistance를 주입 (드랍 9.3 플레이어 옵션).
   생성 간격 거리 준수, 배치 후 AttachToRow로 바닥에 부착.
+  DropBagItem = 가방에서 버린 아이템을 월드에 놓는다 (HUD가 호출. 생성은 스포너만 -
+  필드 규칙). 발밑 바닥 행에 부착해 바닥과 함께 낙하하고, 다시 주우면 등급/몫이 돌아온다.
   BuildJunctionWaypoint = 구간 중앙, 화면 위쪽(카메라 반대편)에 탈출 웨이포인트 1개
   (웹 이식 룩 - 발광 패드 + 빛 기둥 + 포인트라이트). 직진 동선을 비워 두는 이유는
   그냥 지나가려는 플레이어가 밟아서 강제 정산되지 않게 하기 위함
@@ -138,8 +140,9 @@
 트림시트 메시(Assets/Art/Meshes/TrimSheet/Field) + 색만 다른 트림시트 머티리얼
 (Assets/Materials/Greybox/TrimSheetField)로 다시 구울 수 있다.
 스포너는 프리팹을 인스턴스화할 뿐이라 런타임 코드는 그대로다.
-런타임 배경 인스턴싱은 제외한다 - 배경 블록은 크기가 임의값이라 크기별 메시를 만들면
-인스턴싱 배치가 크기 수만큼 쪼개진다 (배경 트림시트는 사전 배치 경로 전용).
+런타임 배경(EnvironmentRenderer)도 2026-07-26부터 트림시트다 -
+`Scavenger > Field Trim Sheet > Bake Background Blocks`로 크기별 메시를 굽는다
+(Segment/EnvironmentBlockSet 참조. 셀 2m 스냅이라 청크당 배치 16~21개로 유지된다).
 
 프리팹 규격 정본은 Docs/agent-temp/아트_협업_스케줄_v0.0.1.md 3장.
 파밍 포인트 원점은 **존 가장자리의 구역 중심(z 중앙)** 이고, 기본 아이소 리그

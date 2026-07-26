@@ -32,12 +32,20 @@
   (연쇄, **전설(4)에서 정지**). 시작 등급 = 아이템 tier.
   N = 아이템 mergeCount, 0이면 Configure로 받은 전역 기본값 (기본 5).
   Entry.Grade(1~4)/Weight/Value 보유, 무게 1개분 압축 + 가치 x6 배수.
-  Configure(slotCapacity, mergeCountDefault) / HasSlotFor(definition) / UsedSlots =
-  슬롯 한도 (가방 2.1). 슬롯 하나 = (id, 등급) 스택 하나이므로 같은 칸에 쌓이는
+  Configure(slotCapacity, mergeCountDefault) / HasSlotFor(definition[, grade]) / UsedSlots =
+  슬롯 한도 (가방 2.1).
+  버리기 (사용자 지시 2026-07-26, 드래그앤드롭): TryDropOne(slot) = 스택에서 1개분
+  (무게/가치/등급)을 떼어 DroppedItem으로 넘긴다. Restore(item) = 그 몫 그대로 되담기
+  - **시작 등급으로 되돌리지 않는다** (합성해 둔 등급을 버렸다 줍는 것만으로 잃으면 안 된다).
+  BankedCounts도 버릴 때 되돌린다(UnbankOne) - 안 그러면 버리고 줍기를 반복해
+  창고 개수를 부풀릴 수 있다. 슬롯 하나 = (id, 등급) 스택 하나이므로 같은 칸에 쌓이는
   획득은 슬롯을 쓰지 않는다. 무게 초과 판정은 CarryLoad 소유 - 여기선 슬롯만 본다.
   스태시 저장은 등급 미인식 - BankedCounts(id별 실물 총 획득 개수, 합성 전 원본)를
   별도 누적해 RunSettlement.BankInventory가 참조 (아웃게임 창고 설계 불변)
 - LootSpot.cs: 씬 배치물. 획득 거리 안에 들어오면 자동 수집.
+  InitializeDropped(가방에서 버린 몫) = 등급/무게/가치를 들고 있다가 다시 주우면
+  Restore로 되돌린다. 버린 직후에는 잠겨 있고(armed=false) **플레이어가 수집 반경을
+  한 번 벗어나야** 열린다 - 발밑에서 즉시 되빨리면 버리기가 성립하지 않는다.
   획득 제한 2조건 (가방 5장 / 드랍 6.3): 무게 초과 OR 슬롯 초과면 바닥에 남는다.
   획득 거리는 PlayerController.itemCollectDistance(플레이어 옵션 컬럼)가 정본이고
   스포너가 주입한다. E 홀드 루팅, 좌우 입력/홀드 해제 = 취소(진행도 리셋).

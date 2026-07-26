@@ -25,7 +25,11 @@ UnityDefaultRuntimeTheme.tss (런타임 테마) / HudPanelSettings.asset (패널
   하단 중앙 게이지(bottom-center)는 아이템 오브젝트 상호작용 진행도 전용 -
   중단되면 즉시 사라져 중단이 눈에 읽힌다 (파밍 문서 3.3).
   가방 슬롯은 RunInventory.SlotCapacity만큼 만들고 재사용한다 - 빈 칸이 곧 슬롯 한도 표시.
-  외곽선 = 현재 등급(합성 반영), 아이콘 = 아이템 시작 등급, 좌상단 점 = 압축 가능 여부
+  외곽선 = 현재 등급(합성 반영), 아이콘 = 아이템 시작 등급, 좌상단 점 = 압축 가능 여부.
+  **버리기 (사용자 지시 2026-07-26)**: 슬롯을 끌어 가방 밖에서 놓으면 1개를 발밑에
+  떨어뜨린다 (다시 주울 수 있고 등급도 유지). 슬롯은 픽킹을 켜고 포인터 캡처로 끌며
+  (조이스틱과 같은 규칙), 잔상은 drag-ghost 요소다. 가방 안에서 놓으면 취소.
+  월드 배치는 FieldSpawner.DropBagItem이 한다 - HUD가 직접 Instantiate하지 않는다
 - HudJoystickView.cs: 가상 조이스틱 (ADR-0007). 실행 순서 -200.
   UI Toolkit 포인터 이벤트 + CapturePointer를 쓴다 - 포인터 캡처가 멀티터치 추적을
   대신 처리하므로 uGUI 버전의 touchId 고정 로직이 필요 없다.

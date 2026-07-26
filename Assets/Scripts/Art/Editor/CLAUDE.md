@@ -39,6 +39,21 @@
 - 타일 단위 셀 혼합 / 90도 회전으로 반복감 제거
 - 크랙 타일을 **별도 셀**로 두고 가중치만 낮춰 손상 빈도를 조절
 
+## 에셋 이름 규칙 (사용자 지시 2026-07-26)
+
+색상 해시 이름(`TrimSheetField_4C4F54`, `Field_100x20x100_454A4F`)은 금지다 -
+**이름만 보고 어디에 쓰이는지 알 수 있어야 한다.**
+
+| 종류 | 규칙 | 예 |
+|------|------|-----|
+| 필드 프리팹 메시 | `{프리팹}_{부위}_{크기cm}` | `FarmingPoint_Top_Platform_500x20x900` |
+| 필드 프리팹 머티리얼 | `{프리팹}_{부위}` | `ItemObject_Box_Hero_Body` |
+| 배경 팔레트 머티리얼 | `TrimSheetEnv_{인덱스}_{역할}` | `TrimSheetEnv_06_Midground` |
+| 배경 블록 메시 | `Env_Block_{셀수}` | `Env_Block_1x2x1` |
+
+이름은 `GreyboxBlockFactory.Context`(프리팹 이름) + 블록 이름에서 나온다.
+메시 시드도 이름 해시라, 다시 구워도 같은 모양이 재현된다.
+
 ## 에셋 경로
 
 | 경로 | 내용 |
@@ -200,9 +215,13 @@
 - 재생성 1회를 한 세션으로 보고 메시를 다시 굽는다. 디스크에 있다고 재사용하면
   셀 크기나 빌더 로직을 바꿔도 기존 메시가 그대로 남는다.
   같은 경로에 다시 구워도 SaveMesh가 내용만 갈아끼워 프리팹 참조는 유지된다
-- 런타임 배경 인스턴싱(EnvironmentRenderer)은 연동하지 않는다. 배경 블록은 스케일이
-  임의값이라 크기별 메시를 쓰면 인스턴싱 배치가 크기 수만큼 쪼개져 드로우콜이 폭증한다.
-  배경을 트림시트로 보려면 사전 배치(Environment Authoring) 경로를 쓴다
+- **런타임 배경도 트림시트다** (2026-07-26 추가). 처음에는 "크기별 메시 = 드로우콜 폭증"
+  으로 보고 제외했지만, 실제 분포를 재 보니 셀 2m 스냅에서 청크당 배치가 16~21개라
+  기존(팔레트 8색)과 큰 차이가 없었다. 굽기는
+  `Scavenger > Field Trim Sheet > Bake Background Blocks`
+  (Game.Editor/EnvironmentBlockSetBaker -> Assets/Settings/EnvironmentBlockSet.asset).
+  팔레트 머티리얼은 **인스턴싱을 반드시 켠다** - 꺼져 있으면 RenderMeshInstanced가
+  예외를 던지고 배경이 통째로 사라진다 (실제로 겪었다)
 
 ## 사용 순서
 
