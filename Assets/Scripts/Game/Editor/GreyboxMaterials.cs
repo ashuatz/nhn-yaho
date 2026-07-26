@@ -103,7 +103,8 @@ namespace Scavenger.EditorTools
 
             Shader litShader = Shader.Find("Universal Render Pipeline/Lit");
             Material material = new Material(litShader);
-            material.color = new Color(0.32f, 0.36f, 0.3f);
+            // 2026-07-26 밝기 보정 (V x1.7)
+            material.color = new Color(0.54f, 0.61f, 0.51f);
             material.SetTexture("_BaseMap", gridTexture);
             material.mainTexture = gridTexture;
 

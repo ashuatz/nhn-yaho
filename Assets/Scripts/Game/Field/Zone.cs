@@ -29,7 +29,8 @@ namespace Scavenger.Field
             get { return remainingNormalRows == 0 && rows.Count == 0; }
         }
 
-        static readonly Color FloorColor = new Color(0.3f, 0.31f, 0.33f);
+        // 2026-07-26 밝기 보정 (V x1.7). 바닥 타일/행 프리팹 색과 같은 값
+        static readonly Color FloorColor = new Color(0.51f, 0.53f, 0.56f);
 
         readonly List<FloorRow> rows = new List<FloorRow>();
         int remainingNormalRows;

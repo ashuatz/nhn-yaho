@@ -245,7 +245,8 @@ namespace Scavenger.EditorTools
                 return common;
 
             // 없으면 그레이박스 기본 톤으로 1회 생성
-            return GreyboxMaterials.Ensure("Common", new Color(0.3f, 0.31f, 0.33f));
+            // 2026-07-26 밝기 보정 (V x1.7) - 바닥/블록 기준 톤
+            return GreyboxMaterials.Ensure("Common", new Color(0.51f, 0.53f, 0.56f));
         }
 
         static T LoadFieldComponent<T>(string prefabPath) where T : Component
@@ -355,12 +356,12 @@ namespace Scavenger.EditorTools
             GameObject body = CreateVisualCube(visual.transform, "Body");
             body.transform.localScale = new Vector3(0.7f, 0.9f, 0.45f);
             body.transform.localPosition = new Vector3(0f, 0.65f, 0f);
-            AssignMaterial(body, GreyboxMaterials.Ensure("PlayerBody", new Color(0.8f, 0.6f, 0.2f)));
+            AssignMaterial(body, GreyboxMaterials.Ensure("PlayerBody", new Color(1f, 0.75f, 0.25f)));
 
             GameObject head = CreateVisualCube(visual.transform, "Head");
             head.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
             head.transform.localPosition = new Vector3(0f, 1.35f, 0f);
-            AssignMaterial(head, GreyboxMaterials.Ensure("PlayerHead", new Color(0.9f, 0.75f, 0.6f)));
+            AssignMaterial(head, GreyboxMaterials.Ensure("PlayerHead", new Color(1f, 0.83f, 0.67f)));
 
             // 스텝 연출 (스쿼시/스트레치 + 홉). Awake에서 Visual 자식 자동 탐색
             root.AddComponent<PlayerStepAnimator>();

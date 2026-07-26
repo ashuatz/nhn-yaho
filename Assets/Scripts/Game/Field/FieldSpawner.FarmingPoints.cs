@@ -20,10 +20,11 @@ namespace Scavenger.Field
     /// </summary>
     public sealed partial class FieldSpawner
     {
-        // 그레이박스 파밍 포인트 색 (등급 위상 구분 - 아트 교체 시 사라진다)
-        static readonly Color NormalPointColor = new Color(0.34f, 0.38f, 0.34f);
-        static readonly Color RarePointColor = new Color(0.28f, 0.38f, 0.5f);
-        static readonly Color HeroPointColor = new Color(0.42f, 0.32f, 0.5f);
+        // 그레이박스 파밍 포인트 색 (등급 위상 구분 - 아트 교체 시 사라진다).
+        // 2026-07-26 밝기 보정 (V x1.7) - 프리팹 템플릿 색과 같은 값을 유지한다
+        static readonly Color NormalPointColor = new Color(0.58f, 0.65f, 0.58f);
+        static readonly Color RarePointColor = new Color(0.48f, 0.65f, 0.85f);
+        static readonly Color HeroPointColor = new Color(0.71f, 0.54f, 0.85f);
 
         // 등급 위상 가중치 (일반 / 희귀 / 영웅). 깊이 스케일링은 후속 작업
         const float RareGradeChance = 0.3f;
