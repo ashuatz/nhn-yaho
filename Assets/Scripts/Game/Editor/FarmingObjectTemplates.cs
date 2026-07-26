@@ -35,11 +35,11 @@ namespace Scavenger.EditorTools
             new Template { Name = "ItemObject_Jar_Hero", Kind = FarmingObjectKind.Jar, Grade = FarmingPointGrade.Hero },
         };
 
-        // 등급 색 (파밍 포인트 그레이박스 색과 같은 축 - 아트가 형태로 대체할 임시 표현).
-        // 2026-07-26 밝기 보정 (V x1.7)
-        static readonly Color NormalColor = new Color(0.71f, 0.65f, 0.51f);
-        static readonly Color RareColor = new Color(0.48f, 0.65f, 0.85f);
-        static readonly Color HeroColor = new Color(0.71f, 0.54f, 0.85f);
+        // 등급 기준색 (파밍 포인트 그레이박스 색과 같은 축 - 아트가 형태로 대체할 임시 표현).
+        // 밝기는 GreyboxTheme이 정한다
+        internal static readonly Color NormalColor = new Color(0.42f, 0.38f, 0.3f);
+        internal static readonly Color RareColor = new Color(0.28f, 0.38f, 0.5f);
+        internal static readonly Color HeroColor = new Color(0.42f, 0.32f, 0.5f);
 
         // 상자 규격 (m). 뚜껑은 뒤쪽 모서리를 축으로 젖혀진다
         const float BoxWidth = 0.72f;

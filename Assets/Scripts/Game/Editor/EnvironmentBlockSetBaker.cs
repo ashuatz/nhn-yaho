@@ -206,8 +206,11 @@ namespace Scavenger.EditorTools
 
             for (int i = 0; i < palette.Length; i++)
             {
+                // 팔레트는 기준색 - 밝기 보정은 배경 갈래로 건다 (설정: GreyboxTheme)
+                Color themed = GreyboxThemeAccess.Tint(palette[i], Field.GreyboxTone.Background);
+
                 Material material = TrimSheetEnvBlocks.GetPaletteMaterial(
-                    definition, i, SegmentEnvironment.PaletteName(i), palette[i]);
+                    definition, i, SegmentEnvironment.PaletteName(i), themed);
 
                 materials.Add(material);
             }

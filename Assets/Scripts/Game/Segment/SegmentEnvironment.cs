@@ -99,20 +99,21 @@ namespace Scavenger.Segment
     public static class SegmentEnvironment
     {
         /// <summary>
-        /// 블록 색 팔레트. 인덱스가 EnvironmentBlock.PaletteIndex와 대응.
-        /// 명도는 2026-07-26 밝기 보정(V x1.7)을 거친 값이다 (사용자 지시: 전체가 어둡다).
-        /// 레이어 간 밝기 순서(근경 > 중경 > 원경)는 그대로 유지된다 - 깊이 구분의 근거다.
+        /// 블록 색 **기준색** (색상 + 채도). 인덱스가 EnvironmentBlock.PaletteIndex와 대응.
+        /// 실제 밝기는 GreyboxTheme(Assets/Settings/GreyboxTheme.asset)이 정한다 -
+        /// 여기 값을 직접 올리면 재생성 때마다 조절값을 덮어쓴다.
+        /// 레이어 간 밝기 순서(근경 > 중경 > 원경)는 배수를 걸어도 유지된다 - 깊이 구분의 근거다.
         /// </summary>
         public static readonly Color[] Palette =
         {
-            new Color(0.27f, 0.31f, 0.37f),   // 0: 럽블 어두움
-            new Color(0.32f, 0.36f, 0.43f),   // 1: 럽블 중간
-            new Color(0.37f, 0.41f, 0.48f),   // 2: 럽블 밝음
-            new Color(0.34f, 0.37f, 0.46f),   // 3: 상부층 A
-            new Color(0.41f, 0.44f, 0.53f),   // 4: 상부층 B
-            new Color(0.49f, 0.49f, 0.54f),   // 5: 데브리
-            new Color(0.19f, 0.22f, 0.29f),   // 6: 중경 매스
-            new Color(0.12f, 0.15f, 0.22f),   // 7: 원경 스카이라인
+            new Color(0.16f, 0.18f, 0.22f),   // 0: 럽블 어두움
+            new Color(0.19f, 0.21f, 0.25f),   // 1: 럽블 중간
+            new Color(0.22f, 0.24f, 0.28f),   // 2: 럽블 밝음
+            new Color(0.2f, 0.22f, 0.27f),    // 3: 상부층 A
+            new Color(0.24f, 0.26f, 0.31f),   // 4: 상부층 B
+            new Color(0.29f, 0.29f, 0.32f),   // 5: 데브리
+            new Color(0.11f, 0.13f, 0.17f),   // 6: 중경 매스
+            new Color(0.07f, 0.09f, 0.13f),   // 7: 원경 스카이라인
         };
 
         /// <summary>
@@ -622,7 +623,9 @@ namespace Scavenger.Segment
             if (blockRenderer == null)
                 return;
 
-            Color color = Palette[Mathf.Clamp(paletteIndex, 0, Palette.Length - 1)];
+            Color color = Field.GreyboxTheme.Tint(
+                Palette[Mathf.Clamp(paletteIndex, 0, Palette.Length - 1)],
+                Field.GreyboxTone.Background);
 
 #if UNITY_EDITOR
             // 에디트 모드(사전 배치)에서는 반드시 디스크 에셋 머티리얼 사용 -

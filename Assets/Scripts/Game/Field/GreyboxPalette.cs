@@ -36,6 +36,15 @@ namespace Scavenger.Field
         /// </summary>
         public static void Apply(GameObject target, Color color)
         {
+            Apply(target, color, GreyboxTone.Field);
+        }
+
+        /// <summary>
+        /// 갈래를 지정해 적용한다. 색은 기준색이고 밝기 보정(GreyboxTheme)은 여기서 걸린다 -
+        /// 런타임 생성물의 밝기 보정 창구를 한 곳으로 모으기 위함.
+        /// </summary>
+        public static void Apply(GameObject target, Color color, GreyboxTone tone)
+        {
             if (target == null)
                 return;
 
@@ -44,14 +53,16 @@ namespace Scavenger.Field
             if (targetRenderer == null)
                 return;
 
+            Color tinted = GreyboxTheme.Tint(color, tone);
+
             if (baseMaterial == null)
             {
                 // 폴백: 기준 머티리얼 미주입 (에디터 프리뷰/테스트 경로)
-                targetRenderer.material.color = color;
+                targetRenderer.material.color = tinted;
                 return;
             }
 
-            targetRenderer.sharedMaterial = Resolve(color);
+            targetRenderer.sharedMaterial = Resolve(tinted);
         }
 
         /// <summary>
@@ -67,6 +78,9 @@ namespace Scavenger.Field
 
             if (targetRenderer == null)
                 return;
+
+            // 발광색은 밝기 보정을 걸지 않는다 - 이미 발광 강도로 밝기를 정하는 색이라
+            // 배수를 또 걸면 랜드마크가 흰색으로 날아간다
 
             // 발광은 색+강도 조합이 키가 되므로 알파에 강도를 실어 캐시를 분리한다
             Color glowKey = new Color(color.r, color.g, color.b, emissionScale);
@@ -99,10 +113,16 @@ namespace Scavenger.Field
         /// </summary>
         public static Material GetTinted(Color color)
         {
+            return GetTinted(color, GreyboxTone.Field);
+        }
+
+        /// <summary>갈래를 지정해 공유 틴트 머티리얼을 얻는다 (배경 팔레트 등).</summary>
+        public static Material GetTinted(Color color, GreyboxTone tone)
+        {
             if (baseMaterial == null)
                 return null;
 
-            return Resolve(color);
+            return Resolve(GreyboxTheme.Tint(color, tone));
         }
 
         static Material Resolve(Color color)

@@ -44,6 +44,9 @@ namespace Scavenger.Field
 
         [Header("그레이박스 리소스 (아트 교체 지점 - 프리팹에서 배선)")]
         [SerializeField] Material greyboxMaterial;
+
+        [Header("그레이박스 밝기 설정 (Scavenger > Greybox Brightness)")]
+        [SerializeField] GreyboxTheme greyboxTheme;
         [SerializeField] FieldTileSet floorTileSet;
         [SerializeField] FloorRow floorRowPrefab;
         [SerializeField] FarmingPoint farmingPointTopPrefab;
@@ -161,6 +164,9 @@ namespace Scavenger.Field
 
             // 런타임 생성물의 기준 머티리얼 (Assets/Materials/Greybox/Common.mat)
             GreyboxPalette.SetBaseMaterial(greyboxMaterial);
+
+            // 밝기 보정 설정 - 미배선이면 기본 배수로 동작한다 (GreyboxTheme.Tint)
+            GreyboxTheme.SetActive(greyboxTheme);
 
             ValidateRootTransform();
         }

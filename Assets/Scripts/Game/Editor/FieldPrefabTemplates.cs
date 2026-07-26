@@ -34,13 +34,13 @@ namespace Scavenger.EditorTools
             "Assets/Prefabs/Field/Tiles/FloorTile_C.prefab",
         };
 
-        // 색은 2026-07-26 밝기 보정(V x1.7)을 거친 값이다 (사용자 지시: 전체가 어둡다).
-        // 색상/채도는 그대로 두고 명도만 올렸으므로 타일 간 대비는 유지된다
-        static readonly Color[] TileColors =
+        // 기준색 (색상 + 채도). 밝기는 GreyboxTheme이 정한다 -
+        // 여기 값을 직접 올리면 재생성 때마다 밝기 창의 조절값을 덮어쓴다
+        internal static readonly Color[] TileColors =
         {
-            new Color(0.51f, 0.53f, 0.56f),
-            new Color(0.46f, 0.49f, 0.53f),
-            new Color(0.56f, 0.58f, 0.61f),
+            new Color(0.30f, 0.31f, 0.33f),
+            new Color(0.27f, 0.29f, 0.31f),
+            new Color(0.33f, 0.34f, 0.36f),
         };
 
         // 그레이박스 기준 규격 (ZoneDefinition 기본값과 맞춘다)
@@ -59,9 +59,9 @@ namespace Scavenger.EditorTools
         const float StairRampThickness = 0.4f;
         const float EdgeBlockerHeight = 1.8f;
 
-        static readonly Color FloorColor = new Color(0.51f, 0.53f, 0.56f);
-        static readonly Color TopPointColor = new Color(0.58f, 0.65f, 0.58f);
-        static readonly Color BottomPointColor = new Color(0.54f, 0.6f, 0.65f);
+        internal static readonly Color FloorColor = new Color(0.3f, 0.31f, 0.33f);
+        internal static readonly Color TopPointColor = new Color(0.34f, 0.38f, 0.34f);
+        internal static readonly Color BottomPointColor = new Color(0.32f, 0.35f, 0.38f);
 
         [MenuItem("Scavenger/Ensure Field Prefabs")]
         public static void EnsureFieldPrefabs()

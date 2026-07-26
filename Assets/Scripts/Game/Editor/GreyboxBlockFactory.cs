@@ -97,7 +97,9 @@ namespace Scavenger.EditorTools
         /// </summary>
         internal static Material EnsureMaterial(string blockName, Color color)
         {
-            return GreyboxMaterials.Ensure(ResolveAssetName(blockName), color, MaterialSubfolder);
+            // 색은 기준색이고 밝기 보정은 GreyboxMaterials가 건다 (설정: GreyboxTheme)
+            return GreyboxMaterials.Ensure(
+                ResolveAssetName(blockName), color, MaterialSubfolder, Field.GreyboxTone.Field);
         }
 
         /// <summary>필드 프리팹 머티리얼 폴더 (Assets/Materials/Greybox 하위).</summary>

@@ -13,9 +13,22 @@ namespace Scavenger.EditorTools
         const string FolderParent = "Assets/Materials";
         const string Folder = "Assets/Materials/Greybox";
 
+        /// <summary>바닥 그리드 기준색 (색상 + 채도). 밝기는 GreyboxTheme이 정한다.</summary>
+        public static readonly Color FloorGridBaseColor = new Color(0.32f, 0.36f, 0.3f);
+
         public static Material Ensure(string materialName, Color color)
         {
             return Ensure(materialName, color, subfolder: null);
+        }
+
+        /// <summary>
+        /// 갈래를 지정해 보장한다. 넘기는 색은 **기준색**이고 밝기 보정은 여기서 걸린다
+        /// (설정: Assets/Settings/GreyboxTheme.asset).
+        /// </summary>
+        public static Material Ensure(
+            string materialName, Color baseColor, string subfolder, Field.GreyboxTone tone)
+        {
+            return Ensure(materialName, GreyboxThemeAccess.Tint(baseColor, tone), subfolder);
         }
 
         /// <summary>
@@ -103,8 +116,9 @@ namespace Scavenger.EditorTools
 
             Shader litShader = Shader.Find("Universal Render Pipeline/Lit");
             Material material = new Material(litShader);
-            // 2026-07-26 밝기 보정 (V x1.7)
-            material.color = new Color(0.54f, 0.61f, 0.51f);
+            // 기준색 + 밝기 보정 (설정: GreyboxTheme)
+            material.color = GreyboxThemeAccess.Tint(
+                FloorGridBaseColor, Field.GreyboxTone.Field);
             material.SetTexture("_BaseMap", gridTexture);
             material.mainTexture = gridTexture;
 

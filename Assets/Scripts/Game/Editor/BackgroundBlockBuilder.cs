@@ -262,7 +262,9 @@ namespace Scavenger.EditorTools
 
                 if (renderer != null)
                 {
-                    Color paletteColor = SegmentEnvironment.Palette[block.PaletteIndex];
+                    Color paletteColor = GreyboxThemeAccess.Tint(
+                        SegmentEnvironment.Palette[block.PaletteIndex], Field.GreyboxTone.Background);
+
                     renderer.sharedMaterial = TrimSheetEnvBlocks.GetPaletteMaterial(
                         definition, block.PaletteIndex,
                         SegmentEnvironment.PaletteName(block.PaletteIndex), paletteColor);

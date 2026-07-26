@@ -514,7 +514,7 @@ namespace Scavenger.Segment
             {
                 // 배경도 런타임 생성물과 같은 기준 머티리얼(Common.mat) 쉐이더를 쓴다
                 // (사용자 지시). 팔레트 색당 1장 공유 - 파괴 책임은 팔레트에 있다
-                Material shared = Field.GreyboxPalette.GetTinted(palette[i]);
+                Material shared = Field.GreyboxPalette.GetTinted(palette[i], Field.GreyboxTone.Background);
 
                 if (shared != null)
                 {

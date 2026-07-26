@@ -84,6 +84,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Field.FieldSpawner
   greyboxMaterial: {fileID: 2100000, guid: 15ac3feb7e8b93a40bdcf151331c5c55, type: 2}
+  greyboxTheme: {fileID: 11400000, guid: accaf8fe365ca2a49b5b0775fc6f4924, type: 2}
   floorTileSet: {fileID: 11400000, guid: 07e2dcb7b2c2757438536709c4134589, type: 2}
   floorRowPrefab: {fileID: 8895889237179486207, guid: 08aacc7ce5b31ac498d107c5dca874b7, type: 3}
   farmingPointTopPrefab: {fileID: 5403503015605519672, guid: a79d8d9cc70e8b24f8c54b3003daa84d, type: 3}

@@ -181,8 +181,11 @@ namespace Scavenger.EditorTools
         static Material EnsureTintedMaterial(
             TrimSheetDefinition definition, string assetName, Color color)
         {
+            // 색은 기준색 - 밝기 보정을 걸어 넘긴다 (설정: GreyboxTheme)
+            Color themed = GreyboxThemeAccess.Tint(color, Field.GreyboxTone.Field);
+
             Material tinted = TrimSheetAssets.EnsureTintedMaterial(
-                definition.material, MaterialFolder, assetName, color);
+                definition.material, MaterialFolder, assetName, themed);
 
             if (tinted != null)
                 return tinted;

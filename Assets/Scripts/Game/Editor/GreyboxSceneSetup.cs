@@ -32,6 +32,12 @@ namespace Scavenger.EditorTools
 
         static readonly Color DepthColor = new Color(0.045f, 0.055f, 0.085f);
 
+        // 이름 있는 그레이박스 머티리얼의 기준색 (색상 + 채도).
+        // 밝기는 GreyboxTheme이 정한다 - 밝기 창(Greybox Brightness)이 이 값들로 다시 만든다
+        public static readonly Color CommonBaseColor = new Color(0.3f, 0.31f, 0.33f);
+        public static readonly Color PlayerBodyBaseColor = new Color(0.8f, 0.6f, 0.2f);
+        public static readonly Color PlayerHeadBaseColor = new Color(0.9f, 0.75f, 0.6f);
+
         [MenuItem("Scavenger/Setup Greybox Scene")]
         public static void SetupScene()
         {
@@ -172,6 +178,7 @@ namespace Scavenger.EditorTools
             int assigned = 0;
 
             assigned += AssignIfEmpty(serialized, "greyboxMaterial", LoadCommonMaterial());
+            assigned += AssignIfEmpty(serialized, "greyboxTheme", GreyboxThemeAccess.Load());
             assigned += AssignIfEmpty(
                 serialized, "floorTileSet",
                 AssetDatabase.LoadAssetAtPath<Field.FieldTileSet>(FieldPrefabTemplates.TileSetPath));
@@ -245,8 +252,8 @@ namespace Scavenger.EditorTools
                 return common;
 
             // 없으면 그레이박스 기본 톤으로 1회 생성
-            // 2026-07-26 밝기 보정 (V x1.7) - 바닥/블록 기준 톤
-            return GreyboxMaterials.Ensure("Common", new Color(0.51f, 0.53f, 0.56f));
+            return GreyboxMaterials.Ensure(
+                "Common", CommonBaseColor, subfolder: null, Field.GreyboxTone.Field);
         }
 
         static T LoadFieldComponent<T>(string prefabPath) where T : Component
@@ -356,12 +363,14 @@ namespace Scavenger.EditorTools
             GameObject body = CreateVisualCube(visual.transform, "Body");
             body.transform.localScale = new Vector3(0.7f, 0.9f, 0.45f);
             body.transform.localPosition = new Vector3(0f, 0.65f, 0f);
-            AssignMaterial(body, GreyboxMaterials.Ensure("PlayerBody", new Color(1f, 0.75f, 0.25f)));
+            AssignMaterial(body, GreyboxMaterials.Ensure(
+                "PlayerBody", PlayerBodyBaseColor, subfolder: null, Field.GreyboxTone.Character));
 
             GameObject head = CreateVisualCube(visual.transform, "Head");
             head.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
             head.transform.localPosition = new Vector3(0f, 1.35f, 0f);
-            AssignMaterial(head, GreyboxMaterials.Ensure("PlayerHead", new Color(1f, 0.83f, 0.67f)));
+            AssignMaterial(head, GreyboxMaterials.Ensure(
+                "PlayerHead", PlayerHeadBaseColor, subfolder: null, Field.GreyboxTone.Character));
 
             // 스텝 연출 (스쿼시/스트레치 + 홉). Awake에서 Visual 자식 자동 탐색
             root.AddComponent<PlayerStepAnimator>();
