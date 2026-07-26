@@ -319,8 +319,10 @@ namespace Scavenger.EditorTools
             GameObject cameraObject = new GameObject("Main Camera");
             cameraObject.tag = "MainCamera";
 
+            // 하늘로 지운다 - 단색이면 지형이 끝나는 곳이 빈 화면으로 읽힌다
+            // (사용자 지시 2026-07-26). 하늘 머티리얼은 GreyboxSkySetup이 만든다
             Camera sceneCamera = cameraObject.AddComponent<Camera>();
-            sceneCamera.clearFlags = CameraClearFlags.SolidColor;
+            sceneCamera.clearFlags = CameraClearFlags.Skybox;
             sceneCamera.backgroundColor = DepthColor;
 
             cameraObject.AddComponent<AudioListener>();
@@ -464,6 +466,9 @@ namespace Scavenger.EditorTools
             RenderSettings.fogStartDistance = 10f;
             RenderSettings.fogEndDistance = 42f;
             RenderSettings.fogColor = DepthColor;
+
+            // 하늘 (지형이 끝나는 곳이 빈 화면으로 보이지 않게)
+            GreyboxSkySetup.EnsureGreyboxSky();
         }
 
         // 틸트 시프트 뷰 (ADR-0006): 가우시안 DoF로 미니어처 룩.

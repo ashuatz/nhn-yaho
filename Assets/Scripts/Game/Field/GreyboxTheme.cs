@@ -2,14 +2,20 @@ using UnityEngine;
 
 namespace Scavenger.Field
 {
-    /// <summary>밝기 보정을 따로 걸 수 있는 갈래 (배경은 깊이 구분 때문에 따로 만진다).</summary>
+    /// <summary>밝기 보정을 따로 걸 수 있는 갈래 (깊이 구분 때문에 레이어를 나눈다).</summary>
     public enum GreyboxTone
     {
         /// <summary>바닥/파밍 포인트/아이템 오브젝트 등 걸어다니는 구조물.</summary>
         Field,
 
-        /// <summary>배경 블록 (팔레트 8색).</summary>
+        /// <summary>근경 배경 블록 (팔레트 0~5: 럽블 / 상부층 / 데브리).</summary>
         Background,
+
+        /// <summary>중경 매스 (팔레트 6).</summary>
+        Midground,
+
+        /// <summary>원경 스카이라인 (팔레트 7).</summary>
+        Far,
 
         /// <summary>플레이어 등 캐릭터.</summary>
         Character,
@@ -41,6 +47,10 @@ namespace Scavenger.Field
         [Range(0.25f, 2f)] public float fieldBrightness = 1f;
         [Range(0.25f, 2f)] public float backgroundBrightness = 1f;
         [Range(0.25f, 2f)] public float characterBrightness = 1f;
+
+        [Header("깊이 레이어 미세 조정 (배경 배수 위에 곱해진다)")]
+        [Range(0.25f, 2f)] public float midgroundBrightness = 1f;
+        [Range(0.25f, 2f)] public float farBrightness = 1f;
 
         /// <summary>런타임에서 쓰는 설정. FieldSpawner가 직렬화 참조로 주입한다.</summary>
         public static GreyboxTheme Active { get; private set; }
@@ -77,6 +87,14 @@ namespace Scavenger.Field
 
         float ResolveCategory(GreyboxTone tone)
         {
+            // 중경/원경은 배경 배수를 함께 받는다 - 배경 슬라이더 하나로 전체가 움직이고,
+            // 레이어별 미세 조정은 그 위에 곱해진다
+            if (tone == GreyboxTone.Midground)
+                return backgroundBrightness * midgroundBrightness;
+
+            if (tone == GreyboxTone.Far)
+                return backgroundBrightness * farBrightness;
+
             if (tone == GreyboxTone.Background)
                 return backgroundBrightness;
 
@@ -108,6 +126,8 @@ namespace Scavenger.Field
             fieldBrightness = Mathf.Max(0.05f, fieldBrightness);
             backgroundBrightness = Mathf.Max(0.05f, backgroundBrightness);
             characterBrightness = Mathf.Max(0.05f, characterBrightness);
+            midgroundBrightness = Mathf.Max(0.05f, midgroundBrightness);
+            farBrightness = Mathf.Max(0.05f, farBrightness);
         }
     }
 }

@@ -114,6 +114,7 @@ namespace Scavenger.Segment
             new Color(0.29f, 0.29f, 0.32f),   // 5: 데브리
             new Color(0.11f, 0.13f, 0.17f),   // 6: 중경 매스
             new Color(0.07f, 0.09f, 0.13f),   // 7: 원경 스카이라인
+            new Color(0.13f, 0.15f, 0.19f),   // 8: 저지대 바닥 (아래쪽 빈 공간 가림)
         };
 
         /// <summary>
@@ -130,10 +131,29 @@ namespace Scavenger.Segment
             "Debris",
             "Midground",
             "Skyline",
+            "LowerGround",
         };
 
         /// <summary>이 인덱스부터는 원거리 레이어 - 렌더러가 그림자를 끈다.</summary>
         public const int FarPaletteStart = 6;
+
+        /// <summary>
+        /// 팔레트 인덱스 -> 밝기 갈래. 깊이 레이어(중경/원경)는 따로 조절할 수 있어야
+        /// 원경만 밀어 넣거나 끌어올릴 수 있다.
+        /// </summary>
+        public static Field.GreyboxTone PaletteTone(int paletteIndex)
+        {
+            if (paletteIndex == LowerGroundPalette)
+                return Field.GreyboxTone.Far;
+
+            if (paletteIndex == 7)
+                return Field.GreyboxTone.Far;
+
+            if (paletteIndex == 6)
+                return Field.GreyboxTone.Midground;
+
+            return Field.GreyboxTone.Background;
+        }
 
         /// <summary>팔레트 인덱스 -> 역할 이름 (범위를 벗어나면 인덱스 표기).</summary>
         public static string PaletteName(int paletteIndex)
@@ -178,6 +198,7 @@ namespace Scavenger.Segment
             AddDebris(blocks, definition, rng, clearance, segmentLength);
             AddMidground(blocks, definition, rng, clearance, segmentLength);
             AddFarground(blocks, definition, rng, clearance, segmentLength);
+            AddLowerGround(blocks, definition, rng, clearance, segmentLength);
 
             return blocks;
         }
@@ -498,6 +519,80 @@ namespace Scavenger.Segment
             }
         }
 
+        // -- 저지대 바닥 (아래쪽 빈 공간 가림) ---------------------------------
+
+        /// <summary>저지대 바닥 팔레트 인덱스.</summary>
+        public const int LowerGroundPalette = 8;
+
+        // 상판 높이 (m). 낙사 판정선(y -4)보다 아래여야 한다 - 위로 올리면
+        // 떨어진 플레이어가 여기 착지한 것처럼 보인다 (콜라이더는 없지만 눈에 그렇게 읽힌다)
+        const float LowerGroundTop = -6f;
+
+        // 상판 높이 산포 (m). 완전히 평평하면 판때기 하나로 보인다
+        const float LowerGroundTopJitter = 1.4f;
+
+        const float LowerGroundThickness = 10f;
+
+        // 타일 하나의 크기 (m)와 겹침. 겹치지 않으면 타일 사이로 빈 공간이 보인다
+        const float LowerGroundTileSpan = 12f;
+        const float LowerGroundTileDepth = 9f;
+        const float LowerGroundTileStepZ = 8f;
+
+        // 복도 바깥으로 몇 장까지 깔지 (한 장 12m). 포그가 삼키는 거리까지만
+        const int LowerGroundColumns = 4;
+
+        /// <summary>
+        /// 보행면 한참 아래에 깔리는 지면 (사용자 지시 2026-07-26: 플레이 영역 아래가
+        /// 뻥 뚫려 보인다). 카메라가 아이소라 복도 옆/아래로 화면 하단이 비는데,
+        /// 그 자리를 저지대 바닥이 메우고 포그로 사라진다.
+        ///
+        /// 콜라이더는 없다 (배경 규칙) - 낙사는 그대로 성립하고, 낙사 판정선보다
+        /// 아래에 있어 떨어지는 연출도 가려지지 않는다.
+        /// 타일은 x/z 모두 조금씩 겹쳐 깐다. 딱 맞춰 깔면 스냅 보정과 부동소수 오차로
+        /// 이음새가 벌어져 그 틈으로 다시 빈 공간이 보인다.
+        /// </summary>
+        static void AddLowerGround(
+            List<EnvironmentBlock> blocks, ZoneDefinition definition, System.Random rng,
+            SightClearance clearance, float segmentLength)
+        {
+            float halfWidth = definition.corridorHalfWidth;
+
+            // 복도 아래를 덮는 가운데 열 + 좌우로 뻗는 열들
+            for (float z = 0f; z < segmentLength; z += LowerGroundTileStepZ)
+            {
+                float centerZ = z + LowerGroundTileDepth * 0.5f;
+
+                AddLowerGroundTile(
+                    blocks, rng, clearance, 0f, halfWidth * 2f + 2f, centerZ);
+
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    for (int column = 0; column < LowerGroundColumns; column++)
+                    {
+                        // 열마다 1m씩 겹치게 밀어낸다
+                        float offset = halfWidth + LowerGroundTileSpan * (column + 0.5f) - column;
+                        AddLowerGroundTile(
+                            blocks, rng, clearance, side * offset, LowerGroundTileSpan + 1f, centerZ);
+                    }
+                }
+            }
+        }
+
+        static void AddLowerGroundTile(
+            List<EnvironmentBlock> blocks, System.Random rng, SightClearance clearance,
+            float centerX, float width, float centerZ)
+        {
+            float top = LowerGroundTop - NextRange(rng, 0f, LowerGroundTopJitter);
+
+            AddBlock(
+                blocks,
+                clearance,
+                new Vector3(centerX, top - LowerGroundThickness * 0.5f, centerZ),
+                Quaternion.identity,
+                new Vector3(width, LowerGroundThickness, LowerGroundTileDepth),
+                LowerGroundPalette);
+        }
+
         // -- 보행로 내 데브리 --------------------------------------------------
 
         static void AddDebris(
@@ -623,9 +718,8 @@ namespace Scavenger.Segment
             if (blockRenderer == null)
                 return;
 
-            Color color = Field.GreyboxTheme.Tint(
-                Palette[Mathf.Clamp(paletteIndex, 0, Palette.Length - 1)],
-                Field.GreyboxTone.Background);
+            int index = Mathf.Clamp(paletteIndex, 0, Palette.Length - 1);
+            Color color = Field.GreyboxTheme.Tint(Palette[index], PaletteTone(index));
 
 #if UNITY_EDITOR
             // 에디트 모드(사전 배치)에서는 반드시 디스크 에셋 머티리얼 사용 -

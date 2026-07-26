@@ -99,6 +99,10 @@ namespace Scavenger.EditorTools
             body.Add(CreateSlider("배경", "backgroundBrightness", 0.25f, 2f));
             body.Add(CreateSlider("캐릭터", "characterBrightness", 0.25f, 2f));
 
+            // 깊이 레이어는 배경 배수 위에 곱해진다 - 원경만 띄우거나 눌러 깊이를 조절
+            body.Add(CreateSlider("  중경", "midgroundBrightness", 0.25f, 2f));
+            body.Add(CreateSlider("  원경", "farBrightness", 0.25f, 2f));
+
             Button reset = new Button(ResetToDefault);
             reset.text = $"기본값 (전체 x{GreyboxTheme.DefaultBrightness:0.##})";
             reset.style.marginTop = 6f;
