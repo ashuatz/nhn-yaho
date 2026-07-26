@@ -19,6 +19,11 @@
   반드시 실제 길이를 넘겨야 한다 (안 넘기면 다음 세그먼트 배경과 겹쳐 그려진다).
   좌우 비대칭: CameraSide(clearance) 쪽은 계단식 하강 지형 + 침강 중경/원경
   (발판 가림 금지), 반대쪽은 럽블 능선 + 상부층 + 솟는 스카이라인.
+  **저지대 바닥**(팔레트 8, AddLowerGround): 보행면 한참 아래(-6m 기준)에 깔리는 지면.
+  아이소 카메라에서 복도 옆/아래가 뻥 뚫려 보이던 것을 메운다 (사용자 지시 2026-07-26).
+  낙사 판정선(-4)보다 **아래**여야 한다 - 위로 올리면 떨어진 플레이어가 착지한 것처럼 보인다.
+  타일은 x/z를 1m씩 겹쳐 깐다 (딱 맞추면 스냅 보정/부동소수 오차로 이음새가 벌어져
+  그 틈으로 다시 빈 공간이 보인다). 존당 36블록, 드로우 배치는 +2 정도.
   BuildGameObjects = 사전 배치(손 편집) 전용 GO 백엔드 - 바닥은 만들지 않는다.
   SightClearance 구조체 = 카메라 시선 밴드 겹침 판정 (여기 정의).
 - EnvironmentRenderer.cs: Graphics.RenderMeshInstanced 드로우 (ADR-0005, 웹 호환).
@@ -45,6 +50,12 @@
   주의: FieldSpawner.BuildBackground는 이 마커의 커버 범위를 확인하지 않는다.
   사전 배치를 둔 채 플레이하면 인스턴싱 배경이 위에 겹쳐 그려진다 -
   사전 배치만 쓰려면 buildBackgroundBlocks를 꺼야 한다 (양쪽 UI가 경고로 안내).
+- 하늘: Editor/GreyboxSkySetup (메뉴 Scavenger > Ensure Greybox Sky).
+  카메라를 단색으로 지우면 지형이 끝나는 곳이 빈 화면으로 읽혀서, 지평선은 포그 톤 /
+  위로 갈수록 깊어지는 그라디언트 하늘(Skybox/Procedural, 해 없음)을 깐다.
+  LUT 포그가 하늘 픽셀을 skyDensity(0.85)만큼 덮으므로 하늘은 은은하게만 남는다 -
+  아트 파노라마가 나오면 같은 머티리얼의 셰이더만 Skybox/Panoramic으로 바꾼다.
+  머티리얼: Assets/Materials/Sky/GreyboxSky.mat (있으면 덮어쓰지 않는다)
 - DepthLighting.cs: 깊이별 조도 (M4-2). RunStarted/DepthChanged 구독,
   씬 베이스 라이팅 캡처 후 배율만 적용. minAmbientFactor/minLightFactor = 시인성 가드
 - ExtractionWaypoint.cs: 탈출 웨이포인트 (ADR-0008). 존과 존 사이 구간에 1개.

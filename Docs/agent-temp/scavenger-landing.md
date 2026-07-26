@@ -50,6 +50,9 @@
   인스턴싱. 굽기는 Scavenger > Field Trim Sheet > Bake Background Blocks)
 - 에셋 이름은 **용도 기반**이다 (색상 해시 금지, 사용자 지시 2026-07-26).
   예: FarmingPoint_Top_Platform.mat / TrimSheetEnv_06_Midground.mat
+- 복도 아래는 **저지대 바닥**(팔레트 8)이 메운다 - 아이소 화면에서 아래가 뚫려 보이던
+  문제 (2026-07-26). 하늘은 그라디언트 스카이박스
+  (Assets/Materials/Sky/GreyboxSky.mat, 메뉴 Scavenger > Ensure Greybox Sky)
 - 그레이박스 밝기는 **Assets/Settings/GreyboxTheme.asset**이 정한다 (코드 색 상수는
   기준색 = 색상/채도). 조절은 메뉴 **Scavenger > Greybox Brightness** ->
   슬라이더로 명도 배수(기본 1.7)를 잡고 "적용"으로 프리팹/배경을 다시 굽는다
