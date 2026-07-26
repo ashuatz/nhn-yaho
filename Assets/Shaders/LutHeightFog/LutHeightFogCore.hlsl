@@ -18,7 +18,7 @@ TEXTURE2D(_FogLut);
 // z: 높이 시작, w: 1 / (높이 끝 - 높이 시작)
 float4 _FogRangeParams;
 
-// x: 농도 배율, y: 하늘 농도 배율
+// x: 농도 배율, y: 하늘 농도 배율, zw: LUT 텍셀 크기 (1/폭, 1/높이)
 // 글로벌이 세팅되지 않은 상태(전부 0)에서는 농도 0이므로 포그가 적용되지 않는다.
 float4 _FogBlendParams;
 
@@ -28,6 +28,7 @@ float4 _FogBlendParams;
 #define FOG_HEIGHT_INVSPAN      _FogRangeParams.w
 #define FOG_DENSITY_SCALE       _FogBlendParams.x
 #define FOG_SKY_DENSITY_SCALE   _FogBlendParams.y
+#define FOG_LUT_TEXEL           _FogBlendParams.zw
 
 // 원본 구현은 near/far 계수를 CPU에서 미리 곱해 두었지만,
 // 여기서는 (시작, 역구간) 형태로 넘겨 같은 결과를 역보간 한 번으로 얻는다.
@@ -42,12 +43,25 @@ float ComputeFogLutCoord(float value, float start, float invSpan)
 float ComputeLinearEyeDepthFromWorld(float3 positionWS)
 {
     float viewZ = mul(UNITY_MATRIX_V, float4(positionWS, 1.0)).z;
-    return -viewZ;
+
+    // 카메라 뒤쪽(음수 깊이)을 0으로 눌러 둔다.
+    // start < end 인 정상 구간은 saturate가 알아서 잡지만,
+    // start > end 로 뒤집어 쓰면 역구간이 음수라 음수 깊이가 양의 좌표로 살아난다.
+    return max(-viewZ, 0.0);
 }
 
+// LUT은 (size-1)로 구워지므로 좌표 0/1이 첫/끝 텍셀의 '중심'에 앉아야 한다.
+// uv = coord 를 그대로 쓰면 전 구간에 반텍셀 오차가 남는다
+// (256폭에서 coord 0.25 -> 실효 0.2490).
 half4 SampleFogLut(float distanceCoord, float heightCoord)
 {
-    return SAMPLE_TEXTURE2D(_FogLut, sampler_LinearClamp, float2(distanceCoord, heightCoord));
+    float2 coord = float2(distanceCoord, heightCoord);
+    float2 texel = FOG_LUT_TEXEL;
+
+    // 텍셀 크기가 0이면(파라미터 미세팅) 보정 없이 통과시킨다.
+    float2 uv = coord * (1.0 - texel) + 0.5 * texel;
+
+    return SAMPLE_TEXTURE2D(_FogLut, sampler_LinearClamp, uv);
 }
 
 // 월드 좌표 하나로 포그를 합성한다. 포워드 머티리얼 경로가 쓴다.

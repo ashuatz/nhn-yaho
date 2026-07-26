@@ -60,11 +60,25 @@ namespace Scavenger.Rendering
         }
 
         /// <summary>
-        /// 셰이더에 넘길 (농도 배율, 하늘 농도 배율, 0, 0).
+        /// 셰이더에 넘길 (농도 배율, 하늘 농도 배율, LUT 텍셀 폭, LUT 텍셀 높이).
+        ///
+        /// 텍셀 크기는 셰이더가 LUT 좌표를 텍셀 중심에 맞추는 데 쓴다.
+        /// LUT을 (size-1)로 굽기 때문에 이 보정이 없으면 전 구간에 반텍셀 오차가 남는다.
         /// </summary>
         public Vector4 GetBlendParams()
         {
-            return new Vector4(density.value, skyDensity.value, 0f, 0f);
+            float texelWidth = 0f;
+            float texelHeight = 0f;
+
+            Texture lut = fogLut.value;
+
+            if (lut != null && lut.width > 0 && lut.height > 0)
+            {
+                texelWidth = 1f / lut.width;
+                texelHeight = 1f / lut.height;
+            }
+
+            return new Vector4(density.value, skyDensity.value, texelWidth, texelHeight);
         }
     }
 }

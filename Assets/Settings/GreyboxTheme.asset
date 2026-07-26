@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: GreyboxTheme
   m_EditorClassIdentifier: Scavenger.Game::Scavenger.Field.GreyboxTheme
   brightness: 1.7
-  fieldBrightness: 1
-  backgroundBrightness: 1
+  fieldBrightness: 1.516
+  backgroundBrightness: 1.719
   characterBrightness: 1
