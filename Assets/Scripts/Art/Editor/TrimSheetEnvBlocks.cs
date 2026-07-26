@@ -23,8 +23,13 @@ namespace Scavenger.ArtTools
         /// </summary>
         public const float DefaultEnvCellSpan = 1f;
 
-        /// <summary>스냅된 크기(셀 수) -> 구운 메시. 도메인 리로드에서 비워진다 (에셋은 남는다).</summary>
-        static readonly Dictionary<Vector3Int, Mesh> MeshCache = new Dictionary<Vector3Int, Mesh>();
+        /// <summary>
+        /// (셀 수, 셀 크기) -> 구운 메시. 도메인 리로드에서 비워진다 (에셋은 남는다).
+        /// **셀 크기를 키에 넣어야 한다** - 셀 1m의 1x1x1과 셀 2m의 1x1x1은 크기가
+        /// 다른 메시인데, 셀 수만으로 키를 잡으면 같은 에셋을 공유해 서로를 덮어쓴다
+        /// (Codex 교차 검토: 사전 배치는 1m, 런타임 블록 세트는 2m를 쓴다).
+        /// </summary>
+        static readonly Dictionary<string, Mesh> MeshCache = new Dictionary<string, Mesh>();
 
         static readonly Dictionary<int, Material> PaletteMaterialCache = new Dictionary<int, Material>();
 
@@ -97,17 +102,19 @@ namespace Scavenger.ArtTools
 
             snappedSize = new Vector3(cells.x * span, cells.y * span, cells.z * span);
 
-            if (MeshCache.TryGetValue(cells, out Mesh cached) && cached != null)
+            // 이름에 셀 크기를 포함한다 - 같은 셀 수라도 셀 크기가 다르면 다른 메시다
+            string meshName = $"Env_Block_{cells.x}x{cells.y}x{cells.z}_cell{Mathf.RoundToInt(span * 100f)}";
+
+            if (MeshCache.TryGetValue(meshName, out Mesh cached) && cached != null)
                 return cached;
 
-            string meshName = $"Env_Block_{cells.x}x{cells.y}x{cells.z}";
             string path = $"{EnvMeshFolder}/{meshName}.asset";
 
             Mesh onDisk = AssetDatabase.LoadAssetAtPath<Mesh>(path);
 
             if (onDisk != null)
             {
-                MeshCache[cells] = onDisk;
+                MeshCache[meshName] = onDisk;
                 return onDisk;
             }
 
@@ -121,7 +128,7 @@ namespace Scavenger.ArtTools
             if (saved == null)
                 return null;
 
-            MeshCache[cells] = saved;
+            MeshCache[meshName] = saved;
             BakedThisSession++;
 
             return saved;

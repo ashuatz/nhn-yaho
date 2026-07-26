@@ -203,6 +203,13 @@ namespace Scavenger.Field
             if (!item.IsValid)
                 return null;
 
+            // 붙일 바닥이 없으면 아예 놓지 않는다 - 호출자가 가방으로 되돌린다.
+            // 공중에 뜬 아이템은 바닥이 무너져도 남아 규칙이 깨진다 (Codex 교차 검토)
+            Zone zone = FindZoneAt(worldPosition.z);
+
+            if (zone == null)
+                return null;
+
             GameObject spotObject = new GameObject($"DroppedItem_{item.Definition.id}");
             spotObject.transform.SetParent(transform, true);
             spotObject.transform.position = worldPosition;
@@ -213,13 +220,13 @@ namespace Scavenger.Field
             // 표시는 등급 색 (합성해 올린 등급이 눈에 보이게)
             BuildDropVisual(spotObject.transform, item.Grade);
 
-            AttachToFloorAt(spotObject.transform, worldPosition.z);
+            zone.AttachToRow(spotObject.transform);
 
             return spot;
         }
 
-        // 그 z의 세그먼트를 찾아 바닥 행에 부착한다. 세그먼트 밖이면 스포너 자식으로 둔다
-        void AttachToFloorAt(Transform target, float worldZ)
+        // 그 z를 담당하는 살아 있는 세그먼트. 없으면 null
+        Zone FindZoneAt(float worldZ)
         {
             foreach (FieldSegment segment in aliveSegments)
             {
@@ -229,9 +236,10 @@ namespace Scavenger.Field
                 if (worldZ < segment.StartZ || worldZ >= segment.EndZ)
                     continue;
 
-                segment.Zone.AttachToRow(target);
-                return;
+                return segment.Zone;
             }
+
+            return null;
         }
 
         // -- 존 사이 구간: 탈출 지점 (웹 이식, ADR-0008) ------------------------

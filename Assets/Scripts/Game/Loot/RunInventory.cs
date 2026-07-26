@@ -36,6 +36,14 @@ namespace Scavenger.Loot
 
             /// <summary>이 (id, 등급) 스택의 가치 합. 합성 시 등급 배수 반영.</summary>
             public int Value;
+
+            /// <summary>
+            /// 이 스택이 대표하는 **실물 획득 개수** (합성 전 원본 기준).
+            /// 창고 저장(BankedCounts)이 등급을 모르기 때문에, 합성으로 개수가 줄어든
+            /// 스택도 원본이 몇 개였는지 들고 있어야 버릴 때 정확히 되돌릴 수 있다
+            /// (Codex 교차 검토: 합성 1개를 버려도 1개만 차감해 창고에 유령이 남았다).
+            /// </summary>
+            public int Origins;
         }
 
         /// <summary>합성 필요 개수 전역 기본값 (드랍 문서 9.4). 아이템이 0이면 이 값.</summary>
@@ -143,6 +151,7 @@ namespace Scavenger.Loot
                 existing.Count += 1;
                 existing.Weight += weight;
                 existing.Value += value;
+                existing.Origins += 1;
             }
             else
             {
@@ -153,6 +162,7 @@ namespace Scavenger.Loot
                     Grade = startGrade,
                     Weight = weight,
                     Value = value,
+                    Origins = 1,
                 });
             }
 
@@ -180,6 +190,12 @@ namespace Scavenger.Loot
             public int Value;
             public float Weight;
 
+            /// <summary>
+            /// 이 1개가 대표하는 실물 획득 개수 (합성했다면 N개분).
+            /// 창고 개수(BankedCounts)를 정확히 되돌리기 위해 함께 들고 나간다.
+            /// </summary>
+            public int Origins;
+
             public bool IsValid
             {
                 get { return Definition != null; }
@@ -206,20 +222,24 @@ namespace Scavenger.Loot
             float weight = entry.Weight / entry.Count;
             int value = (int)System.Math.Round((double)entry.Value / entry.Count);
 
+            // 합성된 1개는 원본 N개를 대표한다 - 1개만 차감하면 창고에 유령이 남는다
+            int origins = ResolveOriginShare(entry, 1);
+
             dropped = new DroppedItem
             {
                 Definition = entry.Definition,
                 Grade = entry.Grade,
                 Value = value,
                 Weight = weight,
+                Origins = origins,
             };
 
-            RemoveUnits(entry, 1, weight, value);
+            RemoveUnits(entry, 1, weight, value, origins);
 
             TotalWeight -= weight;
             TotalValue -= value;
 
-            UnbankOne(dropped.Definition.id);
+            Unbank(dropped.Definition.id, origins);
 
             return true;
         }
@@ -234,12 +254,13 @@ namespace Scavenger.Loot
                 return;
 
             int grade = Mathf.Clamp(item.Grade, 1, LootDefinition.MaxTier);
+            int origins = Mathf.Max(1, item.Origins);
 
             TotalValue += item.Value;
             TotalWeight += item.Weight;
 
-            BankOne(item.Definition.id);
-            AddMerged(item.Definition, grade, item.Weight, item.Value);
+            Bank(item.Definition.id, origins);
+            AddMerged(item.Definition, grade, item.Weight, item.Value, origins);
 
             MergeChain(item.Definition.id, grade);
         }
@@ -309,15 +330,18 @@ namespace Scavenger.Loot
             float removedWeight = lower.Weight * mergeCount / lower.Count;
             int removedValue = (int)System.Math.Round((double)lower.Value * mergeCount / lower.Count);
 
+            // 실물 개수도 같은 비례로 옮긴다 - 합성 결과가 원본 몇 개인지 잃지 않게
+            int removedOrigins = ResolveOriginShare(lower, mergeCount);
+
             LootDefinition definition = lower.Definition;
 
-            RemoveUnits(lower, mergeCount, removedWeight, removedValue);
+            RemoveUnits(lower, mergeCount, removedWeight, removedValue, removedOrigins);
 
             // 상위 등급 1개: 무게는 N개분의 1/N(압축), 가치는 N개분에 등급 배수
             float mergedWeight = removedWeight / mergeCount;
             int mergedValue = removedValue * GradeValueMultiplier / mergeCount;
 
-            AddMerged(definition, grade + 1, mergedWeight, mergedValue);
+            AddMerged(definition, grade + 1, mergedWeight, mergedValue, removedOrigins);
 
             // 총량 조정 = 넣는 값 - 회수한 값 (스택 실제값과 항상 정합)
             TotalWeight += mergedWeight - removedWeight;
@@ -327,11 +351,13 @@ namespace Scavenger.Loot
             MergeChain(id, grade + 1);
         }
 
-        void RemoveUnits(Entry entry, int count, float removedWeight, int removedValue)
+        void RemoveUnits(
+            Entry entry, int count, float removedWeight, int removedValue, int removedOrigins)
         {
             entry.Count -= count;
             entry.Weight -= removedWeight;
             entry.Value -= removedValue;
+            entry.Origins -= removedOrigins;
 
             if (entry.Count > 0)
                 return;
@@ -339,10 +365,25 @@ namespace Scavenger.Loot
             // 스택이 비면 부동소수/정수 잔차가 남지 않도록 0으로 정리하고 제거
             entry.Weight = 0f;
             entry.Value = 0;
+            entry.Origins = 0;
             entries.Remove(entry);
         }
 
-        void AddMerged(LootDefinition definition, int grade, float weight, int value)
+        /// <summary>
+        /// 스택에서 units개를 뺄 때 함께 나가는 실물 개수. 스택 합에 비례하되
+        /// 최소 1개이고 남은 개수를 넘지 않는다 - 마지막 1개를 뺄 때 잔차까지 회수한다.
+        /// </summary>
+        static int ResolveOriginShare(Entry entry, int units)
+        {
+            if (entry.Count <= units)
+                return entry.Origins;
+
+            int share = (int)System.Math.Round((double)entry.Origins * units / entry.Count);
+
+            return Mathf.Clamp(share, 1, entry.Origins);
+        }
+
+        void AddMerged(LootDefinition definition, int grade, float weight, int value, int origins)
         {
             Entry existing = FindEntry(definition.id, grade);
 
@@ -351,6 +392,7 @@ namespace Scavenger.Loot
                 existing.Count += 1;
                 existing.Weight += weight;
                 existing.Value += value;
+                existing.Origins += origins;
                 return;
             }
 
@@ -361,34 +403,47 @@ namespace Scavenger.Loot
                 Grade = grade,
                 Weight = weight,
                 Value = value,
+                Origins = origins,
             });
         }
 
         void BankOne(string id)
         {
+            Bank(id, 1);
+        }
+
+        void Bank(string id, int count)
+        {
+            if (count <= 0)
+                return;
+
             if (bankedCounts.TryGetValue(id, out int current))
             {
-                bankedCounts[id] = current + 1;
+                bankedCounts[id] = current + count;
                 return;
             }
 
-            bankedCounts[id] = 1;
+            bankedCounts[id] = count;
         }
 
         // 버리면 실물 획득 개수도 되돌린다 - 다시 주우면 Add가 또 세므로,
-        // 되돌리지 않으면 버리고 줍기를 반복해 창고 개수를 부풀릴 수 있다
-        void UnbankOne(string id)
+        // 되돌리지 않으면 버리고 줍기를 반복해 창고 개수를 부풀릴 수 있다.
+        // 합성된 1개는 원본 N개를 대표하므로 그만큼 빠진다 (Codex 교차 검토)
+        void Unbank(string id, int count)
         {
+            if (count <= 0)
+                return;
+
             if (!bankedCounts.TryGetValue(id, out int current))
                 return;
 
-            if (current <= 1)
+            if (current <= count)
             {
                 bankedCounts.Remove(id);
                 return;
             }
 
-            bankedCounts[id] = current - 1;
+            bankedCounts[id] = current - count;
         }
 
         Entry FindEntry(string id, int grade)
