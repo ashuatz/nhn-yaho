@@ -40,10 +40,20 @@
   UpdateRemoval(기준선, 흔들림 시간) = 기준선 뒤 행을 Pending으로 전환.
   AttachToRow = 요소를 발밑 행의 자식으로 부착 (바닥과 함께 낙하).
   IsFullyRemoved = 남은 행 없음 (스포너가 존 오브젝트 정리).
+- GreyboxTheme.cs: 그레이박스 밝기 설정 SO (사용자 지시 2026-07-26: 에디터에서 조절).
+  **코드의 색 상수는 기준색(색상 + 채도)이고 명도는 이 에셋이 정한다** -
+  조절값이 코드에 있으면 프리팹을 다시 구울 때마다 덮어써진다.
+  전체 배수 + 갈래별 배수 3종(GreyboxTone: Field / Background / Character).
+  보정 규칙 = 명도만 배수, 1을 넘으면 채도를 지키며 V=1까지만 (채널 개별 클램프는 색이 틀어진다).
+  에셋: Assets/Settings/GreyboxTheme.asset, 창: 메뉴 Scavenger > Greybox Brightness.
+  런타임 주입은 FieldSpawner의 직렬화 참조 - 미배선이면 기본 배수(1.7)로 동작한다
+  (0으로 두면 배선을 잊었을 때 화면이 통째로 어두워져 원인을 찾기 어렵다)
 - GreyboxPalette.cs: 런타임 생성물의 머티리얼 공급기 (사용자 지시).
   기준 = Assets/Materials/Greybox/Common.mat, FieldSpawner가 직렬화 참조로 주입.
   색당 1장만 만들어 돌려쓴다 - 이전에는 오브젝트마다 인스턴스를 떠서 존 하나에
-  수십 장이 생기고 SRP 배칭도 색마다 끊겼다. Apply / ApplyGlow(발광).
+  수십 장이 생기고 SRP 배칭도 색마다 끊겼다. Apply(대상, 기준색[, 갈래]) / ApplyGlow(발광).
+  **밝기 보정(GreyboxTheme)이 걸리는 유일한 런타임 창구다** - 넘기는 색은 기준색이다.
+  발광색만 예외 (이미 강도로 밝기를 정하는 색이라 배수를 또 걸면 흰색으로 날아간다).
   기준 머티리얼 미주입 시 프리미티브 기본 머티리얼 복제로 폴백
 - FieldTileSet.cs: 존 바닥 타일 구성 SO (사용자 지시: 타일 프리팹 리스트 +
   노이즈 기반 배치). 타일 목록(가중치) / noiseScale / maxTiltDegrees(1도 미만) /

@@ -50,6 +50,9 @@
   인스턴싱. 굽기는 Scavenger > Field Trim Sheet > Bake Background Blocks)
 - 에셋 이름은 **용도 기반**이다 (색상 해시 금지, 사용자 지시 2026-07-26).
   예: FarmingPoint_Top_Platform.mat / TrimSheetEnv_06_Midground.mat
+- 그레이박스 밝기는 **Assets/Settings/GreyboxTheme.asset**이 정한다 (코드 색 상수는
+  기준색 = 색상/채도). 조절은 메뉴 **Scavenger > Greybox Brightness** ->
+  슬라이더로 명도 배수(기본 1.7)를 잡고 "적용"으로 프리팹/배경을 다시 굽는다
 - 가방: 슬롯을 끌어 가방 밖에 놓으면 1개를 발밑에 버린다. 등급/몫을 유지한 채
   다시 주울 수 있고, 버린 직후에는 반경을 한 번 벗어나야 회수된다
 

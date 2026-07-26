@@ -8,6 +8,8 @@
 ## 파일 목차
 
 - SegmentEnvironment.cs: 배경 PCG 데이터 생성기 (ADR-0003/0004/0005).
+  Palette는 **기준색**(색상 + 채도)이고 밝기는 Field/GreyboxTheme이 정한다
+  (창: Scavenger > Greybox Brightness). 여기 값을 직접 올리면 조절값을 덮어쓴다.
   PaletteNames / PaletteName(i) = 팔레트 역할 이름 (RubbleDark 등).
   사전 배치 머티리얼 에셋 이름이 여기서 나온다 (Env_00_RubbleDark.mat -
   색상 해시 이름은 어디에 쓰이는지 알 수 없다, 사용자 지시 2026-07-26).
